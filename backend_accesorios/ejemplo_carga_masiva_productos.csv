@@ -1,0 +1,8 @@
+nombre,categoria,genero,proveedor,costo_moneda_origen,moneda_compra,peso_gramos,costo_pyg,precio_venta
+Anillo Calavera Acero Quirurgico 316L,AN,M,Alibaba,2.10,USD,22,0,50000
+Cadena Dije Cruz Acero Plateado,CO,M,AliExpress,3.50,USD,28,0,65000
+Pulsera Piedra Volcanica y Corona Dorada,PU,U,Shein,1.80,USD,35,0,45000
+Aros Argollas Gruesas Acero Dorado,AR,F,Shein,1.50,USD,12,0,35000
+Tobillera Cadena Fina Mariposa,TO,F,Shein,1.20,USD,8,0,30000
+Collar Perlas Sinteticas con Broche Plata,CO,F,AliExpress,2.90,USD,20,0,55000
+Pulsera Cuero Doble Broche Magnetico,PU,M,Fornecedor Bras (Sao Paulo),12.00,BRL,30,0,60000
