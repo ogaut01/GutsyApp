@@ -59,11 +59,13 @@ class MaterialAdmin(admin.ModelAdmin):
 
 
 class ProductoInline(admin.TabularInline):
-    model = Producto
-    fields = ('nombre', 'categoria', 'genero', 'costo_moneda_origen', 'moneda_compra', 'peso_gramos', 'costo_pyg', 'precio_venta')
-    readonly_fields = ('costo_pyg', 'precio_venta')
+    model = Producto.lotes.through  # Using the through model for ManyToMany relationship
+    fields = ('producto', 'cantidad')
+    readonly_fields = ()
     extra = 0
     show_change_link = True
+    verbose_name = "Producto en Lote"
+    verbose_name_plural = "Productos en Lote"
 
 
 @admin.register(LoteImportacion)
@@ -131,7 +133,7 @@ class ProductoAdmin(ImportExportModelAdmin):
     list_filter = ('categoria', 'genero', 'proveedor', 'materiales', 'activo', 'fecha_creacion')
     search_fields = ('nombre', 'variantes__sku', 'variantes__codigo_barras')
     filter_horizontal = ('materiales',)
-    inlines = [VarianteProductoInline]
+    inlines = [VarianteProductoInline, ProductoInline]
 
     fieldsets = (
         ('Identificación del Modelo', {
@@ -141,7 +143,7 @@ class ProductoAdmin(ImportExportModelAdmin):
             'fields': ('imagen_archivo', 'imagen_url', 'url_producto', 'descripcion')
         }),
         ('Costeo de Importación', {
-            'fields': ('lote', 'costo_moneda_origen', 'moneda_compra', 'peso_gramos', 'costo_pyg'),
+            'fields': ('costo_moneda_origen', 'moneda_compra', 'peso_gramos', 'costo_pyg'),
             'description': 'El Costo Final en Guaraníes se calcula automáticamente sumando el precio FOB y el flete por peso.'
         }),
         ('Precio de Venta al Público', {
