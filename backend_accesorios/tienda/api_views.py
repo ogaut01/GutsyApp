@@ -108,17 +108,23 @@ class ProductoViewSet(viewsets.ModelViewSet):
             except Exception:
                 pass
 
-        producto.imagen_archivo = foto
-        producto.save(update_fields=['imagen_archivo'])
+        try:
+            producto.imagen_archivo = foto
+            producto.save(update_fields=['imagen_archivo'])
 
-        url = producto.imagen_archivo.url
-        if not (url.startswith('http://') or url.startswith('https://')):
-            url = request.build_absolute_uri(url)
+            url = producto.imagen_archivo.url
+            if not (url.startswith('http://') or url.startswith('https://')):
+                url = request.build_absolute_uri(url)
 
-        return Response({
-            'status': 'ok',
-            'imagen_url': url
-        })
+            return Response({
+                'status': 'ok',
+                'imagen_url': url
+            })
+        except Exception as e:
+            return Response(
+                {'error': f'Error al subir la imagen a la nube: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=['get'], url_path='catalogo-unificado')
     def catalogo_unificado(self, request):
