@@ -3,9 +3,10 @@ from django.utils.html import format_html
 from import_export import resources
 from import_export.admin import ImportExportModelAdmin
 from .models import (
-    Proveedor, Courier, Material, LoteImportacion, 
-    Producto, VarianteProducto, Venta, DetalleVenta, 
-    Gasto, Configuracion
+    Plataforma,
+    ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
+    Producto, VarianteProducto, Venta, DetalleVenta,
+    Gasto, Configuracion, ItemLote, Cliente
 )
 
 from import_export import resources, fields, widgets
@@ -14,7 +15,7 @@ from import_export import resources, fields, widgets
 class ProductoResource(resources.ModelResource):
     proveedor = fields.Field(
         column_name='proveedor',
-        attribute='proveedor',
+        attribute='proveedor_real',
         widget=widgets.ForeignKeyWidget(Proveedor, field='nombre')
     )
 
@@ -40,9 +41,17 @@ class VarianteProductoResource(resources.ModelResource):
 
 @admin.register(Proveedor)
 class ProveedorAdmin(admin.ModelAdmin):
-    list_display = ('nombre', 'pais_origen', 'moneda_defecto', 'contacto', 'activo')
-    list_filter = ('pais_origen', 'moneda_defecto', 'activo')
+    list_display = ('nombre', 'get_pais_origen', 'get_moneda_defecto', 'contacto', 'activo')
+    list_filter = ('activo',)
     search_fields = ('nombre', 'contacto')
+
+    def get_pais_origen(self, obj):
+        return obj.plataforma.get_pais_origen_display() if obj.plataforma else '-'
+    get_pais_origen.short_description = 'País de Origen'
+
+    def get_moneda_defecto(self, obj):
+        return obj.plataforma.get_moneda_defecto_display() if obj.plataforma else '-'
+    get_moneda_defecto.short_description = 'Moneda Defecto'
 
 
 @admin.register(Courier)
@@ -58,6 +67,17 @@ class MaterialAdmin(admin.ModelAdmin):
     search_fields = ('nombre',)
 
 
+@admin.register(Plataforma)
+class PlataformaAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'get_pais_origen_display', 'moneda_defecto', 'contacto', 'activo')
+    list_filter = ('pais_origen', 'moneda_defecto', 'activo')
+    search_fields = ('nombre', 'contacto')
+
+    def get_pais_origen_display(self, obj):
+        return obj.get_pais_origen_display()
+    get_pais_origen_display.short_description = 'País de Origen'
+
+
 class ProductoInline(admin.TabularInline):
     model = Producto.lotes.through  # Using the through model for ManyToMany relationship
     fields = ('producto', 'cantidad')
@@ -71,17 +91,17 @@ class ProductoInline(admin.TabularInline):
 @admin.register(LoteImportacion)
 class LoteImportacionAdmin(admin.ModelAdmin):
     list_display = (
-        'nombre_referencia_display', 'courier', 'tipo_envio', 'estado', 
-        'peso_kg_display', 'flete_pyg_display', 'costo_flete_por_gramo_display', 
+        'nombre_referencia_display', 'courier', 'tipo_envio', 'estado',
+        'peso_kg_display', 'flete_pyg_display', 'costo_flete_por_gramo_display',
         'total_productos_display', 'fecha_creacion'
     )
     list_filter = ('estado', 'tipo_envio', 'courier', 'fecha_creacion')
     search_fields = ('nombre_referencia', 'tracking_origen', 'tracking_courier')
     inlines = [ProductoInline]
-    
+
     fieldsets = (
         ('Datos Principales del Envío', {
-            'fields': ('nombre_referencia', 'courier', 'proveedor_principal', 'tipo_envio', 'estado')
+            'fields': ('nombre_referencia', 'courier', 'plataforma', 'tipo_envio', 'estado')
         }),
         ('Seguimiento y Trackings', {
             'fields': ('tracking_origen', 'tracking_courier')
@@ -126,18 +146,24 @@ class VarianteProductoInline(admin.TabularInline):
 class ProductoAdmin(ImportExportModelAdmin):
     resource_class = ProductoResource
     list_display = (
-        'foto_thumb', 'nombre', 'categoria', 'genero', 
-        'proveedor', 'costo_pyg_display', 'precio_venta_display', 
+        'foto_thumb', 'nombre', 'categoria', 'genero',
+        'get_proveedor', 'costo_pyg_display', 'precio_venta_display',
         'ganancia_display', 'stock_total_badge', 'activo'
     )
-    list_filter = ('categoria', 'genero', 'proveedor', 'materiales', 'activo', 'fecha_creacion')
+    list_filter = ('categoria', 'genero', 'materiales', 'activo', 'fecha_creacion')
     search_fields = ('nombre', 'variantes__sku', 'variantes__codigo_barras')
     filter_horizontal = ('materiales',)
     inlines = [VarianteProductoInline, ProductoInline]
 
+    def get_proveedor(self, obj):
+        if obj.proveedor_real:
+            return obj.proveedor_real.nombre
+        return '-'
+    get_proveedor.short_description = 'Proveedor'
+
     fieldsets = (
         ('Identificación del Modelo', {
-            'fields': ('nombre', 'categoria', 'genero', 'materiales', 'proveedor', 'activo')
+            'fields': ('nombre', 'categoria', 'genero', 'materiales', 'proveedor_real', 'activo')
         }),
         ('Fotos y Enlaces', {
             'fields': ('imagen_archivo', 'imagen_url', 'url_producto', 'descripcion')
@@ -286,6 +312,40 @@ class GastoAdmin(admin.ModelAdmin):
     monto_display.short_description = "Monto (Gs.)"
 
 
+@admin.register(ItemLote)
+class ItemLoteAdmin(admin.ModelAdmin):
+    list_display = ('producto_nombre', 'lote_nombre_referencia', 'cantidad', 'proveedor_historico_nombre', 'moneda_compra_historica', 'tipo_cambio_historico_display', 'costo_pyg_historico_display')
+    list_filter = ('producto__categoria', 'moneda_compra_historica', 'proveedor_historico__plataforma')
+    search_fields = ('producto__nombre', 'lote__nombre_referencia', 'proveedor_historico__nombre')
+    autocomplete_fields = ['producto', 'lote', 'proveedor_historico']
+
+    def producto_nombre(self, obj):
+        return obj.producto.nombre
+    producto_nombre.short_description = "Producto"
+
+    def lote_nombre_referencia(self, obj):
+        return obj.lote.nombre_referencia or f"Lote #{obj.lote.id}"
+    lote_nombre_referencia.short_description = "Lote"
+
+    def proveedor_historico_nombre(self, obj):
+        if obj.proveedor_historico:
+            return obj.proveedor_historico.nombre
+        return "-"
+    proveedor_historico_nombre.short_description = "Proveedor"
+
+    def tipo_cambio_historico_display(self, obj):
+        if obj.tipo_cambio_historico and obj.moneda_compra_historica:
+            return f"Gs. {obj.tipo_cambio_historico:,} / {obj.moneda_compra_historica}".replace(",", ".")
+        return "-"
+    tipo_cambio_historico_display.short_description = "Tipo de Cambio"
+
+    def costo_pyg_historico_display(self, obj):
+        if obj.costo_pyg_historico:
+            return f"Gs. {int(obj.costo_pyg_historico):,}".replace(",", ".")
+        return "-"
+    costo_pyg_historico_display.short_description = "Costo Histórico (Gs.)"
+
+
 from django.urls import path
 from django.shortcuts import redirect
 from django.contrib import messages
@@ -342,3 +402,15 @@ class ConfiguracionAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return not Configuracion.objects.exists()
+
+
+@admin.register(Cliente)
+class ClienteAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'telefono', 'instagram', 'ciudad', 'total_compras', 'total_gastado_display', 'ultima_compra', 'activo')
+    list_filter = ('activo', 'ciudad')
+    search_fields = ('nombre', 'telefono', 'instagram', 'ciudad')
+    ordering = ('nombre',)
+
+    def total_gastado_display(self, obj):
+        return f"Gs. {obj.total_gastado:,}".replace(",", ".")
+    total_gastado_display.short_description = "Total Comprado"

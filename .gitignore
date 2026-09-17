@@ -1,4 +1,40 @@
+# IDE & AI Assistants
 .claude/
 .clauderc
 .gemini/
 .antigravity/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Secrets & Environment variables
+.env
+.env.*
+!.env.example
+*.env.local
+*.env.production
+
+# Backend Python & Django
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend_accesorios/.venv/
+backend_accesorios/venv/
+backend_accesorios/env/
+backend_accesorios/staticfiles/
+backend_accesorios/media/
+backend_accesorios/server.log
+backend_accesorios/*.sqlite3
+backend_accesorios/db.sqlite3-journal
+backend_accesorios/tienda/*.bak
+backend_accesorios/tienda/*.bak2
+backend_accesorios/tienda/management/commands/part_*.py
+
+# Frontend Node & Vite
+frontend_accesorios/node_modules/
+frontend_accesorios/dist/
+frontend_accesorios/dist-ssr/
+frontend_accesorios/.vite/

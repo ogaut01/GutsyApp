@@ -1,8 +1,8 @@
 from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from tienda.models import (
-    Configuracion, Proveedor, Courier, Material, 
-    LoteImportacion, Producto, VarianteProducto, Venta, DetalleVenta, Gasto
+    Configuracion, Plataforma, ProveedorReal, Courier, Material,
+    LoteImportacion, Producto, VarianteProducto, Venta, DetalleVenta, Gasto, ItemLote
 )
 
 class Command(BaseCommand):
@@ -44,22 +44,45 @@ class Command(BaseCommand):
             mat_objs[nombre] = obj
         self.stdout.write(self.style.SUCCESS(f"[OK] {len(materiales)} Materiales creados"))
 
-        # 4. Proveedores
+        # 4. Plataformas (necesarias para ProveedorReal)
+        plataformas_data = [
+            ("Shein", "CN", "USD"),
+            ("AliExpress", "CN", "USD"),
+            ("Alibaba", "CN", "USD"),
+            ("Fornecedor Bras (Sao Paulo)", "BR", "BRL"),
+            ("Mayorista Joyas Once (Buenos Aires)", "AR", "ARS"),
+        ]
+        plataformas_objs = {}
+        for nombre, pais, moneda in plataformas_data:
+            obj, _ = Plataforma.objects.get_or_create(
+                nombre=nombre,
+                defaults={'pais_origen': pais, 'moneda_defecto': moneda, 'activo': True}
+            )
+            plataformas_objs[nombre] = obj
+        self.stdout.write(self.style.SUCCESS(f"[OK] {len(plataformas_data)} Plataformas creadas"))
+
+        # 4. Proveedores (ahora ProveedorReal)
         proveedores = [
-            ("Shein", "CN", "USD", "https://shein.com"),
-            ("AliExpress", "CN", "USD", "https://aliexpress.com"),
-            ("Alibaba", "CN", "USD", "https://alibaba.com"),
-            ("Fornecedor Bras (Sao Paulo)", "BR", "BRL", "+55 11 99999-0000"),
-            ("Mayorista Joyas Once (Buenos Aires)", "AR", "ARS", "+54 11 88888-0000"),
+            ("Shein", "Shein Oficial", "CN", "USD", "https://shein.com"),
+            ("AliExpress", "AliExpress Store", "CN", "USD", "https://aliexpress.com"),
+            ("Alibaba", "Alibaba Supplier", "CN", "USD", "https://alibaba.com"),
+            ("Fornecedor Bras (Sao Paulo)", "Bras Import", "BR", "BRL", "+55 11 99999-0000"),
+            ("Mayorista Joyas Once (Buenos Aires)", "Joyas Once Import", "AR", "ARS", "+54 11 88888-0000"),
         ]
         prov_objs = {}
-        for nombre, pais, moneda, contacto in proveedores:
-            obj, _ = Proveedor.objects.get_or_create(
-                nombre=nombre, 
-                defaults={'pais_origen': pais, 'moneda_defecto': moneda, 'contacto': contacto}
+        for plataforma_nombre, nombre, pais, moneda, contacto in proveedores:
+            plataforma = plataformas_objs[plataforma_nombre]
+            obj, _ = ProveedorReal.objects.get_or_create(
+                nombre=nombre,
+                plataforma=plataforma,
+                defaults={
+                    'contacto': contacto,
+                    'calificacion_calidad': 4,  # Valor por defecto
+                    'activo': True
+                }
             )
-            prov_objs[nombre] = obj
-        self.stdout.write(self.style.SUCCESS(f"[OK] {len(proveedores)} Proveedores registrados"))
+            prov_objs[nombre] = obj  # Usar el nombre del proveedor como clave
+        self.stdout.write(self.style.SUCCESS(f"[OK] {len(proveedores)} Proveedores creados"))
 
         # 5. Couriers
         couriers = [
@@ -85,11 +108,11 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"[OK] {len(couriers)} Couriers registrados"))
 
         # 6. Lote de Ejemplo (Caja Miami Aérea)
-        lote, _ = LoteImportacion.objects.get_or_create(
+        lote, creado = LoteImportacion.objects.get_or_create(
             nombre_referencia="Caja Shein & Ali - Agosto 2026",
             defaults={
                 'courier': courier_objs["Sendit Courier"],
-                'proveedor_principal': prov_objs["Shein"],
+                'plataforma': plataformas_objs["Shein"],
                 'tipo_envio': 'AER',
                 'estado': 'EN_COURIER_PY',
                 'tracking_origen': 'TBA123456789000',
@@ -100,6 +123,10 @@ class Command(BaseCommand):
                 'notas': 'Lote con 30 collares, pulseras y anillos.'
             }
         )
+        # Guardar tasas de cambio fijas si es un lote nuevo
+        if creado:
+            lote.guardar_tasas_fijas()
+            self.stdout.write(self.style.SUCCESS(f"[OK] Tasas de cambio fijas guardadas para el lote: USD={lote.tipo_cambio_usd_fijo}"))
         self.stdout.write(self.style.SUCCESS(f"[OK] Lote de prueba creado con flete prorrateado a Gs. {lote.costo_flete_por_gramo:.1f}/gramo"))
 
         # 7. Productos y Variantes de Prueba
@@ -109,8 +136,8 @@ class Command(BaseCommand):
             defaults={
                 'categoria': 'PU',
                 'genero': 'M',
-                'proveedor': prov_objs["AliExpress"],
-                'lote': lote,
+                'proveedor_real': prov_objs["AliExpress Store"],
+                'plataforma': prov_objs["AliExpress Store"].plataforma,
                 'costo_moneda_origen': 2.80, # $2.80 USD
                 'moneda_compra': 'USD',
                 'peso_gramos': 25, # 25g -> Flete: 25 * 168.75 = 4.218 Gs. Costo FOB: 2.80 * 7500 = 21.000 Gs. Total: ~25.218 Gs
@@ -119,6 +146,8 @@ class Command(BaseCommand):
         )
         prod1.materiales.set([mat_objs["Acero Quirurgico / Inoxidable 316L"], mat_objs["Cuero PU / Trenzado"]])
         prod1.save()
+        # Asociar con el lote a través de ItemLote
+        ItemLote.objects.get_or_create(producto=prod1, lote=lote, defaults={'cantidad': 1})
 
         # Variantes de Prod 1
         VarianteProducto.objects.get_or_create(
@@ -140,8 +169,8 @@ class Command(BaseCommand):
             defaults={
                 'categoria': 'AN',
                 'genero': 'M',
-                'proveedor': prov_objs["Alibaba"],
-                'lote': lote,
+                'proveedor_real': prov_objs["Alibaba Supplier"],
+                'plataforma': prov_objs["Alibaba Supplier"].plataforma,
                 'costo_moneda_origen': 1.90, # $1.90 USD
                 'moneda_compra': 'USD',
                 'peso_gramos': 18,
@@ -150,6 +179,8 @@ class Command(BaseCommand):
         )
         prod2.materiales.set([mat_objs["Acero Quirurgico / Inoxidable 316L"]])
         prod2.save()
+        # Asociar con el lote a través de ItemLote
+        ItemLote.objects.get_or_create(producto=prod2, lote=lote, defaults={'cantidad': 1})
 
         # Variantes de Anillo (Dorado y Negro en varios talles)
         for talle, stock in [("Talle 7", 3), ("Talle 8", 3), ("Talle 9", 3), ("Talle 10", 3)]:
@@ -169,8 +200,8 @@ class Command(BaseCommand):
             defaults={
                 'categoria': 'CO',
                 'genero': 'F',
-                'proveedor': prov_objs["Shein"],
-                'lote': lote,
+                'proveedor_real': prov_objs["Shein Oficial"],
+                'plataforma': prov_objs["Shein Oficial"].plataforma,
                 'costo_moneda_origen': 3.20,
                 'moneda_compra': 'USD',
                 'peso_gramos': 20,
@@ -179,6 +210,8 @@ class Command(BaseCommand):
         )
         prod3.materiales.set([mat_objs["Oro Laminado / Bano 18K"], mat_objs["Acero Quirurgico / Inoxidable 316L"]])
         prod3.save()
+        # Asociar con el lote a través de ItemLote
+        ItemLote.objects.get_or_create(producto=prod3, lote=lote, defaults={'cantidad': 1})
 
         VarianteProducto.objects.get_or_create(
             producto=prod3, color="Dorado", talle_medida="45cm",

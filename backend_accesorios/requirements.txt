@@ -1,0 +1,17 @@
+Django==5.2
+djangorestframework==3.18.0
+django-cors-headers==4.9.0
+django-import-export==4.4.1
+django-filter==25.2
+django-widget-tweaks==1.5.0
+pillow==12.3.0
+openpyxl==3.1.5
+tablib==3.9.0
+requests==2.33.1
+gunicorn>=23.0.0
+whitenoise>=6.8.0
+python-dotenv>=1.0.1
+dj-database-url>=2.3.0
+psycopg2-binary>=2.9.10
+cloudinary>=1.41.0
+django-cloudinary-storage>=0.3.0

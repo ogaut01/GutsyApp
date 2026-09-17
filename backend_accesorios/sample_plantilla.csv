@@ -1,0 +1,46 @@
+﻿nombre,categoria,genero,proveedor_nombre,plataforma_nombre,costo_moneda_origen,moneda_compra,peso_gramos,precio_venta,descripcion,materiales
+
+Producto Ejemplo de AliExpress,AR,M,AliExpress Store,AliExpress,10.00,USD,20,100000,Este es un producto de ejemplo utilizando datos reales de AliExpress,Acero Inoxidable 316L
+
+Otro Producto - Alibaba,CO,F,Alibaba Supplier,Alibaba,15.50,BRL,30,150000,Ejemplo numero 2 con diferentes valores,Acero Quirurgico;Acero Quirurgico / Inoxidable 316L
+
+
+
+# ==================== INFORMACION DE REFERENCIA ====================
+Plataformas disponibles en BD: 5
+  - AliExpress (China )
+  - Alibaba (China )
+  - Fornecedor Bras (Sao Paulo) (Brasil )
+  - Mayorista Joyas Once (Buenos Aires) (Argentina )
+  - Shein (China )
+
+Proveedores disponibles en BD: 10
+  - AliExpress Store (AliExpress)
+  - Alibaba Supplier (Alibaba)
+  - Bras Import (Fornecedor Bras (Sao Paulo))
+  - Joyas Once Import (Mayorista Joyas Once (Buenos Aires))
+  - Golde (Shein)
+  ... y 5 mas
+
+Materiales disponibles en BD: 12
+  - Acero Inoxidable 316L
+  - Acero Quirurgico
+  - Acero Quirurgico / Inoxidable 316L
+  - Cordon Nautico / Silicona
+  - Cuero Genuino
+  ... y 7 mas
+
+Colores de variantes existentes en BD: 17
+  - Dorado
+  - Negro
+  - Cafe
+  - Negro
+  - Negro
+  - Dorado
+  - Dorado
+  - Plateado
+  - Dorado
+  - Dorado
+  ... y 7 mas
+
+# ==================== FIN DE LA PLANTILLA ====================

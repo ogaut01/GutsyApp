@@ -3,20 +3,22 @@ import uuid
 from django.db import models, transaction
 from django.utils import timezone
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 
 
-class Proveedor(models.Model):
+class Plataforma(models.Model):
+    """Plataforma o marketplace donde realizas tus compras (ej: Shein, Alibaba, Amazon)"""
     PAISES = [
-        ('CN', 'China (Shein / AliExpress / Alibaba)'),
-        ('BR', 'Brasil (Brás / São Paulo)'),
-        ('AR', 'Argentina (Buenos Aires / Clorinda)'),
+        ('CN', 'China '),
+        ('BR', 'Brasil '),
+        ('AR', 'Argentina '),
         ('US', 'Estados Unidos'),
         ('PY', 'Paraguay (Mayorista Local)'),
     ]
 
     nombre = models.CharField(
         max_length=80,
-        help_text="Ej: Shein, AliExpress, Alibaba, Fornecedor Brás, etc."
+        help_text="Ej: Shein, AliExpress, Alibaba, Amazon, Mercado Libre, etc."
     )
     pais_origen = models.CharField(
         max_length=2,
@@ -39,26 +41,122 @@ class Proveedor(models.Model):
     activo = models.BooleanField(default=True, verbose_name="Activo")
 
     class Meta:
-        verbose_name = "Proveedor"
-        verbose_name_plural = "Proveedores"
+        verbose_name = "Plataforma"
+        verbose_name_plural = "Plataformas"
         ordering = ['nombre']
 
     def __str__(self):
         return f"{self.nombre} ({self.get_pais_origen_display().split()[0]})"
 
 
+class ProveedorReal(models.Model):
+    """Representa un vendedor específico dentro de una plataforma o una tienda directa"""
+    plataforma = models.ForeignKey(
+        Plataforma,
+        on_delete=models.CASCADE,
+        verbose_name="Plataforma",
+        help_text="Shein, Alibaba, AliExpress, etc. (dejar vacío para tiendas directas)"
+    )
+    nombre = models.CharField(
+        max_length=100,
+        verbose_name="Nombre del Proveedor",
+        help_text="Ej: yiwustore, zuhan store, tienda directa, official store, etc."
+    )
+    contacto = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        verbose_name="Contacto / WhatsApp / Enlace"
+    )
+
+    # Calidad del producto (1-5 estrellas)
+    calificacion_calidad = models.IntegerField(
+        default=3,
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name="Calificación de Calidad (1-5)",
+        help_text="Promedio de calificaciones de calidad del producto (1=muy mala, 5=excelente)"
+    )
+
+    # Métricas de rendimiento (se actualizan automáticamente)
+    tiempo_envio_promedio_dias = models.DecimalField(
+        max_digits=5,
+        decimal_places=1,
+        null=True,
+        blank=True,
+        verbose_name="Tiempo de Envío Promedio (días)",
+        help_text="Promedio de días desde compra hasta llegada a casilla Miami"
+    )
+    confiabilidad_porcentaje = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        verbose_name="Confiabilidad (%)",
+        help_text="Porcentaje de entregas sin problemas"
+    )
+    total_transacciones = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Total de Transacciones"
+    )
+
+    activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    class Meta:
+        verbose_name = "Proveedor"
+        verbose_name_plural = "Proveedores"
+        unique_together = ('plataforma', 'nombre')
+        ordering = ['plataforma', 'nombre']
+
+    def __str__(self):
+        if self.plataforma:
+            return f"{self.nombre} ({self.plataforma.nombre})"
+        return f"{self.nombre} (Tienda Directa)"
+
+    def actualizar_metricas(self):
+        """Actualiza las métricas de rendimiento basado en los lotes asociados"""
+        from django.db.models import Avg
+        from django.core.exceptions import ValidationError
+
+        # Para evitar importación circular, importamos dentro del método
+        try:
+            from tienda.models import LoteImportacion
+        except ImportError:
+            # Si no podemos importar, saltamos la actualización
+            return
+
+        # Obtener lotes asociados a este proveedor real que tienen tiempos reales
+        lotes_con_tiempo = LoteImportacion.objects.filter(
+            proveedor_real=self,
+            tiempo_proveedor_miami__isnull=False
+        )
+
+        if lotes_con_tiempo.exists():
+            # Calcular promedio de tiempo de envío
+            avg_tiempo = lotes_con_tiempo.aggregate(Avg('tiempo_proveedor_miami'))['tiempo_proveedor_miami__avg']
+            self.tiempo_envio_promedio_dias = round(avg_tiempo, 1) if avg_tiempo else None
+
+            # Calcular confiabilidad basada en transacciones exitosas vs problemas
+            # Por ahora asumimos que si tiene tiempo registrado es una transacción exitosa
+            # En el futuro, podríamos agregar un campo para marcar problemas como daños, retrasos excesivos, etc.
+            total_con_tiempo = lotes_con_tiempo.count()
+            self.confiabilidad_porcentaje = 100.0  # Placeholder - mejorar con datos reales de problemas
+
+            self.total_transacciones = total_con_tiempo
+            self.save(update_fields=['tiempo_envio_promedio_dias', 'confiabilidad_porcentaje', 'total_transacciones'])
+
+
 class Courier(models.Model):
     TIPOS_SERVICIO = [
-        ('AER', 'Aéreo EE.UU. / Miami (China - Casilla)'),
-        ('MAR', 'Marítimo EE.UU. / Miami (China - Cargas Pesadas)'),
-        ('TER', 'Terrestre Brasil (São Paulo / Foz)'),
-        ('ARG', 'Transporte Argentina (BsAs / Clorinda)'),
-        ('LOC', 'Delivery Local / Encomiendas PY'),
+        ('AER', 'Aéreo Internacional (Miami / China)'),
+        ('MAR', 'Marítimo Internacional (Contenedor)'),
+        ('TER', 'Terrestre Brasil (São Paulo / Foz do Iguaçu)'),
+        ('ARG', 'Terrestre Argentina (BsAs / Clorinda)'),
+        ('LOC', 'Delivery Local / Encomiendas Paraguay (24-48 hs)'),
     ]
 
     nombre = models.CharField(
         max_length=100,
-        help_text="Ej: Sendit, Flashbox, GlobalBox, Transportadora CDE, etc."
+        help_text="Ej: Saspy, Sendit, Flashbox, Transportadora del Este, etc."
     )
     tipo_servicio = models.CharField(
         max_length=3,
@@ -66,29 +164,77 @@ class Courier(models.Model):
         default='AER',
         verbose_name="Tipo de Servicio Principal"
     )
+
+    # ─── Rutas cubiertas (texto libre con checkboxes en frontend) ───
+    cubre_eeuu_china = models.BooleanField(
+        default=False,
+        verbose_name="Cubre EE.UU. / China (Aéreo o Marítimo)"
+    )
+    cubre_brasil = models.BooleanField(
+        default=False,
+        verbose_name="Cubre Brasil (São Paulo, Foz do Iguaçu)"
+    )
+    cubre_argentina = models.BooleanField(
+        default=False,
+        verbose_name="Cubre Argentina (Buenos Aires, Clorinda)"
+    )
+    cubre_local_py = models.BooleanField(
+        default=False,
+        verbose_name="Cubre Entregas Locales en Paraguay"
+    )
+
+    # ─── Tarifas por kilaje (Internacional / Terrestre) ───
     tarifa_aerea_usd_kg = models.DecimalField(
-        max_digits=6,
-        decimal_places=2,
-        default=22.50,
+        max_digits=6, decimal_places=2, default=0.00,
         verbose_name="Tarifa Aérea (USD/kg)"
     )
     tarifa_maritima_usd_kg = models.DecimalField(
-        max_digits=6,
-        decimal_places=2,
-        default=9.50,
+        max_digits=6, decimal_places=2, default=0.00,
         verbose_name="Tarifa Marítima (USD/kg)"
     )
     tarifa_terrestre_kg = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0.00,
+        max_digits=10, decimal_places=2, default=0.00,
         verbose_name="Tarifa Terrestre por kg"
     )
     moneda_tarifa = models.CharField(
         max_length=3,
         choices=[('USD', 'USD'), ('BRL', 'BRL'), ('PYG', 'PYG'), ('ARS', 'ARS')],
         default='USD',
-        verbose_name="Moneda de Cobro"
+        verbose_name="Moneda de Cobro (Kilaje)"
+    )
+
+    # ─── Tarifas por BULTO (Solo envíos locales PY) ───
+    cobra_por_bulto = models.BooleanField(
+        default=False,
+        verbose_name="¿Cobra por Tamaño de Bulto? (Local PY)"
+    )
+    tarifa_bulto_chico_pyg = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Tarifa Bulto Chico (Gs.) — Hasta 1 kg"
+    )
+    tarifa_bulto_mediano_pyg = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Tarifa Bulto Mediano (Gs.) — 1 a 5 kg"
+    )
+    tarifa_bulto_grande_pyg = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Tarifa Bulto Grande (Gs.) — Más de 5 kg"
+    )
+
+    tiempo_entrega_estimado_dias = models.PositiveSmallIntegerField(
+        default=7,
+        verbose_name="Días Estimados de Entrega"
+    )
+    es_transportadora_local = models.BooleanField(
+        default=False,
+        verbose_name="¿Es Transportadora Local PY?",
+        help_text="Si es True, solo se usa para consulta de cobertura interna, no aparece en lotes de importación."
+    )
+    ciudades_cobertura = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Ciudades de Cobertura en PY",
+        help_text="Lista de ciudades separadas por coma. Ej: Asunción, CDE, Encarnación, Villarrica, Yhú"
     )
     contacto = models.CharField(max_length=150, blank=True, null=True, verbose_name="Teléfono / WhatsApp / Web")
     direccion_casilla = models.TextField(blank=True, null=True, verbose_name="Dirección de tu Casilla")
@@ -143,14 +289,16 @@ class LoteImportacion(models.Model):
         blank=True,
         verbose_name="Courier / Transportadora"
     )
-    proveedor_principal = models.ForeignKey(
-        Proveedor,
+    plataforma = models.ForeignKey(
+        Plataforma,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        verbose_name="Plataforma / Tienda Principal",
-        help_text="Dejar vacío si es una caja consolidada con compras de varias tiendas"
+        verbose_name="Plataforma",
+        help_text="Shein, Alibaba, AliExpress, etc. (dejar vacío para compras directas)"
     )
+    # Nota: La relación con ProveedorReal se maneja a través de los productos
+    # (cada producto tiene su proveedor_real específico)
     tipo_envio = models.CharField(
         max_length=3,
         choices=TIPOS_ENVIO,
@@ -200,6 +348,44 @@ class LoteImportacion(models.Model):
         help_text="Seguro de envío, tasa aduanera o delivery hasta tu local"
     )
     notas = models.TextField(blank=True, null=True, verbose_name="Notas / Observaciones")
+
+    # Campos para almacenar tasas de cambio históricas fijas al momento del lote
+    tipo_cambio_usd_fijo = models.IntegerField(
+        blank=True, null=True,
+        verbose_name="Tipo de Cambio USD Fijo (Gs.)",
+        help_text="Tasa de cambio USD → PYG guardada al momento de crear/recibir el lote"
+    )
+    tipo_cambio_brl_fijo = models.IntegerField(
+        blank=True, null=True,
+        verbose_name="Tipo de Cambio BRL Fijo (Gs.)",
+        help_text="Tasa de cambio BRL → PYG guardada al momento de crear/recibir el lote"
+    )
+    tipo_cambio_cny_fijo = models.IntegerField(
+        blank=True, null=True,
+        verbose_name="Tipo de Cambio CNY Fijo (Gs.)",
+        help_text="Tasa de cambio CNY → PYG guardada al momento de crear/recibir el lote"
+    )
+    tipo_cambio_ars_fijo = models.IntegerField(
+        blank=True, null=True,
+        verbose_name="Tipo de Cambio ARS Fijo (Gs.)",
+        help_text="Tasa de cambio ARS → PYG guardada al momento de crear/recibir el lote"
+    )
+    fecha_tasa_fija = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name="Fecha de la Tasa Fija",
+        help_text="Fecha y hora cuando se guardaron las tasas de cambio históricas"
+    )
+    costo_kilo_aereo_usd_fijo = models.DecimalField(
+        max_digits=6, decimal_places=2, blank=True, null=True,
+        verbose_name="Tarifa Aérea USD/kg Fija",
+        help_text="Tarifa aérea en USD/kg guardada al momento de crear/recibir el lote"
+    )
+    costo_kilo_maritimo_usd_fijo = models.DecimalField(
+        max_digits=6, decimal_places=2, blank=True, null=True,
+        verbose_name="Tarifa Marítima USD/kg Fija",
+        help_text="Tarifa marítima en USD/kg guardada al momento de crear/recibir el lote"
+    )
+
     # Many-to-many relationship with Producto through ItemLote
     productos = models.ManyToManyField(
         'Producto',
@@ -228,6 +414,32 @@ class LoteImportacion(models.Model):
     def total_productos(self):
         return self.productos.count()
 
+    def guardar_tasas_fijas(self):
+        """Guarda las tasas de cambio actuales como históricas fijas para este lote"""
+        from .models import Configuracion  # Evitar importación circular
+        config = Configuracion.get_config()
+
+        self.tipo_cambio_usd_fijo = config.tipo_cambio_usd
+        self.tipo_cambio_brl_fijo = config.tipo_cambio_brl
+        self.tipo_cambio_cny_fijo = config.tipo_cambio_cny
+        self.tipo_cambio_ars_fijo = config.tipo_cambio_ars
+        # Guardar también las tarifas de courier si están disponibles
+        if self.courier:
+            self.costo_kilo_aereo_usd_fijo = self.courier.tarifa_aerea_usd_kg
+            self.costo_kilo_maritimo_usd_fijo = self.courier.tarifa_maritima_usd_kg
+        else:
+            # Usar tarifas por defecto de configuración
+            self.costo_kilo_aereo_usd_fijo = config.costo_kilo_aereo_usd
+            self.costo_kilo_maritimo_usd_fijo = config.costo_kilo_maritimo_usd
+
+        self.fecha_tasa_fija = timezone.now()
+        self.save(update_fields=[
+            'tipo_cambio_usd_fijo', 'tipo_cambio_brl_fijo',
+            'tipo_cambio_cny_fijo', 'tipo_cambio_ars_fijo',
+            'costo_kilo_aereo_usd_fijo', 'costo_kilo_maritimo_usd_fijo',
+            'fecha_tasa_fija'
+        ])
+
     def __str__(self):
         ref = self.nombre_referencia or f"Lote #{self.id}"
         return f"{ref} - {self.get_tipo_envio_display()} ({self.get_estado_display()})"
@@ -235,6 +447,14 @@ class LoteImportacion(models.Model):
 
 class ItemLote(models.Model):
     """Relación entre Producto y LoteImportacion con información específica del ítem en el lote"""
+    MONEDA_CHOICES = [
+        ('USD', 'Dólares (USD $)'),
+        ('BRL', 'Reales (BRL R$)'),
+        ('CNY', 'Yuanes (CNY ¥)'),
+        ('ARS', 'Pesos Argentinos (ARS $)'),
+        ('PYG', 'Guaraníes (PYG Gs.)'),
+    ]
+
     producto = models.ForeignKey(
         'Producto',
         on_delete=models.CASCADE,
@@ -257,6 +477,53 @@ class ItemLote(models.Model):
         help_text="Si se especifica, se usa este costo en lugar de calcularlo"
     )
 
+    # ===== CAMPOS DE HISTORIAL DE COSTOS =====
+    costo_moneda_origen_historico = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True, blank=True,
+        verbose_name="Costo FOB Histórico",
+        help_text="Costo en moneda de compra usado en este lote"
+    )
+    moneda_compra_historica = models.CharField(
+        max_length=3,
+        choices=MONEDA_CHOICES,
+        default='USD',
+        blank=True,
+        verbose_name="Moneda de Compra",
+        help_text="Moneda usada en este lote: USD, BRL, CNY, ARS"
+    )
+    # Un solo tipo de cambio: el de la moneda con la que se compró este ítem
+    tipo_cambio_historico = models.IntegerField(
+        null=True, blank=True,
+        verbose_name="Tipo de Cambio Histórico (Gs.)",
+        help_text="Cotización en Guaraníes de la moneda de compra al momento del lote (ej: 5913 si compró en USD)"
+    )
+    costo_flete_por_gramo_historico = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True, blank=True,
+        verbose_name="Flete por Gramo Histórico",
+        help_text="Costo de flete por gramo del lote al momento de asociación"
+    )
+    # Costo final calculado y guardado como snapshot
+    costo_pyg_historico = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True, blank=True,
+        verbose_name="Costo Final PYG Histórico",
+        help_text="Costo final en guaraníes calculado para este ítem en este lote"
+    )
+
+    proveedor_historico = models.ForeignKey(
+        ProveedorReal,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Proveedor/Tienda",
+        help_text="Tienda específica desde donde se compró este producto en este lote"
+    )
+
     class Meta:
         verbose_name = "Item en Lote"
         verbose_name_plural = "Items en Lotes"
@@ -270,15 +537,21 @@ class ItemLote(models.Model):
         """Retorna el costo unitario a usar (el especificado o el calculado)"""
         if self.costo_unitario_pyg:
             return self.costo_unitario_pyg
+        # Si tenemos snapshot histórico, lo usamos directamente
+        if self.costo_pyg_historico:
+            return int(self.costo_pyg_historico)
         return self.producto.calcular_costo_landed_for_lote(self.lote)
 
 
 class Producto(models.Model):
     CATEGORIAS = [
         ('AR', 'Aros / Aretes'),
-        ('CO', 'Collares y Cadenas'),
+        ('CO', 'Collares'),
+        ('CA', 'Cadenas'),
         ('PU', 'Pulseras y Brazaletes'),
         ('AN', 'Anillos'),
+        ('ST', 'Sets / Parejas'),
+        ('LE', 'Lentes / Gafas'),
         ('TO', 'Tobilleras'),
         ('DI', 'Dijes / Colgantes'),
         ('OT', 'Otros Accesorios'),
@@ -315,10 +588,21 @@ class Producto(models.Model):
         help_text="Puedes seleccionar uno o varios materiales combinados"
     )
 
-    proveedor = models.ForeignKey(
-        Proveedor,
+    plataforma = models.ForeignKey(
+        Plataforma,
         on_delete=models.CASCADE,
-        verbose_name="Proveedor / Plataforma"
+        null=True,
+        blank=True,
+        verbose_name="Plataforma",
+        help_text="Shein, Alibaba, AliExpress, Amazon, etc."
+    )
+    proveedor_real = models.ForeignKey(
+        'ProveedorReal',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Proveedor / Vendedor",
+        help_text="Vendedor específico o tienda (ej: yiwustore en Alibaba, tienda directa en Brasil, etc.)"
     )
     # Nota: La relación con LoteImportacion ahora se maneja através de ItemLote (ManyToMany)
     # El campo lote directo ha sido reemplazado por la relación muchos-a-muchos
@@ -389,9 +673,10 @@ class Producto(models.Model):
 
     @property
     def margen_porcentaje(self):
-        if self.costo_pyg and self.costo_pyg > 0 and self.precio_venta:
-            return round(((self.precio_venta - self.costo_pyg) / self.costo_pyg) * 100, 1)
-        return 0
+        """Margen de Venta (Profit Margin %): (Precio - Costo) / Precio * 100"""
+        if self.precio_venta and self.precio_venta > 0 and self.costo_pyg:
+            return round(((self.precio_venta - self.costo_pyg) / self.precio_venta) * 100, 1)
+        return 0.0
 
     def calcular_costo_landed(self):
         """Calcula el costo final en PYG según la cotización y el flete real/estimado"""
@@ -410,25 +695,56 @@ class Producto(models.Model):
         if not self.costo_moneda_origen:
             return self.costo_pyg
 
-        config = Configuracion.get_config()
-        tc_map = {
-            'USD': config.tipo_cambio_usd,
-            'BRL': config.tipo_cambio_brl,
-            'CNY': config.tipo_cambio_cny,
-            'ARS': config.tipo_cambio_ars,
-            'PYG': 1
-        }
-        tc = tc_map.get(self.moneda_compra, config.tipo_cambio_usd)
+        # Usar tasas de cambio fijas del lote si están disponibles, sino usar las actuales
+        if lote.fecha_tasa_fija and lote.tipo_cambio_usd_fijo is not None:
+            tc_map = {
+                'USD': lote.tipo_cambio_usd_fijo,
+                'BRL': lote.tipo_cambio_brl_fijo,
+                'CNY': lote.tipo_cambio_cny_fijo,
+                'ARS': lote.tipo_cambio_ars_fijo,
+                'PYG': 1
+            }
+            # Para las tarifas de courier, también usar tasas fijas si están disponibles
+            if lote.courier:
+                tarifa_kilo_usd = lote.courier.tarifa_aerea_usd_kg
+                if lote.tipo_envio == 'MAR':
+                    tarifa_kilo_usd = lote.courier.tarifa_maritima_usd_kg
+                tarifa_kilo_pyg = float(tarifa_kilo_usd) * lote.tipo_cambio_usd_fijo
+            else:
+                # Fallback a configuración general si no hay courier
+                config = Configuracion.get_config()
+                tarifa_kilo_usd = config.costo_kilo_aereo_usd
+                if lote and lote.tipo_envio == 'MAR':
+                    tarifa_kilo_usd = config.costo_kilo_maritimo_usd
+                tarifa_kilo_pyg = float(tarifa_kilo_usd) * lote.tipo_cambio_usd_fijo
+        else:
+            # Fallback a tasas actuales (compatibilidad hacia atrás)
+            config = Configuracion.get_config()
+            tc_map = {
+                'USD': config.tipo_cambio_usd,
+                'BRL': config.tipo_cambio_brl,
+                'CNY': config.tipo_cambio_cny,
+                'ARS': config.tipo_cambio_ars,
+                'PYG': 1
+            }
+            # Usar tarifas de courier actuales
+            if lote.courier:
+                tarifa_kilo_usd = lote.courier.tarifa_aerea_usd_kg
+                if lote.tipo_envio == 'MAR':
+                    tarifa_kilo_usd = lote.courier.tarifa_maritima_usd_kg
+            else:
+                tarifa_kilo_usd = config.costo_kilo_aereo_usd
+                if lote and lote.tipo_envio == 'MAR':
+                    tarifa_kilo_usd = config.costo_kilo_maritimo_usd
+            tarifa_kilo_pyg = float(tarifa_kilo_usd) * config.tipo_cambio_usd
+
+        tc = tc_map.get(self.moneda_compra, tc_map['USD'])
         costo_base_pyg = float(self.costo_moneda_origen) * tc
 
         # Flete: Prorrateado del lote especificado o fallback con tarifa de courier configurada
         if lote and lote.costo_flete_por_gramo > 0:
             flete_pyg = self.peso_gramos * lote.costo_flete_por_gramo
         else:
-            tarifa_kilo_usd = config.costo_kilo_aereo_usd
-            if lote and lote.tipo_envio == 'MAR':
-                tarifa_kilo_usd = config.costo_kilo_maritimo_usd
-            tarifa_kilo_pyg = float(tarifa_kilo_usd) * config.tipo_cambio_usd
             flete_pyg = (self.peso_gramos / 1000.0) * tarifa_kilo_pyg
 
         return int(round(costo_base_pyg + flete_pyg))
@@ -510,13 +826,32 @@ class VarianteProducto(models.Model):
         default=1,
         verbose_name="Stock Disponible"
     )
+    precio_venta = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name="Precio de Venta Específico (Gs.)",
+        help_text="Opcional: Si se deja vacío, hereda automáticamente el precio_venta del producto padre"
+    )
     codigo_barras = models.CharField(
         max_length=100,
         blank=True,
         null=True,
         verbose_name="Código de Barras (Opcional)"
     )
+    imagen_url = models.URLField(
+        blank=True,
+        null=True,
+        verbose_name="Imagen de esta variante (URL)",
+        help_text="URL de imagen específica para este color/talle. Si está vacío se usa la imagen del producto base."
+    )
     activo = models.BooleanField(default=True, verbose_name="Activo")
+
+    @property
+    def precio_efectivo(self):
+        """Devuelve el precio propio si existe; caso contrario, hereda el del producto"""
+        if self.precio_venta is not None and self.precio_venta > 0:
+            return self.precio_venta
+        return self.producto.precio_venta or 0
 
     class Meta:
         verbose_name = "Variante de Accesorio (Color / Talle)"
@@ -554,6 +889,77 @@ class VarianteProducto(models.Model):
         super().save(*args, **kwargs)
 
 
+class Cliente(models.Model):
+    nombre = models.CharField(
+        max_length=120,
+        verbose_name="Nombre Completo"
+    )
+    telefono = models.CharField(
+        max_length=40,
+        blank=True,
+        null=True,
+        verbose_name="Teléfono / WhatsApp",
+        help_text="Ej: 0981123456 o +595981123456"
+    )
+    instagram = models.CharField(
+        max_length=80,
+        blank=True,
+        null=True,
+        verbose_name="Instagram",
+        help_text="Ej: @usuario o usuario"
+    )
+    ciudad = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Ciudad / Localidad"
+    )
+    direccion = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        verbose_name="Dirección de Entrega"
+    )
+    notas = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Notas / Observaciones"
+    )
+    fecha_registro = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Fecha de Registro"
+    )
+    activo = models.BooleanField(
+        default=True,
+        verbose_name="Activo"
+    )
+
+    class Meta:
+        verbose_name = "Cliente"
+        verbose_name_plural = "Clientes"
+        ordering = ['nombre']
+
+    def __str__(self):
+        return f"{self.nombre} ({self.telefono or 'Sin tel'})"
+
+    @property
+    def total_compras(self):
+        return self.ventas.count()
+
+    @property
+    def total_gastado(self):
+        return sum(v.total_cobrado for v in self.ventas.all())
+
+    @property
+    def es_recurrente(self):
+        return self.total_compras > 1
+
+    @property
+    def ultima_compra(self):
+        ultima = self.ventas.order_by('-fecha_venta').first()
+        return ultima.fecha_venta if ultima else None
+
+
 class Venta(models.Model):
     METODOS_PAGO = [
         ('EF', '💵 Efectivo'),
@@ -565,6 +971,14 @@ class Venta(models.Model):
         ('TC', '💳 Tarjeta de Crédito (POS)'),
     ]
 
+    cliente = models.ForeignKey(
+        Cliente,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ventas',
+        verbose_name="Cliente Registrado"
+    )
     fecha_venta = models.DateTimeField(default=timezone.now, verbose_name="Fecha y Hora")
     metodo_pago = models.CharField(
         max_length=4,
@@ -694,7 +1108,7 @@ class Gasto(models.Model):
         ('VAR', '📋 Otros Gastos Operativos'),
     ]
 
-    fecha = models.DateField(default=timezone.now, verbose_name="Fecha del Gasto")
+    fecha = models.DateField(default=timezone.localdate, verbose_name="Fecha del Gasto")
     categoria = models.CharField(
         max_length=3,
         choices=CATEGORIAS,
@@ -738,9 +1152,25 @@ class Configuracion(models.Model):
         verbose_name="Tarifa Courier Marítimo Default (USD/kg)"
     )
     margen_sugerido_porcentaje = models.IntegerField(
-        default=70,
+        default=60,
         verbose_name="Margen de Ganancia Sugerido (%)",
-        help_text="Porcentaje de ganancia sobre el costo final (ej: 70%)"
+        help_text="Porcentaje de ganancia sobre el precio de venta (ej: 60%)"
+    )
+    # Metas Financieras Mensuales & Punto de Equilibrio
+    meta_deuda_mensual_pyg = models.IntegerField(
+        default=1332000,
+        verbose_name="Cuota de Deudas Mensual (Gs.)",
+        help_text="Monto mensual a cubrir por deudas u obligaciones fijas"
+    )
+    meta_ads_mensual_pyg = models.IntegerField(
+        default=800000,
+        verbose_name="Presupuesto Meta Ads Mensual (Gs.)",
+        help_text="Presupuesto mensual asignado a publicidad en Meta Ads / Redes"
+    )
+    meta_sueldo_libre_pyg = models.IntegerField(
+        default=800000,
+        verbose_name="Ganancia Libre Deseada Mensual (Gs.)",
+        help_text="Meta de dinero libre en tu bolsillo tras cubrir deudas y publicidad"
     )
     ultima_actualizacion = models.DateTimeField(auto_now=True, verbose_name="Última Actualización")
 
