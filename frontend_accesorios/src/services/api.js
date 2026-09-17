@@ -138,6 +138,7 @@ export async function updateProducto(id, data) {
 
 export async function deleteProducto(id) {
   const res = await apiRequest(`/productos/${id}/`, { method: 'DELETE' });
+  if (res.status === 404) return true;
   if (!res.ok) {
     const textContent = await res.text();
     let errorMessage = 'Error al eliminar el producto';
@@ -149,7 +150,7 @@ export async function deleteProducto(id) {
     }
     throw new Error(errorMessage);
   }
-  return res.json();
+  return true;
 }
 
 export async function updateVariante(id, data) {
@@ -172,7 +173,9 @@ export async function createVariante(data) {
 
 export async function deleteVariante(id) {
   const res = await apiRequest(`/variantes/${id}/`, { method: 'DELETE' });
+  if (res.status === 404) return true;
   if (!res.ok) throw new Error('Error al eliminar variante');
+  return true;
 }
 
 export async function uploadFotoProducto(id, file) {
