@@ -135,6 +135,9 @@ class ProductoSerializer(serializers.ModelSerializer):
 
     def get_imagen_url_completa(self, obj):
         if obj.imagen_archivo:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.imagen_archivo.url)
             return obj.imagen_archivo.url
         return obj.imagen_url or None
 

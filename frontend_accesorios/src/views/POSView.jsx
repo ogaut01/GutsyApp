@@ -416,11 +416,21 @@ export default function POSView({ productos = [], onSaleSuccess, cart, setCart, 
                   <img
                     src={prod.imagen_url_completa}
                     alt={prod.nombre}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.style.display = 'none';
+                      const fallback = e.target.parentElement?.querySelector('.pos-img-fallback');
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
                     className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   />
-                ) : (
+                ) : null}
+                <div
+                  className="pos-img-fallback w-full h-full items-center justify-center"
+                  style={{ display: prod.imagen_url_completa ? 'none' : 'flex' }}
+                >
                   <Sparkles className="w-8 h-8 text-zinc-700 stroke-[1.2]" />
-                )}
+                </div>
 
                 {/* Stock Badge */}
                 <span className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold shadow-md ${
