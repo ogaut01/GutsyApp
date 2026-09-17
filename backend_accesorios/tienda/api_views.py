@@ -111,9 +111,13 @@ class ProductoViewSet(viewsets.ModelViewSet):
         producto.imagen_archivo = foto
         producto.save(update_fields=['imagen_archivo'])
 
+        url = producto.imagen_archivo.url
+        if not (url.startswith('http://') or url.startswith('https://')):
+            url = request.build_absolute_uri(url)
+
         return Response({
             'status': 'ok',
-            'imagen_url': request.build_absolute_uri(producto.imagen_archivo.url)
+            'imagen_url': url
         })
 
     @action(detail=False, methods=['get'], url_path='catalogo-unificado')

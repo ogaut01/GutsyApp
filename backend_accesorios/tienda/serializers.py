@@ -62,7 +62,13 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
             return obj.imagen_url
         # 2. El producto tiene imagen subida como archivo → la usa
         if obj.producto.imagen_archivo:
-            return obj.producto.imagen_archivo.url
+            url = obj.producto.imagen_archivo.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(url)
+            return url
         # 3. Fallback: imagen URL del producto base
         return obj.producto.imagen_url or None
 
@@ -135,10 +141,13 @@ class ProductoSerializer(serializers.ModelSerializer):
 
     def get_imagen_url_completa(self, obj):
         if obj.imagen_archivo:
+            url = obj.imagen_archivo.url
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
             request = self.context.get('request')
             if request:
-                return request.build_absolute_uri(obj.imagen_archivo.url)
-            return obj.imagen_archivo.url
+                return request.build_absolute_uri(url)
+            return url
         return obj.imagen_url or None
 
 
