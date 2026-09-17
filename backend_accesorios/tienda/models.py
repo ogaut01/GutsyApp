@@ -607,14 +607,13 @@ class Producto(models.Model):
     # Nota: La relación con LoteImportacion ahora se maneja através de ItemLote (ManyToMany)
     # El campo lote directo ha sido reemplazado por la relación muchos-a-muchos
 
-    url_producto = models.URLField(
-        max_length=500,
+    url_producto = models.TextField(
         blank=True,
         null=True,
         verbose_name="Enlace de Compra",
         help_text="URL original de Shein/AliExpress/Alibaba"
     )
-    imagen_url = models.URLField(max_length=500, blank=True, null=True, verbose_name="URL de Imagen Externa")
+    imagen_url = models.TextField(blank=True, null=True, verbose_name="URL de Imagen Externa")
     imagen_archivo = models.ImageField(upload_to='productos/', blank=True, null=True, verbose_name="Subir Foto")
     descripcion = models.TextField(blank=True, null=True, verbose_name="Descripción / Cuidados de la pieza")
 
@@ -838,7 +837,7 @@ class VarianteProducto(models.Model):
         null=True,
         verbose_name="Código de Barras (Opcional)"
     )
-    imagen_url = models.URLField(
+    imagen_url = models.TextField(
         blank=True,
         null=True,
         verbose_name="Imagen de esta variante (URL)",
