@@ -45,9 +45,16 @@ INSTALLED_APPS = [
     'tienda.apps.TiendaConfig',
 ]
 
-# Soporte de Cloudinary si está configurado en .env
-CLOUDINARY_URL = os.environ.get('CLOUDINARY_URL')
-if CLOUDINARY_URL:
+# Soporte de Cloudinary si está configurado en variables de entorno / .env
+raw_cloudinary_url = os.environ.get('CLOUDINARY_URL', '').strip()
+if (raw_cloudinary_url.startswith('"') and raw_cloudinary_url.endswith('"')) or (raw_cloudinary_url.startswith("'") and raw_cloudinary_url.endswith("'")):
+    raw_cloudinary_url = raw_cloudinary_url[1:-1].strip()
+if raw_cloudinary_url.startswith('CLOUDINARY_URL='):
+    raw_cloudinary_url = raw_cloudinary_url.replace('CLOUDINARY_URL=', '', 1).strip()
+
+if raw_cloudinary_url.startswith('cloudinary://'):
+    os.environ['CLOUDINARY_URL'] = raw_cloudinary_url
+    CLOUDINARY_URL = raw_cloudinary_url
     INSTALLED_APPS += [
         'cloudinary_storage',
         'cloudinary',
@@ -64,6 +71,9 @@ if CLOUDINARY_URL:
         },
     }
 else:
+    # Si CLOUDINARY_URL no está presente o no es válida, removerla de os.environ para no disparar errores de inicialización
+    if 'CLOUDINARY_URL' in os.environ:
+        del os.environ['CLOUDINARY_URL']
     STORAGES = {
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
