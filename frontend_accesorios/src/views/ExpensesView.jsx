@@ -3,7 +3,7 @@ import {
   Receipt, Plus, DollarSign, Search, Calendar, Tag, Trash2, Pencil,
   X, AlertTriangle, Filter, ChevronRight, TrendingDown, Layers
 } from 'lucide-react';
-import { fetchGastos, createGasto } from '../services/api';
+import { fetchGastos, createGasto, deleteGasto } from '../services/api';
 
 const CATEGORIAS_GASTO = [
   { id: 'ADS', label: '📢 Publicidad & Meta Ads (Instagram/TikTok)', short: 'Meta Ads' },
@@ -92,8 +92,7 @@ export default function ExpensesView({ onReload }) {
     if (!confirmDelete) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/gastos/${confirmDelete.id}/`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Error al eliminar');
+      await deleteGasto(confirmDelete.id);
       setConfirmDelete(null);
       await loadData();
       if (onReload) onReload();

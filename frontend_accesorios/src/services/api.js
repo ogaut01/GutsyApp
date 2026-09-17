@@ -363,6 +363,14 @@ export async function createGasto(data) {
   return res.json();
 }
 
+export async function deleteGasto(id) {
+  const res = await apiRequest(`/gastos/${id}/`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Error al eliminar gasto');
+  return true;
+}
+
 // ─── Dashboard & Métricas ──────────────────────────────────────────────────
 
 export async function fetchDashboardStats(params = {}) {
