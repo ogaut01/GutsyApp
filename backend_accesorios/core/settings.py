@@ -51,6 +51,7 @@ if (raw_cloudinary_url.startswith('"') and raw_cloudinary_url.endswith('"')) or 
     raw_cloudinary_url = raw_cloudinary_url[1:-1].strip()
 if raw_cloudinary_url.startswith('CLOUDINARY_URL='):
     raw_cloudinary_url = raw_cloudinary_url.replace('CLOUDINARY_URL=', '', 1).strip()
+raw_cloudinary_url = raw_cloudinary_url.replace('<', '').replace('>', '').strip()
 
 if raw_cloudinary_url.startswith('cloudinary://'):
     os.environ['CLOUDINARY_URL'] = raw_cloudinary_url
