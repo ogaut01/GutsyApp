@@ -46,7 +46,11 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
     precio_venta_pyg = serializers.IntegerField(source='precio_efectivo', read_only=True)
     costo_pyg = serializers.IntegerField(source='producto.costo_pyg', read_only=True)
     imagen_url = serializers.SerializerMethodField()
-    imagen_url_propia = serializers.URLField(read_only=True)
+    # ``imagen_url`` es la URL efectiva que se muestra al cliente. Este campo
+    # permite editar la URL propia de la variante sin perder el fallback del producto.
+    imagen_url_propia = serializers.URLField(
+        source='imagen_url', write_only=True, required=False, allow_null=True, allow_blank=True
+    )
 
     class Meta:
         model = VarianteProducto

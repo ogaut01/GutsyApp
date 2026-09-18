@@ -16,11 +16,7 @@ import ExpensesView from './ExpensesView';
 
 const PERIODOS = [
   { id: 'hoy', label: 'Hoy' },
-  { id: '7d', label: '7 Días' },
   { id: '30d', label: '30 Días' },
-  { id: '3m', label: '3 Meses' },
-  { id: '6m', label: '6 Meses' },
-  { id: '12m', label: '12 Meses' },
 ];
 
 const CATEGORIAS_GASTO = [
@@ -67,6 +63,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
     margen_sugerido_porcentaje: 60,
   });
   const [savingMetas, setSavingMetas] = useState(false);
+  const [showMobileMetaDetails, setShowMobileMetaDetails] = useState(false);
 
   // Tooltip de gráfico
   const [hoveredPoint, setHoveredPoint] = useState(null);
@@ -214,6 +211,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
   const stockMarginPct = (kpis?.valor_inventario_venta > 0)
     ? Math.round(((kpis.valor_inventario_venta - kpis.valor_inventario_costo) / kpis.valor_inventario_venta) * 100)
     : 74;
+  const mostrarFacturacionNetaEnMovil = Number(kpis.facturacion_bruta) !== Number(kpis.facturacion_neta);
 
   return (
     <div className="pb-28 pt-2 px-3 sm:px-6 max-w-6xl mx-auto space-y-6">
@@ -368,7 +366,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
 
         {/* 1. Facturación Bruta */}
-        <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
+        <div className="order-1 sm:order-none flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Facturación Bruta</span>
             {kpis.diff_facturacion_bruta_pct !== null && kpis.diff_facturacion_bruta_pct !== undefined && kpis.facturacion_bruta > 0 ? (
@@ -391,7 +389,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         </div>
 
         {/* 2. Facturación Neta */}
-        <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
+        <div className={`${mostrarFacturacionNetaEnMovil ? 'flex' : 'hidden'} order-2 sm:order-none sm:flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex-col justify-between space-y-2`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Facturación Neta</span>
             {kpis.diff_facturacion_neta_pct !== null && kpis.diff_facturacion_neta_pct !== undefined && kpis.facturacion_neta > 0 ? (
@@ -409,12 +407,12 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
             <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
               {kpis.facturacion_neta > 0 ? formatGs(kpis.facturacion_neta) : 'Gs. 0'}
             </h3>
-            <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5">Ventas efectivas realizadas</p>
+            <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5">Tras descuentos y devoluciones</p>
           </div>
         </div>
 
         {/* 3. Ganancia Neta (STAR CARD) */}
-        <div className="col-span-2 sm:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-2 border-neutral-900 dark:border-white rounded-3xl p-4 flex flex-col justify-between space-y-2 relative shadow-sm">
+        <div className="order-3 sm:order-none col-span-2 sm:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-2 border-neutral-900 dark:border-white rounded-3xl p-4 flex flex-col justify-between space-y-2 relative shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
               <DollarSign className="w-3.5 h-3.5 text-black dark:text-white" />
@@ -441,7 +439,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         </div>
 
         {/* 4. Margen Neto % */}
-        <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
+        <div className={`${mostrarFacturacionNetaEnMovil ? 'order-4' : 'order-2'} sm:order-none bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Margen Neto</span>
             {kpis.diff_margen_puntos !== null && kpis.diff_margen_puntos !== undefined && kpis.facturacion_neta > 0 ? (
@@ -463,7 +461,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         </div>
 
         {/* 5. Valor del Inventario */}
-        <div className="col-span-2 lg:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
+        <div className="order-5 sm:order-none col-span-2 lg:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Inventario Total</span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-zinc-800 text-stone-800 dark:text-zinc-200">
@@ -489,7 +487,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
 
       {/* TARJETA DE META MENSUAL & PUNTO DE EQUILIBRIO */}
       {stats?.punto_equilibrio_meta && (
-        <div className="bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-5 sm:p-6 space-y-5 relative overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 sm:p-6 space-y-4 sm:space-y-5 relative overflow-hidden shadow-sm">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -499,14 +497,18 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               <div>
                 <div className="flex items-center gap-2">
                   <h3 className="font-serif font-black text-base text-stone-900 dark:text-white tracking-wide">
-                    Meta Mensual & Punto de Equilibrio
+                    <span className="sm:hidden">Meta Mensual</span>
+                    <span className="hidden sm:inline">Meta Mensual & Punto de Equilibrio</span>
                   </h3>
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-zinc-800 font-sans text-stone-600 dark:text-zinc-300 font-bold uppercase tracking-wider">
                     Mes Actual
                   </span>
                 </div>
-                <p className="text-xs text-stone-500 dark:text-zinc-400 mt-0.5">
+                <p className="hidden sm:block text-xs text-stone-500 dark:text-zinc-400 mt-0.5">
                   Obligaciones: <b className="text-stone-700 dark:text-zinc-200">Deudas ({formatGs(stats.punto_equilibrio_meta.cuota_deudas)})</b> + <b className="text-stone-700 dark:text-zinc-200">Meta Ads ({formatGs(stats.punto_equilibrio_meta.meta_ads)})</b> + <b className="text-stone-900 dark:text-white font-bold">Meta Libre ({formatGs(stats.punto_equilibrio_meta.sueldo_libre)})</b>
+                </p>
+                <p className="sm:hidden text-[11px] text-stone-500 dark:text-zinc-400 mt-0.5">
+                  Equilibrio: <b className="text-stone-700 dark:text-zinc-200">{formatGs(stats.punto_equilibrio_meta.costos_fijos_mes)}</b>
                 </p>
               </div>
             </div>
@@ -516,19 +518,22 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               {stats.punto_equilibrio_meta.estado_meta === 'CUBRIENDO_COSTOS' && (
                 <div className="px-3 py-1.5 rounded-2xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-300 dark:border-zinc-700 text-stone-800 dark:text-zinc-200 text-xs font-bold flex items-center gap-1.5">
                   <Scale className="w-4 h-4 text-rose-500 dark:text-rose-400 animate-pulse" />
-                  <span>Cubriendo Costos Fijos (Faltan {formatGs(stats.punto_equilibrio_meta.faltante_equilibrio)})</span>
+                  <span className="sm:hidden">Faltan {formatGs(stats.punto_equilibrio_meta.faltante_equilibrio)}</span>
+                  <span className="hidden sm:inline">Cubriendo Costos Fijos (Faltan {formatGs(stats.punto_equilibrio_meta.faltante_equilibrio)})</span>
                 </div>
               )}
               {stats.punto_equilibrio_meta.estado_meta === 'EQUILIBRIO_ALCANZADO' && (
                 <div className="px-3 py-1.5 rounded-2xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-300 dark:border-zinc-700 text-stone-800 dark:text-zinc-200 text-xs font-bold flex items-center gap-1.5">
                   <Scale className="w-4 h-4 text-black dark:text-white" />
-                  <span>¡Equilibrio Alcanzado! (Faltan {formatGs(stats.punto_equilibrio_meta.faltante_meta)} para meta libre)</span>
+                  <span className="sm:hidden">Equilibrio alcanzado</span>
+                  <span className="hidden sm:inline">¡Equilibrio Alcanzado! (Faltan {formatGs(stats.punto_equilibrio_meta.faltante_meta)} para meta libre)</span>
                 </div>
               )}
               {stats.punto_equilibrio_meta.estado_meta === 'META_SUPERADA' && (
                 <div className="px-3 py-1.5 rounded-2xl bg-black text-white dark:bg-white dark:text-black border border-neutral-900 dark:border-white text-xs font-bold flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-emerald-400" />
-                  <span>¡Meta Superada! (+Gs. {formatGs(stats.punto_equilibrio_meta.sueldo_libre)} libres en bolsillo)</span>
+                  <span className="sm:hidden">Meta superada</span>
+                  <span className="hidden sm:inline">¡Meta Superada! (+Gs. {formatGs(stats.punto_equilibrio_meta.sueldo_libre)} libres en bolsillo)</span>
                 </div>
               )}
 
@@ -559,7 +564,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               {/* Marcador Punto de Equilibrio */}
               <div
                 className="absolute top-0 bottom-0 w-0.5 bg-neutral-500 dark:bg-zinc-400 z-10"
-                style={{ left: `${(stats.punto_equilibrio_meta.costos_fijos_mes / stats.punto_equilibrio_meta.meta_ganancia_bruta) * 100}%` }}
+                style={{ left: `${stats.punto_equilibrio_meta.meta_ganancia_bruta > 0 ? (stats.punto_equilibrio_meta.costos_fijos_mes / stats.punto_equilibrio_meta.meta_ganancia_bruta) * 100 : 0}%` }}
                 title="Punto de Equilibrio (Deudas + Ads)"
               />
               <div
@@ -589,7 +594,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
           </div>
 
           {/* 4 Mini Métricas Desglosadas */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1">
+          <div className={`${showMobileMetaDetails ? 'grid' : 'hidden'} sm:grid grid-cols-2 lg:grid-cols-4 gap-2.5 pt-1`}>
             <div className="bg-neutral-50 dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-2xl p-3">
               <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider block">Deuda Fija Mensual</span>
               <span className="text-sm font-black text-rose-600 dark:text-rose-400 mt-0.5 block">
@@ -622,6 +627,14 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               <span className="text-[10px] text-stone-400 dark:text-zinc-500">Facturación meta del mes</span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowMobileMetaDetails((visible) => !visible)}
+            className="sm:hidden w-full py-2 text-xs font-bold text-stone-600 dark:text-zinc-300 border border-neutral-200 dark:border-zinc-800 rounded-xl hover:bg-neutral-50 dark:hover:bg-zinc-800 transition"
+            aria-expanded={showMobileMetaDetails}
+          >
+            {showMobileMetaDetails ? 'Ocultar desglose' : 'Ver desglose de meta'}
+          </button>
         </div>
       )}
 

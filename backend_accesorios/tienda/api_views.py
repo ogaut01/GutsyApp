@@ -755,9 +755,11 @@ def dashboard_stats(request):
 
     # 8. Metas Financieras Mensuales & Punto de Equilibrio (Mes Calendario Actual)
     config = Configuracion.get_config()
-    cuota_deudas = config.meta_deuda_mensual_pyg or 1332000
-    meta_ads = config.meta_ads_mensual_pyg or 800000
-    sueldo_libre = config.meta_sueldo_libre_pyg or 800000
+    # El valor 0 es válido: permite desactivar temporalmente un componente de la meta.
+    # Solo se usa el valor por defecto si la configuración fuera realmente nula.
+    cuota_deudas = config.meta_deuda_mensual_pyg if config.meta_deuda_mensual_pyg is not None else 1332000
+    meta_ads = config.meta_ads_mensual_pyg if config.meta_ads_mensual_pyg is not None else 800000
+    sueldo_libre = config.meta_sueldo_libre_pyg if config.meta_sueldo_libre_pyg is not None else 800000
 
     costos_fijos_mes = cuota_deudas + meta_ads  # Gs. 2.132.000
     meta_ganancia_bruta = costos_fijos_mes + sueldo_libre  # Gs. 2.932.000
