@@ -32,7 +32,7 @@ const GENEROS = [
   { id: 'U', label: 'Unisex' },
 ];
 
-export default function InventoryView({ productos = [], onOpenBulkUpload, onReload }) {
+export default function InventoryView({ productos = [], alertFilter, onClearAlertFilter, onOpenBulkUpload, onReload }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedGender, setSelectedGender] = useState('ALL');
@@ -216,12 +216,18 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
     return CATEGORIAS.filter(c => existingCats.has(c.id));
   }, [productos]);
 
-  const hasActiveFilters = searchTerm.trim() !== '' || selectedCategory !== 'ALL' || selectedGender !== 'ALL';
+  const alertType = typeof alertFilter === 'string' ? alertFilter : alertFilter?.type;
+  const alertVariantIds = new Set(
+    alertFilter && typeof alertFilter === 'object' ? alertFilter.variantIds || [] : []
+  );
+  const isOutOfStockAlert = alertType === 'agotados';
+  const hasActiveFilters = searchTerm.trim() !== '' || selectedCategory !== 'ALL' || selectedGender !== 'ALL' || Boolean(alertType);
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setSelectedCategory('ALL');
     setSelectedGender('ALL');
+    if (onClearAlertFilter) onClearAlertFilter();
   };
 
   // Filtrado de productos con Búsqueda Inteligente
@@ -234,9 +240,36 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
       
       const matchesCat = (!term && selectedCategory !== 'ALL') ? p.categoria === selectedCategory : (selectedCategory === 'ALL' || p.categoria === selectedCategory);
       const matchesGen = selectedGender === 'ALL' || p.genero === selectedGender;
-      return matchesSearch && matchesCat && matchesGen;
+      const activeVariants = (p.variantes || []).filter((variant) => variant.activo !== false);
+      const activeStock = activeVariants.reduce((total, variant) => total + Number(variant.stock || 0), 0);
+      const matchesAlert =
+        !alertType ||
+        (isOutOfStockAlert && activeVariants.length > 0 && activeStock === 0) ||
+        (!isOutOfStockAlert && activeVariants.some((variant) => alertVariantIds.has(variant.id)));
+      return matchesSearch && matchesCat && matchesGen && matchesAlert;
     });
-  }, [productos, searchTerm, selectedCategory, selectedGender]);
+  }, [productos, searchTerm, selectedCategory, selectedGender, alertType, isOutOfStockAlert, alertFilter]);
+
+  const alertInfo = {
+    agotados: {
+      title: 'Productos agotados',
+      description: 'Se muestran solo los modelos sin unidades disponibles.',
+      tone: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+      button: 'border-rose-500/30 text-rose-200 hover:bg-rose-500/10',
+    },
+    stock_bajo: {
+      title: 'Stock bajo',
+      description: 'Se muestran solo los productos con variantes de 1 o 2 unidades.',
+      tone: 'border-amber-500/30 bg-amber-500/10 text-amber-200',
+      button: 'border-amber-500/30 text-amber-100 hover:bg-amber-500/10',
+    },
+    sin_movimiento: {
+      title: 'Productos sin ventas',
+      description: 'Se muestran los productos con variantes sin ventas recientes.',
+      tone: 'border-blue-500/30 bg-blue-500/10 text-blue-200',
+      button: 'border-blue-500/30 text-blue-100 hover:bg-blue-500/10',
+    },
+  }[alertType];
 
   const totalStockUnits = productos.reduce((acc, p) => acc + (p.stock_total || 0), 0);
   // Valuación sumando variante por variante con precio efectivo (respeta precios específicos por variante)
@@ -459,6 +492,21 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
         </div>
       </div>
 
+      {alertInfo && (
+        <div className={`flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 text-xs ${alertInfo.tone}`}>
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span><b>{alertInfo.title}:</b> {alertInfo.description}</span>
+          </div>
+          <button
+            onClick={onClearAlertFilter}
+            className={`shrink-0 rounded-lg border px-2.5 py-1.5 font-bold ${alertInfo.button}`}
+          >
+            Ver todo
+          </button>
+        </div>
+      )}
+
       {/* ── Totales & Valuación ── */}
       <div className="grid grid-cols-2 gap-3">
         {/* Stock Total */}
@@ -623,6 +671,13 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
           const isExpanded = expandedProduct === prod.id;
           const isUploading = uploadingFotoId === prod.id;
           const totalStock = prod.stock_total || 0;
+          const missingVariants = (prod.variantes || []).filter(
+            (variant) => variant.activo !== false && Number(variant.stock) === 0
+          );
+          const alertVariants = isOutOfStockAlert
+            ? missingVariants
+            : (prod.variantes || []).filter((variant) => alertVariantIds.has(variant.id));
+          const displayedVariants = alertType ? alertVariants : (prod.variantes || []);
 
           return (
             <div
@@ -679,6 +734,15 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
                       )}
                     </div>
                     <h3 className="text-sm font-bold text-stone-900 dark:text-white line-clamp-1">{prod.nombre}</h3>
+                    {alertType && alertVariants.length > 0 && (
+                      <p className={`mt-1 text-[10px] leading-relaxed ${
+                        isOutOfStockAlert ? 'text-rose-300' :
+                        alertType === 'stock_bajo' ? 'text-amber-300' : 'text-blue-300'
+                      }`}>
+                        <b>{isOutOfStockAlert ? 'Falta' : 'Variantes relevantes'}:</b>{' '}
+                        {alertVariants.map((variant) => `${variant.color || 'Sin color'} · ${variant.talle_medida || 'Único'} (${variant.stock} u.)`).join(', ')}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {editingPriceId === prod.id ? (
                         <div
@@ -843,7 +907,7 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-[11px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">
-                        Variantes & Stock Físico ({prod.variantes?.length || 0})
+                        {alertType ? 'Variantes relevantes' : 'Variantes & Stock Físico'} ({displayedVariants.length})
                       </h4>
                       <button
                         onClick={(e) => openAddVariant(prod, e)}
@@ -854,7 +918,7 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
                     </div>
 
                     <div className="space-y-1.5">
-                      {prod.variantes?.map((v) => (
+                      {displayedVariants.map((v) => (
                         <div
                           key={v.id}
                           className="flex items-center justify-between p-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 rounded-xl border border-neutral-200 dark:border-zinc-800/50 hover:border-[#d6cebf] dark:border-zinc-700 transition"
@@ -925,9 +989,9 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
                         </div>
                       ))}
 
-                      {(!prod.variantes || prod.variantes.length === 0) && (
+                      {displayedVariants.length === 0 && (
                         <p className="text-zinc-600 text-xs py-2 text-center">
-                          Sin variantes cargadas. Hacé clic en "Agregar Variante".
+                          {alertType ? 'No hay variantes relevantes para esta alerta.' : 'Sin variantes cargadas. Hacé clic en "Agregar Variante".'}
                         </p>
                       )}
                     </div>
