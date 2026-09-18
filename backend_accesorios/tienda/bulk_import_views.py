@@ -2,6 +2,7 @@ import json
 import csv
 import io
 import re
+import logging
 from django.http import HttpResponse
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -10,6 +11,9 @@ from django.db import transaction
 from .models import Producto, VarianteProducto, ProveedorReal as Proveedor, Material, Configuracion, Plataforma
 from openpyxl import Workbook, load_workbook
 from openpyxl.worksheet.datavalidation import DataValidation
+
+
+logger = logging.getLogger(__name__)
 
 def clean_url(u):
     if not u or not isinstance(u, str):
@@ -33,111 +37,116 @@ def carga_masiva_productos_api(request):
     if not items or not isinstance(items, list):
         return Response({'error': 'Se requiere una lista de productos válida'}, status=status.HTTP_400_BAD_REQUEST)
 
-    config = Configuracion.get_config()
     creados = 0
     variantes_creadas = 0
     errores = []
     producto_ids = []
 
-    with transaction.atomic():
-        for index, item in enumerate(items):
-            nombre = item.get('nombre', '').strip()
-            if not nombre:
-                errores.append(f"Fila {index + 1}: El nombre del producto es obligatorio.")
-                continue
+    # Todos los proveedores creados por esta carga pertenecen a una plataforma
+    # conocida. Se resuelve una vez para no repetir consultas por cada fila.
+    default_platform = Plataforma.objects.filter(nombre='Shein').first() or Plataforma.objects.first()
+    if not default_platform:
+        return Response({
+            'error': 'No hay plataformas configuradas. Ejecutá primero la configuración inicial del sistema.'
+        }, status=status.HTTP_400_BAD_REQUEST)
 
-            categoria = item.get('categoria', 'OT').upper()
-            genero = item.get('genero', 'U').upper()
-            proveedor_nombre = item.get('proveedor', 'Shein').strip()
+    try:
+        with transaction.atomic():
+            for index, item in enumerate(items):
+                nombre = item.get('nombre', '').strip()
+                if not nombre:
+                    errores.append(f"Fila {index + 1}: El nombre del producto es obligatorio.")
+                    continue
+
+                categoria = item.get('categoria', 'OT').upper()
+                genero = item.get('genero', 'U').upper()
+                proveedor_nombre = item.get('proveedor', 'Shein').strip()
             
-            # Buscar o crear proveedor si no existe
-            # Obtener una plataforma por defecto (Shein si existe, sino la primera disponible)
-            default_platform = Plataforma.objects.filter(nombre='Shein').first()
-            if not default_platform:
-                default_platform = Plataforma.objects.first()
-
-            # If no platforms exist at all, we cannot create a provider
-            if not default_platform:
-                errores.append(f"Fila {index + 1}: No se pueden crear proveedores porque no hay plataformas configuradas en el sistema. Por favor, ejecute primero el comando 'python manage.py seed_data' para configurar las plataformas iniciales.")
-                continue
-
-            proveedor, _ = Proveedor.objects.get_or_create(
-                nombre=proveedor_nombre,
-                defaults={
-                    'plataforma': default_platform
-                }
-            )
-
-            costo_origen = item.get('costo_moneda_origen')
-            moneda = item.get('moneda_compra', 'USD')
-            peso = int(item.get('peso_gramos', 15) or 15)
-            precio_venta = int(item.get('precio_venta', 0) or 0)
-
-            url_origen = clean_url(item.get('url_origen'))
-            url_imagen = clean_url(item.get('url_imagen'))
-
-            # Buscar si ya existe el producto base con este nombre o crearlo
-            producto, fue_creado = Producto.objects.get_or_create(
-                nombre=nombre,
-                defaults={
-                    'categoria': categoria if categoria in dict(Producto.CATEGORIAS) else 'OT',
-                    'genero': genero if genero in dict(Producto.GENEROS) else 'U',
-                    'proveedor_real': proveedor,
-                    'costo_moneda_origen': costo_origen,
-                    'moneda_compra': moneda,
-                    'peso_gramos': peso,
-                    'precio_venta': precio_venta,
-                    'url_producto': url_origen,
-                    'imagen_url': url_imagen,
-                }
-            )
-            if not fue_creado:
-                if proveedor and not producto.proveedor_real:
-                    producto.proveedor_real = proveedor
-                if url_origen and not producto.url_producto:
-                    producto.url_producto = url_origen
-                if url_imagen and not producto.imagen_url:
-                    producto.imagen_url = url_imagen
-                producto.save()
-            if fue_creado:
-                creados += 1
-            producto_ids.append(producto.id)
-
-            # Materiales (opcional)
-            material_nombres = item.get('materiales', [])
-            if isinstance(material_nombres, str):
-                material_nombres = [m.strip() for m in material_nombres.split(',') if m.strip()]
-            for mat_nom in material_nombres:
-                mat_obj, _ = Material.objects.get_or_create(nombre=mat_nom)
-                producto.materiales.add(mat_obj)
-
-            # Variantes (Color, Talle, Stock)
-            variantes_data = item.get('variantes', [])
-            if not variantes_data:
-                color = item.get('color', 'Único')
-                talle = item.get('talle_medida', 'Ajustable')
-                stock = int(item.get('stock', 1) or 1)
-                variantes_data = [{'color': color, 'talle_medida': talle, 'stock': stock}]
-
-            for v in variantes_data:
-                color_v = v.get('color', 'Único') or 'Único'
-                talle_v = v.get('talle_medida', 'Ajustable') or 'Ajustable'
-                stock_v = int(v.get('stock', 0) or 0)
-                imagen_v = v.get('imagen_url') or None
-
-                var_obj, var_creada = VarianteProducto.objects.get_or_create(
-                    producto=producto,
-                    color=color_v,
-                    talle_medida=talle_v,
-                    defaults={'stock': stock_v, 'imagen_url': imagen_v}
+                # La unicidad del proveedor es por plataforma + nombre. Filtrar por
+                # ambos campos evita errores 500 si existe el mismo nombre en otra plataforma.
+                proveedor, _ = Proveedor.objects.get_or_create(
+                    plataforma=default_platform,
+                    nombre=proveedor_nombre,
                 )
-                if not var_creada:
-                    var_obj.stock += stock_v
-                    # Update imagen_url only if the variant doesn't have one yet
-                    if imagen_v and not var_obj.imagen_url:
-                        var_obj.imagen_url = imagen_v
-                    var_obj.save()
-                variantes_creadas += 1
+
+                costo_origen = item.get('costo_moneda_origen')
+                moneda = item.get('moneda_compra', 'USD')
+                peso = int(item.get('peso_gramos', 15) or 15)
+                precio_venta = int(item.get('precio_venta', 0) or 0)
+
+                url_origen = clean_url(item.get('url_origen'))
+                url_imagen = clean_url(item.get('url_imagen'))
+
+                # El nombre de Producto no es único en la base histórica. Reutilizamos
+                # el registro más antiguo para que la carga no falle por coincidencias.
+                producto = Producto.objects.filter(nombre=nombre).order_by('id').first()
+                fue_creado = producto is None
+                if fue_creado:
+                    producto = Producto.objects.create(
+                        nombre=nombre,
+                        categoria=categoria if categoria in dict(Producto.CATEGORIAS) else 'OT',
+                        genero=genero if genero in dict(Producto.GENEROS) else 'U',
+                        proveedor_real=proveedor,
+                        costo_moneda_origen=costo_origen,
+                        moneda_compra=moneda,
+                        peso_gramos=peso,
+                        precio_venta=precio_venta,
+                        url_producto=url_origen,
+                        imagen_url=url_imagen,
+                    )
+                else:
+                    if proveedor and not producto.proveedor_real:
+                        producto.proveedor_real = proveedor
+                    if url_origen and not producto.url_producto:
+                        producto.url_producto = url_origen
+                    if url_imagen and not producto.imagen_url:
+                        producto.imagen_url = url_imagen
+                    producto.save()
+                if fue_creado:
+                    creados += 1
+                producto_ids.append(producto.id)
+
+                # Materiales (opcional)
+                material_nombres = item.get('materiales', [])
+                if isinstance(material_nombres, str):
+                    material_nombres = [m.strip() for m in material_nombres.split(',') if m.strip()]
+                for mat_nom in material_nombres:
+                    mat_obj, _ = Material.objects.get_or_create(nombre=mat_nom)
+                    producto.materiales.add(mat_obj)
+
+                # Variantes (Color, Talle, Stock)
+                variantes_data = item.get('variantes', [])
+                if not variantes_data:
+                    color = item.get('color', 'Único')
+                    talle = item.get('talle_medida', 'Ajustable')
+                    stock = int(item.get('stock', 1) or 1)
+                    variantes_data = [{'color': color, 'talle_medida': talle, 'stock': stock}]
+
+                for v in variantes_data:
+                    color_v = v.get('color', 'Único') or 'Único'
+                    talle_v = v.get('talle_medida', 'Ajustable') or 'Ajustable'
+                    stock_v = int(v.get('stock', 0) or 0)
+                    imagen_v = v.get('imagen_url') or None
+
+                    var_obj, var_creada = VarianteProducto.objects.get_or_create(
+                        producto=producto,
+                        color=color_v,
+                        talle_medida=talle_v,
+                        defaults={'stock': stock_v, 'imagen_url': imagen_v}
+                    )
+                    if not var_creada:
+                        var_obj.stock += stock_v
+                        # Update imagen_url only if the variant doesn't have one yet
+                        if imagen_v and not var_obj.imagen_url:
+                            var_obj.imagen_url = imagen_v
+                        var_obj.save()
+                    variantes_creadas += 1
+    except Exception as exc:
+        logger.exception('Error inesperado durante la carga masiva de productos')
+        return Response({
+            'error': 'No se pudo completar la importación. No se guardó ningún cambio.',
+            'detalle': str(exc),
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     if errores:
         return Response({'status': 'error', 'errores': errores}, status=status.HTTP_400_BAD_REQUEST)
