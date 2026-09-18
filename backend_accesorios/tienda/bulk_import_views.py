@@ -342,6 +342,8 @@ def parsear_archivo_carga_masiva(request):
     categorias_validas = dict(Producto.CATEGORIAS)
     generos_validos = dict(Producto.GENEROS)
     monedas_validas = dict(Producto.MONEDA_CHOICES)
+    color_max_length = VarianteProducto._meta.get_field('color').max_length
+    talle_max_length = VarianteProducto._meta.get_field('talle_medida').max_length
 
     # Pre-fetch existing providers and materials for validation (read-only)
     existing_providers = set(Proveedor.objects.filter(activo=True).values_list('nombre', flat=True))
@@ -558,9 +560,17 @@ def parsear_archivo_carga_masiva(request):
 
         # 12. color (for variant)
         color = row_dict.get('color', '').strip() or 'Único'
+        if len(color) > color_max_length:
+            errors.append(
+                f"Fila {row_idx}: El color tiene {len(color)} caracteres; el máximo permitido es {color_max_length}."
+            )
 
         # 13. talle_medida (for variant)
         talle_medida = row_dict.get('talle_medida', '').strip() or 'Ajustable'
+        if len(talle_medida) > talle_max_length:
+            errors.append(
+                f"Fila {row_idx}: El talle o medida tiene {len(talle_medida)} caracteres; el máximo permitido es {talle_max_length}."
+            )
 
         # 14. stock (for variant)
         stock_str = row_dict.get('stock', '').strip()
@@ -568,6 +578,8 @@ def parsear_archivo_carga_masiva(request):
             stock = int(float(stock_str)) if stock_str else 1
             if stock < 0:
                 errors.append(f"Fila {row_idx}: El stock no puede ser negativo.")
+            elif len(color) > color_max_length or len(talle_medida) > talle_max_length:
+                continue
             else:
                 # Add variant to this product — each variant carries its own image URL
                 # so each color can have a different photo from the supplier
