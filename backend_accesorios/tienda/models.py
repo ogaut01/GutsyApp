@@ -805,9 +805,9 @@ class VarianteProducto(models.Model):
         verbose_name="Producto Base"
     )
     color = models.CharField(
-        max_length=50,
+        max_length=100,
         default='Único',
-        help_text="Ej: Dorado, Plateado, Negro, Oro Rosa, Café, Cuero Negro"
+        help_text="Ej: Dorado, Plateado, Negro, Oro Rosa, Café, Cuero Negro o combinaciones de marco y lente"
     )
     talle_medida = models.CharField(
         max_length=50,
