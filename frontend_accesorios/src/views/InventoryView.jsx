@@ -64,10 +64,8 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
 
   // Subida de foto
   const [uploadingFotoId, setUploadingFotoId] = useState(null);
-  const fotoCameraInputRef = useRef(null);
-  const fotoGalleryInputRef = useRef(null);
+  const fotoInputRef = useRef(null);
   const [pendingFotoProductoId, setPendingFotoProductoId] = useState(null);
-  const [photoSourceTarget, setPhotoSourceTarget] = useState(null);
 
   // Materiales y Proveedores
   const [materialesList, setMaterialesList] = useState([]);
@@ -82,8 +80,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const [proveedores, setProveedores] = useState([]);
   const [nuevoProductoFoto, setNuevoProductoFoto] = useState(null);
   const [nuevoProductoFotoPreview, setNuevoProductoFotoPreview] = useState(null);
-  const nuevoProductoCameraInputRef = useRef(null);
-  const nuevoProductoGalleryInputRef = useRef(null);
+  const nuevoProductoFotoInputRef = useRef(null);
   const [nuevoProductoForm, setNuevoProductoForm] = useState({
     nombre: '',
     categoria: 'AN',
@@ -105,17 +102,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const handleFotoClick = (prodId, e) => {
     e.stopPropagation();
     setPendingFotoProductoId(prodId);
-    setPhotoSourceTarget('producto-existente');
-  };
-
-  const handlePhotoSourceChoice = (source) => {
-    const isCamera = source === 'camera';
-    const inputRef = photoSourceTarget === 'producto-nuevo'
-      ? (isCamera ? nuevoProductoCameraInputRef : nuevoProductoGalleryInputRef)
-      : (isCamera ? fotoCameraInputRef : fotoGalleryInputRef);
-
-    setPhotoSourceTarget(null);
-    inputRef.current?.click();
+    fotoInputRef.current?.click();
   };
 
   const handleFotoChange = async (e) => {
@@ -663,32 +650,16 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
         </div>
       </div>
 
-      {/* Inputs ocultos: la fuente se elige desde el menú de foto. */}
+      {/* iOS y Android muestran su selector nativo: fototeca, cámara o archivos. */}
       <input
-        ref={fotoCameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleFotoChange}
-      />
-      <input
-        ref={fotoGalleryInputRef}
+        ref={fotoInputRef}
         type="file"
         accept="image/*"
         className="hidden"
         onChange={handleFotoChange}
       />
       <input
-        ref={nuevoProductoCameraInputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        className="hidden"
-        onChange={handleNuevoProductoFotoChange}
-      />
-      <input
-        ref={nuevoProductoGalleryInputRef}
+        ref={nuevoProductoFotoInputRef}
         type="file"
         accept="image/*"
         className="hidden"
@@ -1037,45 +1008,6 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
         })}
       </div>
 
-      {photoSourceTarget && (
-        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="w-full max-w-sm rounded-3xl bg-white dark:bg-zinc-900 border border-neutral-200 dark:border-zinc-800 p-5 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-stone-900 dark:text-white">Agregar foto</h3>
-                <p className="text-xs text-stone-500 dark:text-zinc-400 mt-1">Elegí cómo querés cargarla.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPhotoSourceTarget(null)}
-                className="p-2 rounded-full text-stone-500 hover:text-stone-900 dark:text-zinc-400 dark:hover:text-white"
-                aria-label="Cerrar"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => handlePhotoSourceChoice('camera')}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-neutral-200 dark:border-zinc-700 p-4 text-stone-900 dark:text-white hover:border-amber-500 hover:bg-amber-500/10 transition"
-              >
-                <Camera className="w-6 h-6" />
-                <span className="text-sm font-semibold">Tomar foto</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handlePhotoSourceChoice('gallery')}
-                className="flex flex-col items-center gap-2 rounded-2xl border border-neutral-200 dark:border-zinc-700 p-4 text-stone-900 dark:text-white hover:border-amber-500 hover:bg-amber-500/10 transition"
-              >
-                <Layers className="w-6 h-6" />
-                <span className="text-sm font-semibold">Galería</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ══════════════════════════════════════════════════════
           MODAL — Nuevo Producto Manual
       ══════════════════════════════════════════════════════ */}
@@ -1098,7 +1030,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                 <span className="text-xs font-semibold text-stone-700 dark:text-zinc-300 mb-2">Foto del Producto (Opcional)</span>
                 <button
                   type="button"
-                  onClick={() => setPhotoSourceTarget('producto-nuevo')}
+                  onClick={() => nuevoProductoFotoInputRef.current?.click()}
                   className="relative cursor-pointer group flex flex-col items-center justify-center w-20 h-20 rounded-2xl border-2 border-dashed border-[#d6cebf] dark:border-zinc-700 hover:border-amber-500 overflow-hidden bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 transition"
                   aria-label="Elegir fuente de foto"
                 >
