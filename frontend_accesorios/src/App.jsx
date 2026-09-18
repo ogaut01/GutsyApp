@@ -30,6 +30,7 @@ export default function App() {
   }, [activeTab]);
 
   const [productos, setProductos] = useState([]);
+  const [inventoryAlertFilter, setInventoryAlertFilter] = useState(null);
   const [lotes, setLotes] = useState([]);
   const [cart, setCart] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -203,6 +204,8 @@ export default function App() {
               {activeTab === 'inventory' && (
                 <InventoryView
                   productos={productos}
+                  alertFilter={inventoryAlertFilter}
+                  onClearAlertFilter={() => setInventoryAlertFilter(null)}
                   onOpenBulkUpload={() => setActiveTab('bulk-upload')}
                   onReload={loadData}
                 />
@@ -226,7 +229,13 @@ export default function App() {
               )}
 
               {activeTab === 'dashboard' && (
-                <DashboardView onActionSuccess={loadData} onNavigate={setActiveTab} />
+                <DashboardView
+                  onActionSuccess={loadData}
+                  onNavigate={(tab, alertFilter = null) => {
+                    setInventoryAlertFilter(tab === 'inventory' ? alertFilter : null);
+                    setActiveTab(tab);
+                  }}
+                />
               )}
 
               {activeTab === 'settings' && (
