@@ -16,11 +16,7 @@ import ExpensesView from './ExpensesView';
 
 const PERIODOS = [
   { id: 'hoy', label: 'Hoy' },
-  { id: '7d', label: '7 Días' },
   { id: '30d', label: '30 Días' },
-  { id: '3m', label: '3 Meses' },
-  { id: '6m', label: '6 Meses' },
-  { id: '12m', label: '12 Meses' },
 ];
 
 const CATEGORIAS_GASTO = [
@@ -370,7 +366,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
 
         {/* 1. Facturación Bruta */}
-        <div className={`${mostrarFacturacionNetaEnMovil ? 'flex' : 'hidden'} sm:flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex-col justify-between space-y-2`}>
+        <div className="order-1 sm:order-none flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Facturación Bruta</span>
             {kpis.diff_facturacion_bruta_pct !== null && kpis.diff_facturacion_bruta_pct !== undefined && kpis.facturacion_bruta > 0 ? (
@@ -393,7 +389,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         </div>
 
         {/* 2. Facturación Neta */}
-        <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
+        <div className={`${mostrarFacturacionNetaEnMovil ? 'flex' : 'hidden'} order-2 sm:order-none sm:flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex-col justify-between space-y-2`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Facturación Neta</span>
             {kpis.diff_facturacion_neta_pct !== null && kpis.diff_facturacion_neta_pct !== undefined && kpis.facturacion_neta > 0 ? (
@@ -416,7 +412,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         </div>
 
         {/* 3. Ganancia Neta (STAR CARD) */}
-        <div className="col-span-2 sm:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-2 border-neutral-900 dark:border-white rounded-3xl p-4 flex flex-col justify-between space-y-2 relative shadow-sm">
+        <div className="order-3 sm:order-none col-span-2 sm:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-2 border-neutral-900 dark:border-white rounded-3xl p-4 flex flex-col justify-between space-y-2 relative shadow-sm">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-black text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
               <DollarSign className="w-3.5 h-3.5 text-black dark:text-white" />
@@ -443,7 +439,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         </div>
 
         {/* 4. Margen Neto % */}
-        <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
+        <div className={`${mostrarFacturacionNetaEnMovil ? 'order-4' : 'order-2'} sm:order-none bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2`}>
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Margen Neto</span>
             {kpis.diff_margen_puntos !== null && kpis.diff_margen_puntos !== undefined && kpis.facturacion_neta > 0 ? (
@@ -465,7 +461,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         </div>
 
         {/* 5. Valor del Inventario */}
-        <div className="col-span-2 lg:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
+        <div className="order-5 sm:order-none col-span-2 lg:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Inventario Total</span>
             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-zinc-800 text-stone-800 dark:text-zinc-200">
