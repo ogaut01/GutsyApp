@@ -32,7 +32,7 @@ const GENEROS = [
   { id: 'U', label: 'Unisex' },
 ];
 
-export default function InventoryView({ productos = [], onOpenBulkUpload, onReload }) {
+export default function InventoryView({ productos = [], alertFilter, onClearAlertFilter, onOpenBulkUpload, onReload }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedGender, setSelectedGender] = useState('ALL');
@@ -216,12 +216,14 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
     return CATEGORIAS.filter(c => existingCats.has(c.id));
   }, [productos]);
 
-  const hasActiveFilters = searchTerm.trim() !== '' || selectedCategory !== 'ALL' || selectedGender !== 'ALL';
+  const isOutOfStockAlert = alertFilter === 'agotados';
+  const hasActiveFilters = searchTerm.trim() !== '' || selectedCategory !== 'ALL' || selectedGender !== 'ALL' || isOutOfStockAlert;
 
   const handleClearFilters = () => {
     setSearchTerm('');
     setSelectedCategory('ALL');
     setSelectedGender('ALL');
+    if (onClearAlertFilter) onClearAlertFilter();
   };
 
   // Filtrado de productos con Búsqueda Inteligente
@@ -234,9 +236,12 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
       
       const matchesCat = (!term && selectedCategory !== 'ALL') ? p.categoria === selectedCategory : (selectedCategory === 'ALL' || p.categoria === selectedCategory);
       const matchesGen = selectedGender === 'ALL' || p.genero === selectedGender;
-      return matchesSearch && matchesCat && matchesGen;
+      const activeVariants = (p.variantes || []).filter((variant) => variant.activo !== false);
+      const activeStock = activeVariants.reduce((total, variant) => total + Number(variant.stock || 0), 0);
+      const matchesAlert = !isOutOfStockAlert || (activeVariants.length > 0 && activeStock === 0);
+      return matchesSearch && matchesCat && matchesGen && matchesAlert;
     });
-  }, [productos, searchTerm, selectedCategory, selectedGender]);
+  }, [productos, searchTerm, selectedCategory, selectedGender, isOutOfStockAlert]);
 
   const totalStockUnits = productos.reduce((acc, p) => acc + (p.stock_total || 0), 0);
   // Valuación sumando variante por variante con precio efectivo (respeta precios específicos por variante)
@@ -459,6 +464,21 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
         </div>
       </div>
 
+      {isOutOfStockAlert && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-3 text-xs">
+          <div className="flex items-center gap-2 text-rose-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span><b>Productos agotados:</b> se muestran solo los modelos sin unidades disponibles.</span>
+          </div>
+          <button
+            onClick={onClearAlertFilter}
+            className="shrink-0 rounded-lg border border-rose-500/30 px-2.5 py-1.5 font-bold text-rose-200 hover:bg-rose-500/10"
+          >
+            Ver todo
+          </button>
+        </div>
+      )}
+
       {/* ── Totales & Valuación ── */}
       <div className="grid grid-cols-2 gap-3">
         {/* Stock Total */}
@@ -623,6 +643,9 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
           const isExpanded = expandedProduct === prod.id;
           const isUploading = uploadingFotoId === prod.id;
           const totalStock = prod.stock_total || 0;
+          const missingVariants = (prod.variantes || []).filter(
+            (variant) => variant.activo !== false && Number(variant.stock) === 0
+          );
 
           return (
             <div
@@ -679,6 +702,12 @@ export default function InventoryView({ productos = [], onOpenBulkUpload, onRelo
                       )}
                     </div>
                     <h3 className="text-sm font-bold text-stone-900 dark:text-white line-clamp-1">{prod.nombre}</h3>
+                    {isOutOfStockAlert && missingVariants.length > 0 && (
+                      <p className="mt-1 text-[10px] leading-relaxed text-rose-300">
+                        <b>Falta:</b>{' '}
+                        {missingVariants.map((variant) => `${variant.color || 'Sin color'} · ${variant.talle_medida || 'Único'}`).join(', ')}
+                      </p>
+                    )}
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {editingPriceId === prod.id ? (
                         <div

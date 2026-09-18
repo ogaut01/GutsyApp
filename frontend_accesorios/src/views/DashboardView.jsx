@@ -178,8 +178,8 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
 
   const formatGs = (val) => `Gs. ${(val || 0).toLocaleString('es-PY')}`;
 
-  const goTo = (tab) => {
-    if (onNavigate) onNavigate(tab);
+  const goTo = (tab, alertFilter = null) => {
+    if (onNavigate) onNavigate(tab, alertFilter);
   };
 
   if (loading && !stats) {
@@ -1197,7 +1197,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
                   </div>
 
                   <button
-                    onClick={() => goTo(al.accion_tab)}
+                    onClick={() => goTo(al.accion_tab, al.tipo === 'agotados' ? al.tipo : null)}
                     className="mt-2 w-full py-1.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800/80 hover:bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 text-stone-900 dark:text-white rounded-xl text-[11px] font-bold border border-neutral-200 dark:border-zinc-800 flex items-center justify-center gap-1 transition active:scale-95"
                   >
                     <span>{al.accion_label}</span>

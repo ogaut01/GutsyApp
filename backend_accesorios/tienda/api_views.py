@@ -456,7 +456,10 @@ def dashboard_stats(request):
     diff_margen_puntos = round(margen_neto_pct_curr - margen_neto_pct_prev, 1)
 
     # 3. Inventario Físico & Valorización
-    variantes_activas = VarianteProducto.objects.filter(activo=True).select_related('producto')
+    variantes_activas = VarianteProducto.objects.filter(
+        activo=True,
+        producto__activo=True,
+    ).select_related('producto')
     total_unidades_stock = sum(v.stock for v in variantes_activas)
     valor_inventario_costo = sum(v.stock * (v.producto.costo_pyg or 0) for v in variantes_activas)
     valor_inventario_venta = sum(v.stock * (v.producto.precio_venta or 0) for v in variantes_activas)
@@ -464,7 +467,9 @@ def dashboard_stats(request):
     # Diagnóstico de Stock
     productos_stock_bajo = []
     productos_agotados = []
+    stock_por_producto = {}
     for v in variantes_activas:
+        stock_por_producto[v.producto_id] = stock_por_producto.get(v.producto_id, 0) + v.stock
         if v.stock == 0:
             productos_agotados.append({
                 'variante_id': v.id,
@@ -485,6 +490,12 @@ def dashboard_stats(request):
                 'sku': v.sku,
                 'stock': v.stock
             })
+
+    # La alerta principal se mide por producto padre: un producto está agotado
+    # únicamente si la suma de sus variantes activas es 0.
+    productos_padre_agotados_count = sum(
+        1 for stock_total in stock_por_producto.values() if stock_total == 0
+    )
 
     # Detección de productos sin movimiento (sin ventas en los últimos 45 días)
     hace_45_dias = ahora - timedelta(days=45)
@@ -669,14 +680,14 @@ def dashboard_stats(request):
 
     # 9. Alertas Accionables
     alertas = []
-    if len(productos_agotados) > 0:
+    if productos_padre_agotados_count > 0:
         alertas.append({
             'tipo': 'agotados',
             'severidad': 'danger',
-            'titulo': f'{len(productos_agotados)} variantes agotadas',
-            'descripcion': f'Accesorios con 0 u. en stock que necesitan reposición urgente.',
+            'titulo': f'{productos_padre_agotados_count} productos agotados',
+            'descripcion': 'Productos sin unidades disponibles que necesitan reposición urgente.',
             'accion_tab': 'inventory',
-            'accion_label': 'Ver Agotados'
+            'accion_label': 'Ver Productos Agotados'
         })
     if len(productos_stock_bajo) > 0:
         alertas.append({
