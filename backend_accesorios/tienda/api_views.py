@@ -149,8 +149,6 @@ class ProductoViewSet(viewsets.ModelViewSet):
                     pass
 
             url = producto.imagen_archivo.url
-            if not (url.startswith('http://') or url.startswith('https://')):
-                url = request.build_absolute_uri(url)
 
             return Response({
                 'status': 'ok',
