@@ -192,6 +192,20 @@ export async function uploadFotoProducto(id, file) {
   return res.json();
 }
 
+export async function uploadFotoVariante(id, file) {
+  const form = new FormData();
+  form.append('foto', file);
+  const res = await apiRequest(`/variantes/${id}/upload-foto/`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || 'Error al subir la foto de la variante');
+  }
+  return res.json();
+}
+
 // ─── Importaciones & Lotes ─────────────────────────────────────────────────
 
 export async function fetchLotes() {
@@ -301,11 +315,81 @@ export async function deleteCourier(id) {
   return true;
 }
 
+// ─── Plataformas ──────────────────────────────────────────────────────────
+
+export async function fetchPlataformas() {
+  const res = await apiRequest('/plataformas/');
+  if (!res.ok) throw new Error('Error al cargar plataformas');
+  return res.json();
+}
+
+export async function createPlataforma(data) {
+  const res = await apiRequest('/plataformas/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Error al crear plataforma');
+  return res.json();
+}
+
+export async function updatePlataforma(id, data) {
+  const res = await apiRequest(`/plataformas/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error('Error al actualizar plataforma');
+  return res.json();
+}
+
+export async function deletePlataforma(id) {
+  const res = await apiRequest(`/plataformas/${id}/`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Error al eliminar plataforma');
+  return true;
+}
+
+// ─── Proveedores ──────────────────────────────────────────────────────────
+
 export async function fetchProveedores() {
   const res = await apiRequest('/proveedores/');
   if (!res.ok) throw new Error('Error al cargar proveedores');
   return res.json();
 }
+
+export async function createProveedor(data) {
+  const res = await apiRequest('/proveedores/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || err?.non_field_errors?.[0] || 'Error al crear proveedor');
+  }
+  return res.json();
+}
+
+export async function updateProveedor(id, data) {
+  const res = await apiRequest(`/proveedores/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.detail || err?.non_field_errors?.[0] || 'Error al actualizar proveedor');
+  }
+  return res.json();
+}
+
+export async function deleteProveedor(id) {
+  const res = await apiRequest(`/proveedores/${id}/`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Error al eliminar proveedor');
+  return true;
+}
+
+// ─── Materiales ───────────────────────────────────────────────────────────
 
 export async function fetchMateriales() {
   const res = await apiRequest('/materiales/');
@@ -318,8 +402,31 @@ export async function createMaterial(data) {
     method: 'POST',
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error('Error al crear material');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.nombre?.[0] || 'Error al crear material');
+  }
   return res.json();
+}
+
+export async function updateMaterial(id, data) {
+  const res = await apiRequest(`/materiales/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.nombre?.[0] || 'Error al actualizar material');
+  }
+  return res.json();
+}
+
+export async function deleteMaterial(id) {
+  const res = await apiRequest(`/materiales/${id}/`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error('Error al eliminar material');
+  return true;
 }
 
 // ─── Ventas & POS ──────────────────────────────────────────────────────────

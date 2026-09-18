@@ -8,8 +8,9 @@ import {
   updateProducto, deleteProducto,
   createVariante, updateVariante, deleteVariante,
   uploadFotoProducto, fetchProveedores, fetchMateriales, createMaterial,
-  bulkUploadProductos,
+  bulkUploadProductos, uploadFotoVariante,
 } from '../services/api';
+import { formatGsInput, parseGsInput } from '../currency';
 
 const CATEGORIAS = [
   { id: 'AN', label: 'Anillos' },
@@ -66,6 +67,9 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const [uploadingFotoId, setUploadingFotoId] = useState(null);
   const fotoInputRef = useRef(null);
   const [pendingFotoProductoId, setPendingFotoProductoId] = useState(null);
+  const [uploadingVariantPhotoId, setUploadingVariantPhotoId] = useState(null);
+  const variantPhotoInputRef = useRef(null);
+  const [pendingVariantPhotoId, setPendingVariantPhotoId] = useState(null);
 
   // Materiales y Proveedores
   const [materialesList, setMaterialesList] = useState([]);
@@ -128,6 +132,28 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     setNuevoProductoFotoPreview(URL.createObjectURL(file));
   };
 
+  const handleVariantPhotoClick = (variantId, e) => {
+    e.stopPropagation();
+    setPendingVariantPhotoId(variantId);
+    variantPhotoInputRef.current?.click();
+  };
+
+  const handleVariantPhotoChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !pendingVariantPhotoId) return;
+    e.target.value = '';
+    setUploadingVariantPhotoId(pendingVariantPhotoId);
+    try {
+      await uploadFotoVariante(pendingVariantPhotoId, file);
+      if (onReload) onReload();
+    } catch (err) {
+      alert('Error al subir la foto de la variante: ' + err.message);
+    } finally {
+      setUploadingVariantPhotoId(null);
+      setPendingVariantPhotoId(null);
+    }
+  };
+
   // Abrir modal de nuevo producto
   const handleOpenNuevoProducto = async () => {
     setShowNuevoProductoModal(true);
@@ -163,7 +189,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
           costo_moneda_origen: parseFloat(nuevoProductoForm.costo_moneda_origen) || 0,
           moneda_compra: nuevoProductoForm.moneda_compra,
           peso_gramos: parseInt(nuevoProductoForm.peso_gramos) || 15,
-          precio_venta: parseInt(nuevoProductoForm.precio_venta) || 0,
+          precio_venta: parseGsInput(nuevoProductoForm.precio_venta),
           url_origen: nuevoProductoForm.url_origen || '',
           variantes: [
             {
@@ -292,13 +318,13 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const openQuickPrice = (prod, e) => {
     e.stopPropagation();
     setEditingPriceId(prod.id);
-    setEditingPriceVal(prod.precio_venta || '');
+    setEditingPriceVal(formatGsInput(prod.precio_venta));
   };
 
   const handleQuickPriceSave = async (prodId, e) => {
     if (e) e.stopPropagation();
-    const newPrice = parseInt(editingPriceVal);
-    if (isNaN(newPrice) || newPrice < 0) {
+    const newPrice = parseGsInput(editingPriceVal);
+    if (editingPriceVal === '' || newPrice < 0) {
       alert('Ingresá un precio válido en Guaraníes');
       return;
     }
@@ -327,7 +353,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
       costo_moneda_origen: prod.costo_moneda_origen || '',
       moneda_compra: prod.moneda_compra || 'USD',
       peso_gramos: prod.peso_gramos || 15,
-      precio_venta: prod.precio_venta || 0,
+      precio_venta: formatGsInput(prod.precio_venta),
       url_producto: prod.url_producto || '',
     });
     if (materialesList.length === 0) {
@@ -346,7 +372,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
         costo_moneda_origen: parseFloat(editForm.costo_moneda_origen) || null,
         moneda_compra: editForm.moneda_compra,
         peso_gramos: parseInt(editForm.peso_gramos) || 15,
-        precio_venta: parseInt(editForm.precio_venta) || 0,
+        precio_venta: parseGsInput(editForm.precio_venta),
         url_producto: editForm.url_producto || '',
         materiales_ids: editForm.material_id ? [parseInt(editForm.material_id)] : [],
       };
@@ -368,7 +394,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
       color: v.color,
       talle_medida: v.talle_medida,
       stock: v.stock,
-      precio_venta: v.precio_venta !== null && v.precio_venta !== undefined ? v.precio_venta : '',
+      precio_venta: v.precio_venta !== null && v.precio_venta !== undefined ? formatGsInput(v.precio_venta) : '',
     });
   };
 
@@ -377,11 +403,12 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     setSavingVariant(true);
     try {
       const precioVentaNum = variantForm.precio_venta !== '' && variantForm.precio_venta !== null 
-        ? parseInt(variantForm.precio_venta) 
+        ? parseGsInput(variantForm.precio_venta)
         : null;
 
       await updateVariante(editingVariant.id, {
-        ...variantForm,
+        color: variantForm.color,
+        talle_medida: variantForm.talle_medida,
         stock: parseInt(variantForm.stock) || 0,
         precio_venta: precioVentaNum,
       });
@@ -407,7 +434,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     setSavingNewVariant(true);
     try {
       const precioVentaNum = newVariantForm.precio_venta !== '' && newVariantForm.precio_venta !== null 
-        ? parseInt(newVariantForm.precio_venta) 
+        ? parseGsInput(newVariantForm.precio_venta)
         : null;
 
       await createVariante({
@@ -659,6 +686,13 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
         onChange={handleFotoChange}
       />
       <input
+        ref={variantPhotoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleVariantPhotoChange}
+      />
+      <input
         ref={nuevoProductoFotoInputRef}
         type="file"
         accept="image/*"
@@ -756,10 +790,11 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                         >
                           <span className="text-xs font-bold text-stone-500 dark:text-zinc-400">Gs.</span>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
                             autoFocus
                             value={editingPriceVal}
-                            onChange={(e) => setEditingPriceVal(e.target.value)}
+                            onChange={(e) => setEditingPriceVal(formatGsInput(e.target.value))}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') handleQuickPriceSave(prod.id, e);
                               if (e.key === 'Escape') setEditingPriceId(null);
@@ -977,6 +1012,15 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                             </div>
 
                             <button
+                              onClick={(e) => handleVariantPhotoClick(v.id, e)}
+                              disabled={uploadingVariantPhotoId === v.id}
+                              className="p-1.5 text-stone-400 dark:text-zinc-500 hover:text-black dark:hover:text-white disabled:opacity-50"
+                              title="Cambiar foto de esta variante"
+                            >
+                              <Camera className={`w-3.5 h-3.5 ${uploadingVariantPhotoId === v.id ? 'animate-pulse' : ''}`} />
+                            </button>
+
+                            <button
                               onClick={(e) => openEditVariant(v, e)}
                               className="p-1.5 text-stone-400 dark:text-zinc-500 hover:text-black dark:text-white"
                               title="Editar variante"
@@ -1168,11 +1212,12 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                 <div>
                   <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Precio Venta (Gs.)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     required
                     placeholder="Ej: 45000"
                     value={nuevoProductoForm.precio_venta}
-                    onChange={e => setNuevoProductoForm(f => ({ ...f, precio_venta: e.target.value }))}
+                    onChange={e => setNuevoProductoForm(f => ({ ...f, precio_venta: formatGsInput(e.target.value) }))}
                     className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                   />
                 </div>
@@ -1354,10 +1399,11 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                 <div>
                   <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Precio Venta (Gs.)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     required
                     value={editForm.precio_venta || ''}
-                    onChange={e => setEditForm(f => ({ ...f, precio_venta: e.target.value }))}
+                    onChange={e => setEditForm(f => ({ ...f, precio_venta: formatGsInput(e.target.value) }))}
                     className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                   />
                 </div>
@@ -1464,10 +1510,11 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                   <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-medium">Opcional</span>
                 </div>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="Heredar del modelo padre"
                   value={variantForm.precio_venta ?? ''}
-                  onChange={e => setVariantForm(f => ({ ...f, precio_venta: e.target.value }))}
+                  onChange={e => setVariantForm(f => ({ ...f, precio_venta: formatGsInput(e.target.value) }))}
                   className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                 />
                 <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-1">
@@ -1546,10 +1593,11 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                   <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-medium">Opcional</span>
                 </div>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   placeholder="Heredar del modelo padre"
                   value={newVariantForm.precio_venta ?? ''}
-                  onChange={e => setNewVariantForm(f => ({ ...f, precio_venta: e.target.value }))}
+                  onChange={e => setNewVariantForm(f => ({ ...f, precio_venta: formatGsInput(e.target.value) }))}
                   className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                 />
                 <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-1">

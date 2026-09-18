@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .api_views import (
-    ProveedorViewSet, CourierViewSet, MaterialViewSet,
+    PlataformaViewSet, ProveedorViewSet, CourierViewSet, MaterialViewSet,
     ProductoViewSet, VarianteProductoViewSet, LoteImportacionViewSet,
     VentaViewSet, GastoViewSet, ConfiguracionViewSet, ItemLoteViewSet,
     ClienteViewSet, dashboard_stats
@@ -13,6 +13,7 @@ from .auth_views import login_view, me_view, logout_view
 
 router = DefaultRouter()
 router.register(r'clientes', ClienteViewSet)
+router.register(r'plataformas', PlataformaViewSet)
 router.register(r'proveedores', ProveedorViewSet)
 router.register(r'couriers', CourierViewSet)
 router.register(r'materiales', MaterialViewSet)
