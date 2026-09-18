@@ -217,7 +217,9 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   }, [productos]);
 
   const alertType = typeof alertFilter === 'string' ? alertFilter : alertFilter?.type;
-  const alertVariantIds = new Set(typeof alertFilter === 'object' ? alertFilter.variantIds || [] : []);
+  const alertVariantIds = new Set(
+    alertFilter && typeof alertFilter === 'object' ? alertFilter.variantIds || [] : []
+  );
   const isOutOfStockAlert = alertType === 'agotados';
   const hasActiveFilters = searchTerm.trim() !== '' || selectedCategory !== 'ALL' || selectedGender !== 'ALL' || Boolean(alertType);
 
