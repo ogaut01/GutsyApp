@@ -199,6 +199,17 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
   const importaciones = stats?.importaciones || { lotes_recientes: [] };
   const gastosRes = stats?.gastos_resumen || { desglose_categorias: [] };
   const alertas = stats?.alertas || [];
+  const getAlertNavigationFilter = (tipo) => {
+    const variantsByAlert = {
+      agotados: inventario.agotados,
+      stock_bajo: inventario.stock_bajo,
+      sin_movimiento: inventario.sin_movimiento,
+    };
+    return {
+      type: tipo,
+      variantIds: (variantsByAlert[tipo] || []).map((item) => item.variante_id),
+    };
+  };
   const maxChartVal = Math.max(...grafico.map(d => Math.max(d.facturacion, d.ganancia)), 1);
   const stockMarginPct = (kpis?.valor_inventario_venta > 0)
     ? Math.round(((kpis.valor_inventario_venta - kpis.valor_inventario_costo) / kpis.valor_inventario_venta) * 100)
@@ -1197,7 +1208,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
                   </div>
 
                   <button
-                    onClick={() => goTo(al.accion_tab, al.tipo === 'agotados' ? al.tipo : null)}
+                    onClick={() => goTo(al.accion_tab, getAlertNavigationFilter(al.tipo))}
                     className="mt-2 w-full py-1.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800/80 hover:bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 text-stone-900 dark:text-white rounded-xl text-[11px] font-bold border border-neutral-200 dark:border-zinc-800 flex items-center justify-center gap-1 transition active:scale-95"
                   >
                     <span>{al.accion_label}</span>
