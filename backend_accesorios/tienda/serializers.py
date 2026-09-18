@@ -65,9 +65,8 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
             url = obj.producto.imagen_archivo.url
             if url.startswith('http://') or url.startswith('https://'):
                 return url
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(url)
+            # Mantener la ruta relativa permite que Vite la proxyee con la IP
+            # local de la PC cuando el frontend se abre desde un celular.
             return url
         # 3. Fallback: imagen URL del producto base
         return obj.producto.imagen_url or None
@@ -144,9 +143,8 @@ class ProductoSerializer(serializers.ModelSerializer):
             url = obj.imagen_archivo.url
             if url.startswith('http://') or url.startswith('https://'):
                 return url
-            request = self.context.get('request')
-            if request:
-                return request.build_absolute_uri(url)
+            # Cloudinary ya entrega una URL absoluta. Para almacenamiento local,
+            # devolver /media/... evita enviar al celular a 127.0.0.1:8000.
             return url
         return obj.imagen_url or None
 
