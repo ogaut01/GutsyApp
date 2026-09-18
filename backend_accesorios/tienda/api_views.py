@@ -4,6 +4,10 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.db.models import Sum, F, Count
 from django.db.models.deletion import ProtectedError
+from django.core.files.base import ContentFile
+from io import BytesIO
+from pathlib import Path
+from PIL import Image, ImageOps, UnidentifiedImageError
 import datetime
 
 from .models import (
@@ -18,6 +22,36 @@ from .serializers import (
     ItemLoteSerializer, ClienteSerializer, ClienteDetalleSerializer
 )
 from .services.currency import sincronizar_cotizaciones_en_bd
+
+
+MAX_PRODUCT_IMAGE_DIMENSION = 1600
+PRODUCT_IMAGE_WEBP_QUALITY = 85
+
+
+def optimizar_foto_producto(foto):
+    """Reduce fotos de producto sin deformarlas y las normaliza a WebP."""
+    try:
+        with Image.open(foto) as imagen_original:
+            imagen = ImageOps.exif_transpose(imagen_original)
+            imagen.thumbnail(
+                (MAX_PRODUCT_IMAGE_DIMENSION, MAX_PRODUCT_IMAGE_DIMENSION),
+                Image.Resampling.LANCZOS,
+            )
+
+            tiene_transparencia = imagen.mode in ('RGBA', 'LA') or 'transparency' in imagen.info
+            imagen = imagen.convert('RGBA' if tiene_transparencia else 'RGB')
+            contenido = BytesIO()
+            opciones_webp = {'format': 'WEBP', 'method': 6}
+            if tiene_transparencia:
+                opciones_webp['lossless'] = True
+            else:
+                opciones_webp['quality'] = PRODUCT_IMAGE_WEBP_QUALITY
+            imagen.save(contenido, **opciones_webp)
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValueError('No se pudo procesar la imagen seleccionada.') from exc
+
+    nombre = f"{Path(foto.name).stem or 'producto'}.webp"
+    return ContentFile(contenido.getvalue(), name=nombre)
 
 
 class ClienteViewSet(viewsets.ModelViewSet):
@@ -101,25 +135,27 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Borrar la foto anterior si existía
-        if producto.imagen_archivo:
-            try:
-                producto.imagen_archivo.delete(save=False)
-            except Exception:
-                pass
-
         try:
-            producto.imagen_archivo = foto
+            foto_optimizada = optimizar_foto_producto(foto)
+            foto_anterior = producto.imagen_archivo.name if producto.imagen_archivo else None
+            producto.imagen_archivo = foto_optimizada
             producto.save(update_fields=['imagen_archivo'])
 
+            # La nueva foto ya se guardó correctamente; recién entonces se elimina la anterior.
+            if foto_anterior and foto_anterior != producto.imagen_archivo.name:
+                try:
+                    producto.imagen_archivo.storage.delete(foto_anterior)
+                except Exception:
+                    pass
+
             url = producto.imagen_archivo.url
-            if not (url.startswith('http://') or url.startswith('https://')):
-                url = request.build_absolute_uri(url)
 
             return Response({
                 'status': 'ok',
                 'imagen_url': url
             })
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             return Response(
                 {'error': f'Error al subir la imagen a la nube: {str(e)}'},

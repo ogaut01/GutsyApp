@@ -80,6 +80,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const [proveedores, setProveedores] = useState([]);
   const [nuevoProductoFoto, setNuevoProductoFoto] = useState(null);
   const [nuevoProductoFotoPreview, setNuevoProductoFotoPreview] = useState(null);
+  const nuevoProductoFotoInputRef = useRef(null);
   const [nuevoProductoForm, setNuevoProductoForm] = useState({
     nombre: '',
     categoria: 'AN',
@@ -101,9 +102,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const handleFotoClick = (prodId, e) => {
     e.stopPropagation();
     setPendingFotoProductoId(prodId);
-    if (fotoInputRef.current) {
-      fotoInputRef.current.click();
-    }
+    fotoInputRef.current?.click();
   };
 
   const handleFotoChange = async (e) => {
@@ -651,14 +650,20 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
         </div>
       </div>
 
-      {/* Input de cámara oculto — compartido */}
+      {/* iOS y Android muestran su selector nativo: fototeca, cámara o archivos. */}
       <input
         ref={fotoInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={handleFotoChange}
+      />
+      <input
+        ref={nuevoProductoFotoInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleNuevoProductoFotoChange}
       />
 
       {/* ── Lista de Productos ── */}
@@ -1023,7 +1028,12 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
               {/* Foto del Producto (Opcional) */}
               <div className="flex flex-col items-center justify-center border border-dashed border-neutral-200 dark:border-zinc-800 rounded-2xl p-4 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800/40">
                 <span className="text-xs font-semibold text-stone-700 dark:text-zinc-300 mb-2">Foto del Producto (Opcional)</span>
-                <label className="relative cursor-pointer group flex flex-col items-center justify-center w-20 h-20 rounded-2xl border-2 border-dashed border-[#d6cebf] dark:border-zinc-700 hover:border-amber-500 overflow-hidden bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 transition">
+                <button
+                  type="button"
+                  onClick={() => nuevoProductoFotoInputRef.current?.click()}
+                  className="relative cursor-pointer group flex flex-col items-center justify-center w-20 h-20 rounded-2xl border-2 border-dashed border-[#d6cebf] dark:border-zinc-700 hover:border-amber-500 overflow-hidden bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 transition"
+                  aria-label="Elegir fuente de foto"
+                >
                   {nuevoProductoFotoPreview ? (
                     <>
                       <img src={nuevoProductoFotoPreview} alt="Vista previa" className="w-full h-full object-cover" />
@@ -1037,14 +1047,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                       <span className="text-[9px] mt-1 font-bold">Cámara</span>
                     </div>
                   )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handleNuevoProductoFotoChange}
-                    className="hidden"
-                  />
-                </label>
+                </button>
                 {nuevoProductoFoto && (
                   <button
                     type="button"
