@@ -4,6 +4,7 @@ import {
   X, AlertTriangle, Filter, ChevronRight, TrendingDown, Layers
 } from 'lucide-react';
 import { fetchGastos, createGasto, deleteGasto } from '../services/api';
+import { formatGsInput, parseGsInput } from '../currency';
 
 const CATEGORIAS_GASTO = [
   { id: 'ADS', label: '📢 Publicidad & Meta Ads (Instagram/TikTok)', short: 'Meta Ads' },
@@ -72,7 +73,7 @@ export default function ExpensesView({ onReload }) {
     try {
       await createGasto({
         categoria: formData.categoria,
-        monto_pyg: parseInt(formData.monto_pyg),
+        monto_pyg: parseGsInput(formData.monto_pyg),
         descripcion: formData.descripcion.trim(),
         comprobante: formData.comprobante.trim() || undefined,
         fecha: formData.fecha || undefined,
@@ -368,11 +369,12 @@ export default function ExpensesView({ onReload }) {
                   Monto en Guaraníes (Gs.) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
                   placeholder="Ej: 50000"
                   value={formData.monto_pyg}
-                  onChange={(e) => setFormData(f => ({ ...f, monto_pyg: e.target.value }))}
+                  onChange={(e) => setFormData(f => ({ ...f, monto_pyg: formatGsInput(e.target.value) }))}
                   className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm font-bold text-black dark:text-white focus:border-black dark:focus:border-white outline-none"
                 />
               </div>

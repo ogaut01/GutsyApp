@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from .models import (
-    ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
+    Plataforma, ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
     Producto, VarianteProducto, Venta, DetalleVenta,
     Gasto, Configuracion, ItemLote, Cliente
 )
@@ -17,6 +17,14 @@ class ClienteSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class PlataformaSerializer(serializers.ModelSerializer):
+    pais_display = serializers.CharField(source='get_pais_origen_display', read_only=True)
+
+    class Meta:
+        model = Plataforma
+        fields = '__all__'
+
+
 class MaterialSerializer(serializers.ModelSerializer):
     class Meta:
         model = Material
@@ -24,7 +32,8 @@ class MaterialSerializer(serializers.ModelSerializer):
 
 
 class ProveedorSerializer(serializers.ModelSerializer):
-    pais_display = serializers.CharField(source='get_pais_origen_display', read_only=True)
+    plataforma_nombre = serializers.CharField(source='plataforma.nombre', read_only=True)
+    plataforma_pais = serializers.CharField(source='plataforma.get_pais_origen_display', read_only=True)
 
     class Meta:
         model = Proveedor
@@ -61,18 +70,19 @@ class VarianteProductoSerializer(serializers.ModelSerializer):
         )
 
     def get_imagen_url(self, obj):
-        # 1. La variante tiene imagen propia → la usa
+        # Archivo de la variante → URL propia de la variante → archivo del producto → URL del producto.
+        try:
+            if obj.imagen_archivo:
+                return obj.imagen_archivo.url
+        except ValueError:
+            pass
         if obj.imagen_url:
             return obj.imagen_url
-        # 2. El producto tiene imagen subida como archivo → la usa
-        if obj.producto.imagen_archivo:
-            url = obj.producto.imagen_archivo.url
-            if url.startswith('http://') or url.startswith('https://'):
-                return url
-            # Mantener la ruta relativa permite que Vite la proxyee con la IP
-            # local de la PC cuando el frontend se abre desde un celular.
-            return url
-        # 3. Fallback: imagen URL del producto base
+        try:
+            if obj.producto.imagen_archivo:
+                return obj.producto.imagen_archivo.url
+        except ValueError:
+            pass
         return obj.producto.imagen_url or None
 
 

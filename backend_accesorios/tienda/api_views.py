@@ -11,12 +11,12 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 import datetime
 
 from .models import (
-    ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
+    Plataforma, ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
     Producto, VarianteProducto, Venta, DetalleVenta,
     Gasto, Configuracion, ItemLote, Cliente
 )
 from .serializers import (
-    ProveedorSerializer, CourierSerializer, MaterialSerializer,
+    PlataformaSerializer, ProveedorSerializer, CourierSerializer, MaterialSerializer,
     LoteImportacionSerializer, ProductoSerializer, VarianteProductoSerializer,
     VentaCreateSerializer, GastoSerializer, ConfiguracionSerializer,
     ItemLoteSerializer, ClienteSerializer, ClienteDetalleSerializer
@@ -80,11 +80,18 @@ class ClienteViewSet(viewsets.ModelViewSet):
         })
 
 
-class ProveedorViewSet(viewsets.ModelViewSet):
-    queryset = Proveedor.objects.all()
-    serializer_class = ProveedorSerializer
+class PlataformaViewSet(viewsets.ModelViewSet):
+    queryset = Plataforma.objects.all()
+    serializer_class = PlataformaSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'contacto']
+
+
+class ProveedorViewSet(viewsets.ModelViewSet):
+    queryset = Proveedor.objects.all().select_related('plataforma')
+    serializer_class = ProveedorSerializer
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['nombre', 'contacto', 'plataforma__nombre']
 
 
 class CourierViewSet(viewsets.ModelViewSet):
@@ -242,6 +249,38 @@ class VarianteProductoViewSet(viewsets.ModelViewSet):
     serializer_class = VarianteProductoSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['sku', 'codigo_barras', 'producto__nombre', 'color', 'talle_medida']
+
+    @action(detail=True, methods=['post'], url_path='upload-foto')
+    def upload_foto(self, request, pk=None):
+        """Guarda una foto optimizada exclusiva para esta variante."""
+        variante = self.get_object()
+        foto = request.FILES.get('foto')
+
+        if not foto:
+            return Response({'error': 'No se recibió ninguna imagen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        tipos_permitidos = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+        if foto.content_type not in tipos_permitidos:
+            return Response(
+                {'error': f'Formato no soportado: {foto.content_type}. Usá JPG, PNG o WEBP.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            foto_optimizada = optimizar_foto_producto(foto)
+            foto_anterior = variante.imagen_archivo.name if variante.imagen_archivo else None
+            variante.imagen_archivo = foto_optimizada
+            variante.save(update_fields=['imagen_archivo'])
+            if foto_anterior and foto_anterior != variante.imagen_archivo.name:
+                try:
+                    variante.imagen_archivo.storage.delete(foto_anterior)
+                except Exception:
+                    pass
+            return Response({'status': 'ok', 'imagen_url': variante.imagen_archivo.url})
+        except ValueError as exc:
+            return Response({'error': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as exc:
+            return Response({'error': f'Error al subir la imagen: {str(exc)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 class LoteImportacionViewSet(viewsets.ModelViewSet):

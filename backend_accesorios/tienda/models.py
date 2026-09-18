@@ -843,6 +843,12 @@ class VarianteProducto(models.Model):
         verbose_name="Imagen de esta variante (URL)",
         help_text="URL de imagen específica para este color/talle. Si está vacío se usa la imagen del producto base."
     )
+    imagen_archivo = models.ImageField(
+        upload_to='variantes/',
+        blank=True,
+        null=True,
+        verbose_name="Foto propia de esta variante"
+    )
     activo = models.BooleanField(default=True, verbose_name="Activo")
 
     @property

@@ -124,7 +124,7 @@ export default function LoginView({ onLoginSuccess }) {
               <div className="w-5 h-5 border-2 border-zinc-950 border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <span>Acceder al Sistema</span>
+                <span>Acceder</span>
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </>
             )}

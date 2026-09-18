@@ -217,44 +217,46 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
     <div className="pb-28 pt-2 px-3 sm:px-6 max-w-6xl mx-auto space-y-6">
 
       {/* HEADER — Períodos & Acciones Rápidas */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3.5 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800/60 border border-neutral-200 dark:border-zinc-800/80 p-4 rounded-3xl backdrop-blur-sm">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-base sm:text-lg font-bold text-stone-900 dark:text-white tracking-tight flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-black dark:text-white" />
-              Panel de Control Financiero
-            </h1>
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[10px] font-bold border border-emerald-500/20 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              En Vivo
-            </span>
+      <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800/80 p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl backdrop-blur-sm flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm sm:text-lg font-bold text-stone-900 dark:text-white tracking-tight flex items-center gap-1.5 sm:gap-2">
+                <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-black dark:text-white" />
+                Panel Financiero
+              </h1>
+              <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[9px] sm:text-[10px] font-bold border border-emerald-500/20 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                En Vivo
+              </span>
+            </div>
+            <p className="text-[11px] sm:text-xs text-stone-500 dark:text-zinc-400 mt-0.5">
+              Período: <b className="text-zinc-700 dark:text-zinc-200">{stats?.periodo?.label}</b> ({stats?.periodo?.duracion_dias} días)
+            </p>
           </div>
-          <p className="text-xs text-stone-500 dark:text-zinc-400 mt-0.5">
-            Período: <b className="text-zinc-200">{stats?.periodo?.label}</b> ({stats?.periodo?.duracion_dias} días analizados)
-          </p>
         </div>
 
         {/* Acciones Rápidas */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-[1fr_1fr_auto_auto] sm:flex sm:flex-wrap items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => goTo('pos')}
-            className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-zinc-950 font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition"
+            className="px-2.5 sm:px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 text-zinc-950 font-bold rounded-xl text-[11px] sm:text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition"
           >
             <ShoppingBag className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>Nueva Venta</span>
+            <span className="truncate">Nueva Venta</span>
           </button>
 
           <button
             onClick={() => setShowGastoModal(true)}
-            className="px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold rounded-xl text-xs flex items-center gap-1.5 border border-[#d6cebf] dark:border-zinc-700 active:scale-95 transition"
+            className="px-2.5 sm:px-3.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold rounded-xl text-[11px] sm:text-xs flex items-center justify-center gap-1.5 border border-zinc-700 active:scale-95 transition"
           >
             <Plus className="w-3.5 h-3.5" />
-            <span>Registrar Gasto</span>
+            <span className="truncate">Gasto</span>
           </button>
 
           <button
             onClick={() => goTo('imports')}
-            className="px-3 py-2 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:text-white rounded-xl text-xs flex items-center gap-1.5 border border-neutral-200 dark:border-zinc-800 transition"
+            className="p-2 sm:px-3 sm:py-2 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 hover:bg-neutral-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:text-white rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
             title="Ir a Envíos & Lotes"
           >
             <Package className="w-3.5 h-3.5 text-stone-500 dark:text-zinc-400" />
@@ -263,7 +265,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
 
           <button
             onClick={loadData}
-            className="p-2 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:text-white rounded-xl border border-neutral-200 dark:border-zinc-800 transition"
+            className="p-2 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 hover:bg-neutral-100 dark:hover:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:text-white rounded-xl flex items-center justify-center transition"
             title="Recargar Métricas"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -362,124 +364,117 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         )}
       </div>
 
-      {/* FILA 1 — 5 TARJETAS PRINCIPALES (KPIs Ejecutivos) */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      {/* FILA 1 — KPIs Ejecutivos (grid 2x2 en mobile, 5 cols en desktop) */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 sm:gap-3">
 
         {/* 1. Facturación Bruta */}
-        <div className="order-1 sm:order-none flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Facturación Bruta</span>
+        <div className="order-1 sm:order-none flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex-col justify-between min-h-[92px]">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider leading-tight">Facturación Bruta</span>
             {kpis.diff_facturacion_bruta_pct !== null && kpis.diff_facturacion_bruta_pct !== undefined && kpis.facturacion_bruta > 0 ? (
-              <span className={`text-[10px] font-bold flex items-center gap-0.5 ${
+              <span className={`text-[9px] sm:text-[10px] font-bold flex items-center gap-0.5 flex-shrink-0 ${
                 kpis.diff_facturacion_bruta_pct >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
               }`}>
                 {kpis.diff_facturacion_bruta_pct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 {kpis.diff_facturacion_bruta_pct > 0 ? `+${kpis.diff_facturacion_bruta_pct}%` : `${kpis.diff_facturacion_bruta_pct}%`}
               </span>
             ) : (
-              <span className="text-[11px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
+              <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
             )}
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
+          <div className="mt-auto pt-1">
+            <h3 className="text-base sm:text-xl font-black text-stone-900 dark:text-white truncate">
               {kpis.facturacion_bruta > 0 ? formatGs(kpis.facturacion_bruta) : 'Gs. 0'}
             </h3>
-            <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5">Total cobrado en ventas</p>
+            <p className="text-[9px] sm:text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5 truncate">Total cobrado</p>
           </div>
         </div>
 
-        {/* 2. Facturación Neta */}
-        <div className={`${mostrarFacturacionNetaEnMovil ? 'flex' : 'hidden'} order-2 sm:order-none sm:flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex-col justify-between space-y-2`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Facturación Neta</span>
+        {/* 2. Facturación Neta (oculta en mobile si es idéntica a la bruta para ahorrar espacio) */}
+        <div className={`${mostrarFacturacionNetaEnMovil ? 'flex' : 'hidden'} order-2 sm:order-none sm:flex bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex-col justify-between min-h-[92px]`}>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider leading-tight">Facturación Neta</span>
             {kpis.diff_facturacion_neta_pct !== null && kpis.diff_facturacion_neta_pct !== undefined && kpis.facturacion_neta > 0 ? (
-              <span className={`text-[10px] font-bold flex items-center gap-0.5 ${
+              <span className={`text-[9px] sm:text-[10px] font-bold flex items-center gap-0.5 flex-shrink-0 ${
                 kpis.diff_facturacion_neta_pct >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
               }`}>
                 {kpis.diff_facturacion_neta_pct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                 {kpis.diff_facturacion_neta_pct > 0 ? `+${kpis.diff_facturacion_neta_pct}%` : `${kpis.diff_facturacion_neta_pct}%`}
               </span>
             ) : (
-              <span className="text-[11px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
+              <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
             )}
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
+          <div className="mt-auto pt-1">
+            <h3 className="text-base sm:text-xl font-black text-stone-900 dark:text-white truncate">
               {kpis.facturacion_neta > 0 ? formatGs(kpis.facturacion_neta) : 'Gs. 0'}
             </h3>
-            <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5">Tras descuentos y devoluciones</p>
+            <p className="text-[9px] sm:text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5 truncate">Ventas netas</p>
           </div>
         </div>
 
-        {/* 3. Ganancia Neta (STAR CARD) */}
-        <div className="order-3 sm:order-none col-span-2 sm:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-2 border-neutral-900 dark:border-white rounded-3xl p-4 flex flex-col justify-between space-y-2 relative shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-black text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-              <DollarSign className="w-3.5 h-3.5 text-black dark:text-white" />
-              Ganancia Neta Real
-            </span>
-            {kpis.diff_ganancia_neta_pct !== null && kpis.diff_ganancia_neta_pct !== undefined && kpis.ganancia_neta !== 0 ? (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                kpis.diff_ganancia_neta_pct >= 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-              }`}>
-                {kpis.diff_ganancia_neta_pct > 0 ? `+${kpis.diff_ganancia_neta_pct}%` : `${kpis.diff_ganancia_neta_pct}%`}
-              </span>
-            ) : (
-              <span className="text-[11px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
-            )}
-          </div>
-          <div>
-            <h3 className="text-xl sm:text-2xl font-black text-stone-900 dark:text-white">
-              {formatGs(kpis.ganancia_neta)}
-            </h3>
-            <p className="text-[10px] text-stone-500 dark:text-zinc-400 mt-0.5 font-medium">
-              Ventas - Costos FOB - Fletes - Gastos
-            </p>
-          </div>
-        </div>
-
-        {/* 4. Margen Neto % */}
-        <div className={`${mostrarFacturacionNetaEnMovil ? 'order-4' : 'order-2'} sm:order-none bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2`}>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Margen Neto</span>
+        {/* 3. Margen Neto % (En mobile: Fila 1 a la derecha si bruta == neta) */}
+        <div className={`${mostrarFacturacionNetaEnMovil ? 'order-5' : 'order-2'} sm:order-none bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex flex-col justify-between min-h-[92px]`}>
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider leading-tight">Margen Neto</span>
             {kpis.diff_margen_puntos !== null && kpis.diff_margen_puntos !== undefined && kpis.facturacion_neta > 0 ? (
-              <span className={`text-[10px] font-bold ${
+              <span className={`text-[9px] sm:text-[10px] font-bold flex-shrink-0 ${
                 kpis.diff_margen_puntos >= 0 ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
               }`}>
                 {kpis.diff_margen_puntos > 0 ? `+${kpis.diff_margen_puntos} pts` : `${kpis.diff_margen_puntos} pts`}
               </span>
             ) : (
-              <span className="text-[11px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
+              <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
             )}
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">
+          <div className="mt-auto pt-1">
+            <h3 className="text-base sm:text-xl font-black text-stone-900 dark:text-white">
               {kpis.facturacion_neta > 0 ? `${kpis.margen_neto_pct}%` : '—'}
             </h3>
-            <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5">Rentabilidad sobre ventas</p>
+            <p className="text-[9px] sm:text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5 truncate">Rentabilidad sobre ventas</p>
           </div>
         </div>
 
-        {/* 5. Valor del Inventario */}
-        <div className="order-5 sm:order-none col-span-2 lg:col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">Inventario Total</span>
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-zinc-800 text-stone-800 dark:text-zinc-200">
+        {/* 4. Ganancia Neta (En mobile: Fila 2 a la izquierda) */}
+        <div className="order-3 sm:order-none col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-2 border-neutral-900 dark:border-white rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex flex-col justify-between min-h-[92px] relative shadow-sm">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-black text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-1 leading-tight">
+              <DollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-black dark:text-white flex-shrink-0" />
+              Ganancia Real
+            </span>
+            {kpis.diff_ganancia_neta_pct !== null && kpis.diff_ganancia_neta_pct !== undefined && kpis.ganancia_neta !== 0 ? (
+              <span className={`text-[9px] sm:text-[10px] font-bold px-1 py-0.5 rounded-full flex-shrink-0 ${
+                kpis.diff_ganancia_neta_pct >= 0 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+              }`}>
+                {kpis.diff_ganancia_neta_pct > 0 ? `+${kpis.diff_ganancia_neta_pct}%` : `${kpis.diff_ganancia_neta_pct}%`}
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 font-sans">—</span>
+            )}
+          </div>
+          <div className="mt-auto pt-1">
+            <h3 className="text-base sm:text-2xl font-black text-stone-900 dark:text-white truncate">
+              {formatGs(kpis.ganancia_neta)}
+            </h3>
+            <p className="text-[9px] sm:text-[10px] text-stone-500 dark:text-zinc-400 mt-0.5 font-medium truncate">
+              Utilidad neta calculada
+            </p>
+          </div>
+        </div>
+
+        {/* 5. Inventario Total (En mobile: Fila 2 a la derecha, al lado de Ganancia Neta) */}
+        <div className="order-4 sm:order-none col-span-1 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 flex flex-col justify-between min-h-[92px]">
+          <div className="flex items-center justify-between gap-1">
+            <span className="text-[9px] sm:text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider leading-tight">Inventario</span>
+            <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-neutral-100 dark:bg-zinc-800 text-stone-800 dark:text-zinc-200 flex-shrink-0">
               {kpis.total_unidades_stock} u.
             </span>
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-black text-stone-900 dark:text-white">{formatGs(kpis.valor_inventario_costo)}</h3>
-            <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5">
-              Valor venta: <b className="text-stone-700 dark:text-zinc-300">{formatGs(kpis.valor_inventario_venta)}</b>
+          <div className="mt-auto pt-1">
+            <h3 className="text-base sm:text-xl font-black text-stone-900 dark:text-white truncate">{formatGs(kpis.valor_inventario_costo)}</h3>
+            <p className="text-[9px] sm:text-[10px] text-stone-400 dark:text-zinc-500 mt-0.5 truncate">
+              Venta: <b className="text-stone-700 dark:text-zinc-300">{formatGs(kpis.valor_inventario_venta)}</b>
             </p>
-            {stockMarginPct > 0 && (
-              <div className="mt-1.5">
-                <span className="inline-flex items-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  {stockMarginPct}% margen promedio
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
