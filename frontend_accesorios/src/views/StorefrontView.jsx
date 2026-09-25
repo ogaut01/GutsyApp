@@ -708,9 +708,23 @@ export default function StorefrontView({
             </button>
           </div>
         ) : (
-          <motion.div layout className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            <AnimatePresence mode="popLayout">
-              {filteredProducts.map((product, index) => {
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${selectedCategory}-${selectedGender}-${sortBy}-${searchTerm}`}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: { staggerChildren: 0.035, delayChildren: 0.02 }
+                },
+                exit: { opacity: 0, transition: { duration: 0.1 } }
+              }}
+              className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
+            >
+              {filteredProducts.map((product) => {
                 const imageSrc = product.imagen_url_completa || product.imagen_url || null;
                 const hasStock = (product.stock_total || 0) > 0;
                 const isLowStock = hasStock && (product.stock_total || 0) <= 3;
@@ -719,11 +733,15 @@ export default function StorefrontView({
 
                 return (
                   <motion.div
-                    layout
-                    initial={{ opacity: 0, y: 14 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.22, delay: Math.min(index * 0.02, 0.2) }}
+                    variants={{
+                      hidden: { opacity: 0, y: 22 },
+                      visible: {
+                        opacity: 1,
+                        y: 0,
+                        transition: { duration: 0.38, ease: [0.22, 1, 0.36, 1] }
+                      },
+                      exit: { opacity: 0, transition: { duration: 0.08 } }
+                    }}
                     key={product.id}
                     className="group relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col hover:border-black dark:hover:border-white transition-all duration-300 hover:shadow-xl"
                   >
@@ -841,8 +859,8 @@ export default function StorefrontView({
                   </motion.div>
                 );
               })}
-            </AnimatePresence>
-          </motion.div>
+            </motion.div>
+          </AnimatePresence>
         )}
       </main>
 
