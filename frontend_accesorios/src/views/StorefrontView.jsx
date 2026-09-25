@@ -865,12 +865,26 @@ export default function StorefrontView({
       </main>
 
       {/* ─── MODAL DETALLE DE PRODUCTO (Lookbook View) ────────────────────── */}
-      {activeModalProduct && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div
-            className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
-            onClick={e => e.stopPropagation()}
+      <AnimatePresence>
+        {activeModalProduct && (
+          <motion.div
+            key="product-modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={() => setActiveModalProduct(null)}
           >
+            <motion.div
+              key="product-modal-panel"
+              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+              className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+              onClick={e => e.stopPropagation()}
+            >
             {/* Botón Cerrar */}
             <button
               onClick={() => setActiveModalProduct(null)}
@@ -1004,9 +1018,10 @@ export default function StorefrontView({
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ─── CARRITO & CHECKOUT DRAWER (Optimizado para Paraguay) ──────────── */}
       <AnimatePresence>
