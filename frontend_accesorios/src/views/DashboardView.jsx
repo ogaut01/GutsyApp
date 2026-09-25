@@ -11,6 +11,7 @@ import {
   fetchDashboardStats, fetchGastos, createGasto,
   fetchVentas, deleteVenta, updateConfiguracion
 } from '../services/api';
+import { formatGsInput, parseGsInput } from '../currency';
 import SalesHistoryView from './SalesHistoryView';
 import ExpensesView from './ExpensesView';
 
@@ -20,7 +21,7 @@ const PERIODOS = [
 ];
 
 const CATEGORIAS_GASTO = [
-  { id: 'ADS', label: 'Publicidad & Meta Ads (Instagram/TikTok)' },
+  { id: 'ADS', label: 'Publicidad' },
   { id: 'ENV', label: 'Delivery & Envíos Locales' },
   { id: 'EMP', label: 'Empaques, Cajas & Bolsas' },
   { id: 'HER', label: 'Insumos de Grabado Láser & Herramientas' },
@@ -71,9 +72,9 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
   const handleOpenEditMetas = () => {
     if (stats?.punto_equilibrio_meta) {
       setMetasForm({
-        meta_deuda_mensual_pyg: stats.punto_equilibrio_meta.cuota_deudas ?? 1332000,
-        meta_ads_mensual_pyg: stats.punto_equilibrio_meta.meta_ads ?? 800000,
-        meta_sueldo_libre_pyg: stats.punto_equilibrio_meta.sueldo_libre ?? 800000,
+        meta_deuda_mensual_pyg: formatGsInput(stats.punto_equilibrio_meta.cuota_deudas ?? 1332000),
+        meta_ads_mensual_pyg: formatGsInput(stats.punto_equilibrio_meta.meta_ads ?? 800000),
+        meta_sueldo_libre_pyg: formatGsInput(stats.punto_equilibrio_meta.sueldo_libre ?? 800000),
         margen_sugerido_porcentaje: stats.punto_equilibrio_meta.margen_comercial_pct ?? 60,
       });
     }
@@ -85,9 +86,9 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
     try {
       setSavingMetas(true);
       await updateConfiguracion({
-        meta_deuda_mensual_pyg: parseInt(metasForm.meta_deuda_mensual_pyg, 10) || 0,
-        meta_ads_mensual_pyg: parseInt(metasForm.meta_ads_mensual_pyg, 10) || 0,
-        meta_sueldo_libre_pyg: parseInt(metasForm.meta_sueldo_libre_pyg, 10) || 0,
+        meta_deuda_mensual_pyg: parseGsInput(metasForm.meta_deuda_mensual_pyg),
+        meta_ads_mensual_pyg: parseGsInput(metasForm.meta_ads_mensual_pyg),
+        meta_sueldo_libre_pyg: parseGsInput(metasForm.meta_sueldo_libre_pyg),
         margen_sugerido_porcentaje: parseInt(metasForm.margen_sugerido_porcentaje, 10) || 60,
       });
       setShowMetasModal(false);
@@ -110,14 +111,8 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
         params.periodo = periodo;
       }
 
-      const [statsData, gastosData, ventasData] = await Promise.all([
-        fetchDashboardStats(params),
-        fetchGastos(),
-        fetchVentas(),
-      ]);
+      const statsData = await fetchDashboardStats(params);
       setStats(statsData);
-      setGastos(gastosData);
-      setVentas(ventasData);
     } catch (err) {
       console.error('Error cargando métricas:', err);
     } finally {
@@ -143,7 +138,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
     try {
       await createGasto({
         categoria: categoriaGasto,
-        monto_pyg: parseInt(montoGasto),
+        monto_pyg: parseGsInput(montoGasto),
         descripcion: descGasto,
       });
       setShowGastoModal(false);
@@ -500,10 +495,10 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
                   </span>
                 </div>
                 <p className="hidden sm:block text-xs text-stone-500 dark:text-zinc-400 mt-0.5">
-                  Obligaciones: <b className="text-stone-700 dark:text-zinc-200">Deudas ({formatGs(stats.punto_equilibrio_meta.cuota_deudas)})</b> + <b className="text-stone-700 dark:text-zinc-200">Meta Ads ({formatGs(stats.punto_equilibrio_meta.meta_ads)})</b> + <b className="text-stone-900 dark:text-white font-bold">Meta Libre ({formatGs(stats.punto_equilibrio_meta.sueldo_libre)})</b>
+                  Obligaciones: <b className="text-stone-700 dark:text-zinc-200">Deudas ({formatGs(stats.punto_equilibrio_meta.cuota_deudas)})</b> + <b className="text-stone-700 dark:text-zinc-200">Gastos Reales ({formatGs(stats.punto_equilibrio_meta.gastos_reales_mes_actual)})</b> + <b className="text-stone-900 dark:text-white font-bold">Meta Libre ({formatGs(stats.punto_equilibrio_meta.sueldo_libre)})</b>
                 </p>
                 <p className="sm:hidden text-[11px] text-stone-500 dark:text-zinc-400 mt-0.5">
-                  Equilibrio: <b className="text-stone-700 dark:text-zinc-200">{formatGs(stats.punto_equilibrio_meta.costos_fijos_mes)}</b>
+                  Equilibrio: <b className="text-stone-700 dark:text-zinc-200">{formatGs(stats.punto_equilibrio_meta.costos_fijos_mes)}</b> (Gastos: {formatGs(stats.punto_equilibrio_meta.gastos_reales_mes_actual)})
                 </p>
               </div>
             </div>
@@ -514,7 +509,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
                 <div className="px-3 py-1.5 rounded-2xl bg-neutral-100 dark:bg-zinc-800 border border-neutral-300 dark:border-zinc-700 text-stone-800 dark:text-zinc-200 text-xs font-bold flex items-center gap-1.5">
                   <Scale className="w-4 h-4 text-rose-500 dark:text-rose-400 animate-pulse" />
                   <span className="sm:hidden">Faltan {formatGs(stats.punto_equilibrio_meta.faltante_equilibrio)}</span>
-                  <span className="hidden sm:inline">Cubriendo Costos Fijos (Faltan {formatGs(stats.punto_equilibrio_meta.faltante_equilibrio)})</span>
+                  <span className="hidden sm:inline">Cubriendo Costos y Deudas (Faltan {formatGs(stats.punto_equilibrio_meta.faltante_equilibrio)})</span>
                 </div>
               )}
               {stats.punto_equilibrio_meta.estado_meta === 'EQUILIBRIO_ALCANZADO' && (
@@ -547,7 +542,8 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="font-bold text-stone-700 dark:text-zinc-300">
-                Ganancia Bruta este mes: <b className="text-stone-900 dark:text-white text-sm font-black">{formatGs(stats.punto_equilibrio_meta.ganancia_bruta_mes_actual)}</b>
+                Ganancia Neta Real este mes: <b className="text-stone-900 dark:text-white text-sm font-black">{formatGs(stats.punto_equilibrio_meta.ganancia_neta_mes_actual)}</b>
+                <span className="hidden sm:inline text-stone-400 dark:text-zinc-500 font-normal ml-1.5">(Bruta: {formatGs(stats.punto_equilibrio_meta.ganancia_bruta_mes_actual)} − Gastos: {formatGs(stats.punto_equilibrio_meta.gastos_reales_mes_actual)})</span>
               </span>
               <span className="font-mono font-bold text-stone-900 dark:text-white">
                 {stats.punto_equilibrio_meta.pct_meta_real}% de la Meta
@@ -559,8 +555,8 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               {/* Marcador Punto de Equilibrio */}
               <div
                 className="absolute top-0 bottom-0 w-0.5 bg-neutral-500 dark:bg-zinc-400 z-10"
-                style={{ left: `${stats.punto_equilibrio_meta.meta_ganancia_bruta > 0 ? (stats.punto_equilibrio_meta.costos_fijos_mes / stats.punto_equilibrio_meta.meta_ganancia_bruta) * 100 : 0}%` }}
-                title="Punto de Equilibrio (Deudas + Ads)"
+                style={{ left: `${stats.punto_equilibrio_meta.meta_neta_objetivo > 0 ? (stats.punto_equilibrio_meta.cuota_deudas / stats.punto_equilibrio_meta.meta_neta_objetivo) * 100 : 0}%` }}
+                title="Punto de Equilibrio (Deudas cubiertas con Ganancia Neta)"
               />
               <div
                 className={`h-full rounded-full transition-all duration-700 ${
@@ -570,7 +566,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
                     ? 'bg-black dark:bg-white'
                     : 'bg-neutral-800 dark:bg-zinc-300'
                 }`}
-                style={{ width: `${Math.min(100, Math.max(3, stats.punto_equilibrio_meta.pct_meta))}%` }}
+                style={{ width: `${Math.min(100, Math.max(stats.punto_equilibrio_meta.ganancia_neta_mes_actual > 0 ? 3 : 0, stats.punto_equilibrio_meta.pct_meta))}%` }}
               />
             </div>
 
@@ -578,12 +574,12 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
             <div className="flex items-center justify-between text-[11px] text-stone-500 dark:text-zinc-400 pt-1">
               <span>Gs. 0</span>
               <span className="font-medium text-center">
-                ⚖️ Punto de Equilibrio: <b>{formatGs(stats.punto_equilibrio_meta.costos_fijos_mes)}</b>
-                <span className="hidden sm:inline text-stone-400 dark:text-zinc-500"> (Ventas: {formatGs(stats.punto_equilibrio_meta.ventas_punto_equilibrio)})</span>
+                ⚖️ Equilibrio: <b>{formatGs(stats.punto_equilibrio_meta.cuota_deudas)}</b> en neto
+                <span className="hidden sm:inline text-stone-400 dark:text-zinc-500"> (Ventas req.: {formatGs(stats.punto_equilibrio_meta.ventas_punto_equilibrio)})</span>
               </span>
               <span className="font-bold text-stone-900 dark:text-white text-right">
-                🎯 Meta Total: {formatGs(stats.punto_equilibrio_meta.meta_ganancia_bruta)}
-                <span className="hidden sm:inline text-stone-400 dark:text-zinc-500"> (Ventas: {formatGs(stats.punto_equilibrio_meta.ventas_meta_mensual)})</span>
+                🎯 Meta Total: {formatGs(stats.punto_equilibrio_meta.meta_neta_objetivo)} en neto
+                <span className="hidden sm:inline text-stone-400 dark:text-zinc-500"> (Ventas req.: {formatGs(stats.punto_equilibrio_meta.ventas_meta_mensual)})</span>
               </span>
             </div>
           </div>
@@ -599,11 +595,11 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
             </div>
 
             <div className="bg-neutral-50 dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-2xl p-3">
-              <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider block">Presupuesto Meta Ads</span>
-              <span className="text-sm font-black text-stone-900 dark:text-white mt-0.5 block">
-                {formatGs(stats.punto_equilibrio_meta.meta_ads)}
+              <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider block">Gastos Reales del Mes</span>
+              <span className="text-sm font-black text-amber-600 dark:text-amber-400 mt-0.5 block">
+                {formatGs(stats.punto_equilibrio_meta.gastos_reales_mes_actual)}
               </span>
-              <span className="text-[10px] text-stone-400 dark:text-zinc-500">Pauta publicitaria / mes</span>
+              <span className="text-[10px] text-stone-400 dark:text-zinc-500">Publicidad, empaques, fletes</span>
             </div>
 
             <div className="bg-neutral-50 dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-2xl p-3">
@@ -619,7 +615,7 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               <span className="text-sm font-black text-stone-900 dark:text-white mt-0.5 block">
                 {formatGs(stats.punto_equilibrio_meta.ventas_meta_mensual)}
               </span>
-              <span className="text-[10px] text-stone-400 dark:text-zinc-500">Facturación meta del mes</span>
+              <span className="text-[10px] text-stone-400 dark:text-zinc-500">Calculadas con gastos reales</span>
             </div>
           </div>
           <button
@@ -1275,11 +1271,12 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               <div>
                 <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Monto en Guaraníes (Gs.)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  placeholder="Ej: 50000"
+                  placeholder="Ej: 50.000"
                   value={montoGasto}
-                  onChange={(e) => setMontoGasto(e.target.value)}
+                  onChange={(e) => setMontoGasto(formatGsInput(e.target.value))}
                   className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm font-bold text-black dark:text-white focus:border-black dark:focus:border-white outline-none"
                 />
               </div>
@@ -1346,59 +1343,44 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
                 {/* Cuota de Deudas */}
                 <div>
                   <label className="text-xs font-bold text-stone-700 dark:text-zinc-300 block mb-1">
-                    💳 Cuota de Deudas (Gs./mes)
+                    💳 Cuota de Deudas Fijas (Gs./mes)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     required
-                    min="0"
                     value={metasForm.meta_deuda_mensual_pyg}
-                    onChange={(e) => setMetasForm({ ...metasForm, meta_deuda_mensual_pyg: e.target.value })}
+                    onChange={(e) => setMetasForm({ ...metasForm, meta_deuda_mensual_pyg: formatGsInput(e.target.value) })}
                     className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-zinc-950 border border-neutral-300 dark:border-zinc-800 rounded-xl text-sm font-black text-rose-600 dark:text-rose-400 focus:border-black dark:focus:border-white outline-none"
-                    placeholder="1332000"
+                    placeholder="1.332.000"
                   />
-                  <span className="text-[10px] text-stone-400 dark:text-zinc-500">Préstamos / Cuotas fijas</span>
-                </div>
-
-                {/* Presupuesto Meta Ads */}
-                <div>
-                  <label className="text-xs font-bold text-stone-700 dark:text-zinc-300 block mb-1">
-                    📢 Presupuesto Ads (Gs./mes)
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="0"
-                    value={metasForm.meta_ads_mensual_pyg}
-                    onChange={(e) => setMetasForm({ ...metasForm, meta_ads_mensual_pyg: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-zinc-950 border border-neutral-300 dark:border-zinc-800 rounded-xl text-sm font-black text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
-                    placeholder="800000"
-                  />
-                  <span className="text-[10px] text-stone-400 dark:text-zinc-500">Meta Ads / Pauta mensual</span>
+                  <span className="text-[10px] text-stone-400 dark:text-zinc-500">Préstamos / Compromisos fijos</span>
                 </div>
 
                 {/* Ganancia Libre Deseada */}
                 <div>
                   <label className="text-xs font-bold text-stone-700 dark:text-zinc-300 block mb-1">
-                    💰 Ganancia Libre (Gs./mes)
+                    💰 Sueldo Libre Deseado (Gs./mes)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     required
-                    min="0"
                     value={metasForm.meta_sueldo_libre_pyg}
-                    onChange={(e) => setMetasForm({ ...metasForm, meta_sueldo_libre_pyg: e.target.value })}
+                    onChange={(e) => setMetasForm({ ...metasForm, meta_sueldo_libre_pyg: formatGsInput(e.target.value) })}
                     className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-zinc-950 border border-neutral-300 dark:border-zinc-800 rounded-xl text-sm font-black text-emerald-600 dark:text-emerald-400 focus:border-black dark:focus:border-white outline-none"
-                    placeholder="800000"
+                    placeholder="800.000"
                   />
-                  <span className="text-[10px] text-stone-400 dark:text-zinc-500">Dinero libre en tu bolsillo</span>
+                  <span className="text-[10px] text-stone-400 dark:text-zinc-500">Dinero limpio a tu bolsillo</span>
                 </div>
+              </div>
 
-                {/* Margen Comercial Objetivo */}
-                <div>
-                  <label className="text-xs font-bold text-stone-700 dark:text-zinc-300 block mb-1">
-                    📈 Margen Objetivo (%)
-                  </label>
+              {/* Margen Comercial Objetivo */}
+              <div>
+                <label className="text-xs font-bold text-stone-700 dark:text-zinc-300 block mb-1">
+                  📈 Margen Objetivo de Venta (%)
+                </label>
+                <div className="flex items-center gap-3">
                   <input
                     type="number"
                     required
@@ -1406,20 +1388,18 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
                     max="90"
                     value={metasForm.margen_sugerido_porcentaje}
                     onChange={(e) => setMetasForm({ ...metasForm, margen_sugerido_porcentaje: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-zinc-950 border border-neutral-300 dark:border-zinc-800 rounded-xl text-sm font-black text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
-                    placeholder="60"
+                    className="w-28 px-3.5 py-2.5 bg-neutral-50 dark:bg-zinc-950 border border-neutral-300 dark:border-zinc-800 rounded-xl text-sm font-black text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                    placeholder="70"
                   />
-                  <div className="flex items-center justify-between mt-1 text-[10px]">
-                    <span className="text-stone-400 dark:text-zinc-500">
-                      Margen real de tu stock: <b className="text-emerald-600 dark:text-emerald-400 font-bold">{stockMarginPct}%</b>
-                    </span>
+                  <div className="text-xs text-stone-500 dark:text-zinc-400 flex items-center gap-2">
+                    <span>Margen real de stock: <b className="text-emerald-600 dark:text-emerald-400 font-bold">{stockMarginPct}%</b></span>
                     {stockMarginPct > 0 && Number(metasForm.margen_sugerido_porcentaje) !== stockMarginPct && (
                       <button
                         type="button"
                         onClick={() => setMetasForm({ ...metasForm, margen_sugerido_porcentaje: stockMarginPct })}
-                        className="font-bold text-amber-600 dark:text-amber-400 hover:underline"
+                        className="font-bold text-amber-600 dark:text-amber-400 hover:underline text-xs"
                       >
-                        Usar {stockMarginPct}%
+                        (Usar {stockMarginPct}%)
                       </button>
                     )}
                   </div>
@@ -1427,25 +1407,24 @@ export default function DashboardView({ onActionSuccess, onNavigate }) {
               </div>
 
               {/* Previsualización en Vivo de Cálculos */}
-              <div className="bg-neutral-100 dark:bg-zinc-950 p-3.5 rounded-2xl border border-neutral-200 dark:border-zinc-800 space-y-2 text-xs">
+              <div className="bg-neutral-100 dark:bg-zinc-950 p-4 rounded-2xl border border-neutral-200 dark:border-zinc-800 space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
-                  <span className="text-stone-600 dark:text-zinc-400">⚖️ Punto de Equilibrio (Costos Fijos):</span>
-                  <b className="text-stone-900 dark:text-white font-mono">
-                    {formatGs((Number(metasForm.meta_deuda_mensual_pyg) || 0) + (Number(metasForm.meta_ads_mensual_pyg) || 0))}
+                  <span className="text-stone-600 dark:text-zinc-400">🎯 Meta Neta a Generar (Deudas + Sueldo):</span>
+                  <b className="text-emerald-600 dark:text-emerald-400 font-mono text-sm font-black">
+                    {formatGs(parseGsInput(metasForm.meta_deuda_mensual_pyg) + parseGsInput(metasForm.meta_sueldo_libre_pyg))}
                   </b>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-stone-600 dark:text-zinc-400">🎯 Meta Total de Ganancia Bruta:</span>
-                  <b className="text-emerald-600 dark:text-emerald-400 font-mono">
-                    {formatGs((Number(metasForm.meta_deuda_mensual_pyg) || 0) + (Number(metasForm.meta_ads_mensual_pyg) || 0) + (Number(metasForm.meta_sueldo_libre_pyg) || 0))}
+
+                <div className="flex items-center justify-between pt-2 border-t border-neutral-200 dark:border-zinc-800">
+                  <span className="text-stone-800 dark:text-zinc-200 font-bold">🛒 Facturación Requerida al {metasForm.margen_sugerido_porcentaje}%:</span>
+                  <b className="text-stone-900 dark:text-white font-mono font-black text-sm">
+                    {formatGs(Math.round((parseGsInput(metasForm.meta_deuda_mensual_pyg) + parseGsInput(metasForm.meta_sueldo_libre_pyg)) / ((Number(metasForm.margen_sugerido_porcentaje) || 60) / 100)))}
                   </b>
                 </div>
-                <div className="flex items-center justify-between pt-1 border-t border-neutral-200 dark:border-zinc-800">
-                  <span className="text-stone-600 dark:text-zinc-400 font-bold">🛒 Ventas Necesarias al {metasForm.margen_sugerido_porcentaje}%:</span>
-                  <b className="text-stone-900 dark:text-white font-mono font-black">
-                    {formatGs(Math.round(((Number(metasForm.meta_deuda_mensual_pyg) || 0) + (Number(metasForm.meta_ads_mensual_pyg) || 0) + (Number(metasForm.meta_sueldo_libre_pyg) || 0)) / ((Number(metasForm.margen_sugerido_porcentaje) || 60) / 100)))}
-                  </b>
-                </div>
+
+                <p className="text-[10px] text-stone-400 dark:text-zinc-500 pt-1 leading-relaxed">
+                  💡 <i>Nota: Los gastos operativos (publicidad, delivery, empaques) se registran en vivo en la pestaña <b>Gastos</b> y se descuentan automáticamente de tu avance.</i>
+                </p>
               </div>
 
               <div className="flex gap-2 pt-2">

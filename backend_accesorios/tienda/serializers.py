@@ -34,6 +34,7 @@ class MaterialSerializer(serializers.ModelSerializer):
 class ProveedorSerializer(serializers.ModelSerializer):
     plataforma_nombre = serializers.CharField(source='plataforma.nombre', read_only=True)
     plataforma_pais = serializers.CharField(source='plataforma.get_pais_origen_display', read_only=True)
+    calificacion_calidad = serializers.IntegerField(required=False, allow_null=True, min_value=1, max_value=5)
 
     class Meta:
         model = Proveedor
@@ -138,11 +139,20 @@ class ProductoSerializer(serializers.ModelSerializer):
         return 'Sin asignar'
 
     def get_proveedores_historial(self, obj):
-        from .models import ItemLote
-        items = ItemLote.objects.filter(producto=obj).select_related('proveedor_historico', 'lote').order_by('-lote__fecha_creacion')
+        items = getattr(obj, 'prefetched_itemlotes', None)
+        if items is None:
+            if hasattr(obj, 'itemlote_set'):
+                items = list(obj.itemlote_set.all())
+            else:
+                items = []
+
         historial = []
         for item in items:
-            nombre_prov = item.proveedor_historico.nombre if item.proveedor_historico else (item.producto.proveedor_real.nombre if item.producto.proveedor_real else 'Proveedor')
+            if not item.lote:
+                continue
+            nombre_prov = item.proveedor_historico.nombre if item.proveedor_historico else (
+                obj.proveedor_real.nombre if hasattr(obj, 'proveedor_real') and obj.proveedor_real else 'Proveedor'
+            )
             historial.append({
                 'lote_id': item.lote.id,
                 'lote_nombre': item.lote.nombre_referencia or f'Lote #{item.lote.id}',
@@ -213,9 +223,28 @@ class VentaCreateSerializer(serializers.ModelSerializer):
         items_data = validated_data.pop('items')
         
         with transaction.atomic():
+            cliente = validated_data.get('cliente')
+            cliente_nombre = (validated_data.get('cliente_nombre') or '').strip()
+            cliente_telefono = (validated_data.get('cliente_telefono') or '').strip()
+
+            # Si se escribió el nombre del cliente pero no se seleccionó de la lista,
+            # registrarlo automáticamente en la base de datos de Clientes:
+            if not cliente and cliente_nombre:
+                if cliente_telefono:
+                    cliente, _ = Cliente.objects.get_or_create(
+                        telefono=cliente_telefono,
+                        defaults={'nombre': cliente_nombre}
+                    )
+                else:
+                    cliente, _ = Cliente.objects.get_or_create(
+                        nombre__iexact=cliente_nombre,
+                        defaults={'nombre': cliente_nombre}
+                    )
+                validated_data['cliente'] = cliente
+
             venta = Venta.objects.create(**validated_data)
             
-            # Si tiene cliente asignado pero no cliente_nombre/telefono, sincronizar snapshot
+            # Sincronizar snapshot de nombre y teléfono en la venta
             if venta.cliente:
                 if not venta.cliente_nombre:
                     venta.cliente_nombre = venta.cliente.nombre

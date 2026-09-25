@@ -183,10 +183,10 @@ export default function App() {
 
         {/* Contenido Principal */}
         <main className="flex-1 w-full">
-          {loading && productos.length === 0 ? (
+          {loading && productos.length === 0 && (activeTab === 'pos' || activeTab === 'inventory') ? (
             <div className="flex flex-col items-center justify-center py-32 text-zinc-500 text-xs">
               <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
-              <span>Cargando sistema de accesorios...</span>
+              <span>Cargando catálogo de accesorios...</span>
             </div>
           ) : (
             <>

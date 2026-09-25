@@ -50,9 +50,15 @@ const EMPTY_PROVEEDOR_FORM = {
   plataforma: '',
   nombre: '',
   contacto: '',
-  calificacion_calidad: 5,
+  calificacion_calidad: '',
   activo: true,
 };
+
+function parseCalificacionCalidad(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const n = parseInt(value, 10);
+  return Number.isInteger(n) && n >= 1 && n <= 5 ? n : null;
+}
 
 const EMPTY_MATERIAL_FORM = {
   nombre: '',
@@ -363,7 +369,7 @@ export default function SettingsView({ onSyncSuccess }) {
         plataforma: item.plataforma || (item.plataforma_id || ''),
         nombre: item.nombre || '',
         contacto: item.contacto || '',
-        calificacion_calidad: item.calificacion_calidad || 5,
+        calificacion_calidad: item.calificacion_calidad ?? '',
         activo: item.activo ?? true,
       });
     } else if (tipo === 'material') {
@@ -423,7 +429,7 @@ export default function SettingsView({ onSyncSuccess }) {
           plataforma: form.plataforma ? parseInt(form.plataforma) : null,
           nombre: form.nombre,
           contacto: form.contacto || '',
-          calificacion_calidad: parseInt(form.calificacion_calidad) || 5,
+          calificacion_calidad: parseCalificacionCalidad(form.calificacion_calidad),
           activo: form.activo ?? true,
         };
         if (editingId) await updateProveedor(editingId, payload);
@@ -609,17 +615,23 @@ export default function SettingsView({ onSyncSuccess }) {
                   </div>
 
                   <div className="flex items-center gap-1 mt-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`w-3.5 h-3.5 ${
-                          star <= (prov.calificacion_calidad || 5)
-                            ? 'text-amber-400 fill-amber-400'
-                            : 'text-stone-300 dark:text-zinc-700'
-                        }`}
-                      />
-                    ))}
-                    <span className="text-[10px] text-stone-500 dark:text-zinc-400 ml-1">Calidad</span>
+                    {parseCalificacionCalidad(prov.calificacion_calidad) ? (
+                      <>
+                        {[1, 2, 3, 4, 5].map((star) => (
+                          <Star
+                            key={star}
+                            className={`w-3.5 h-3.5 ${
+                              star <= prov.calificacion_calidad
+                                ? 'text-amber-400 fill-amber-400'
+                                : 'text-stone-300 dark:text-zinc-700'
+                            }`}
+                          />
+                        ))}
+                        <span className="text-[10px] text-stone-500 dark:text-zinc-400 ml-1">Calidad</span>
+                      </>
+                    ) : (
+                      <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">⏳ Pendiente de evaluación</span>
+                    )}
                   </div>
                 </div>
 
@@ -869,7 +881,7 @@ export default function SettingsView({ onSyncSuccess }) {
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className={`grid ${editingId ? 'grid-cols-2' : 'grid-cols-1'} gap-2`}>
                     <div>
                       <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Plataforma</label>
                       <select
@@ -884,21 +896,33 @@ export default function SettingsView({ onSyncSuccess }) {
                       </select>
                     </div>
 
-                    <div>
-                      <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Calidad (1 a 5 ⭐)</label>
-                      <select
-                        value={form.calificacion_calidad}
-                        onChange={(e) => setForm({ ...form, calificacion_calidad: e.target.value })}
-                        className="w-full px-3 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-xs text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
-                      >
-                        <option value={5}>⭐⭐⭐⭐⭐ (Excelente - 5)</option>
-                        <option value={4}>⭐⭐⭐⭐ (Muy buena - 4)</option>
-                        <option value={3}>⭐⭐⭐ (Regular - 3)</option>
-                        <option value={2}>⭐⭐ (Baja - 2)</option>
-                        <option value={1}>⭐ (Mala - 1)</option>
-                      </select>
-                    </div>
+                    {/* Solo mostrar calificación al EDITAR, no al crear un proveedor nuevo */}
+                    {editingId && (
+                      <div>
+                        <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Calidad (opcional)</label>
+                        <select
+                          value={form.calificacion_calidad === null || form.calificacion_calidad === undefined ? '' : form.calificacion_calidad}
+                          onChange={(e) => setForm({ ...form, calificacion_calidad: e.target.value })}
+                          className="w-full px-3 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-xs text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                        >
+                          <option value="">Sin calificar</option>
+                          <option value={5}>⭐⭐⭐⭐⭐ (Excelente - 5)</option>
+                          <option value={4}>⭐⭐⭐⭐ (Muy buena - 4)</option>
+                          <option value={3}>⭐⭐⭐ (Regular - 3)</option>
+                          <option value={2}>⭐⭐ (Baja - 2)</option>
+                          <option value={1}>⭐ (Mala - 1)</option>
+                        </select>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Nota informativa al crear nuevo proveedor */}
+                  {!editingId && (
+                    <div className="flex items-start gap-2 p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                      <Sparkles className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-[10px] text-amber-300/80">La calificación de calidad se podrá agregar después, cuando hayas recibido y revisado los productos de este proveedor.</span>
+                    </div>
+                  )}
 
                   <div>
                     <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">WhatsApp / Enlace a la tienda / Contacto</label>

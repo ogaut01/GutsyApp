@@ -69,12 +69,13 @@ class ProveedorReal(models.Model):
         verbose_name="Contacto / WhatsApp / Enlace"
     )
 
-    # Calidad del producto (1-5 estrellas)
+    # Calidad del producto (1-5 estrellas). Vacío hasta evaluar mercadería recibida.
     calificacion_calidad = models.IntegerField(
-        default=3,
+        null=True,
+        blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
         verbose_name="Calificación de Calidad (1-5)",
-        help_text="Promedio de calificaciones de calidad del producto (1=muy mala, 5=excelente)"
+        help_text="Opcional. Completar cuando ya hayas recibido y evaluado mercadería de este proveedor (1=muy mala, 5=excelente)."
     )
 
     # Métricas de rendimiento (se actualizan automáticamente)

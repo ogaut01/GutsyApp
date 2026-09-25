@@ -105,7 +105,14 @@ class MaterialViewSet(viewsets.ModelViewSet):
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
-    queryset = Producto.objects.filter(activo=True).prefetch_related('variantes', 'materiales')
+    queryset = Producto.objects.filter(activo=True).select_related(
+        'proveedor_real'
+    ).prefetch_related(
+        'variantes',
+        'materiales',
+        'itemlote_set__lote',
+        'itemlote_set__proveedor_historico'
+    )
     serializer_class = ProductoSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ['nombre', 'variantes__sku', 'variantes__codigo_barras']
@@ -494,9 +501,9 @@ def dashboard_stats(request):
         fecha_fin_prev = fecha_inicio
         periodo_label = "Últimos 30 días"
 
-    # 2. Métricas del Período Actual
-    ventas_curr = Venta.objects.filter(fecha_venta__range=(fecha_inicio, fecha_fin))
-    ventas_prev = Venta.objects.filter(fecha_venta__range=(fecha_inicio_prev, fecha_fin_prev))
+    # 2. Métricas del Período Actual (Evaluadas en memoria para evitar múltiples viajes a la BD)
+    ventas_curr = list(Venta.objects.filter(fecha_venta__range=(fecha_inicio, fecha_fin)))
+    ventas_prev = list(Venta.objects.filter(fecha_venta__range=(fecha_inicio_prev, fecha_fin_prev)))
 
     facturacion_bruta_curr = sum(v.total_cobrado for v in ventas_curr)
     facturacion_bruta_prev = sum(v.total_cobrado for v in ventas_prev)
@@ -508,8 +515,8 @@ def dashboard_stats(request):
     ganancia_bruta_curr = facturacion_neta_curr - costo_mercaderia_curr
     ganancia_bruta_prev = facturacion_neta_prev - costo_mercaderia_prev
 
-    gastos_curr = Gasto.objects.filter(fecha__range=(fecha_inicio.date(), fecha_fin.date()))
-    gastos_prev = Gasto.objects.filter(fecha__range=(fecha_inicio_prev.date(), fecha_fin_prev.date()))
+    gastos_curr = list(Gasto.objects.filter(fecha__range=(fecha_inicio.date(), fecha_fin.date())))
+    gastos_prev = list(Gasto.objects.filter(fecha__range=(fecha_inicio_prev.date(), fecha_fin_prev.date())))
     total_gastos_curr = sum(g.monto_pyg for g in gastos_curr)
     total_gastos_prev = sum(g.monto_pyg for g in gastos_prev)
 
@@ -531,10 +538,10 @@ def dashboard_stats(request):
     diff_margen_puntos = round(margen_neto_pct_curr - margen_neto_pct_prev, 1)
 
     # 3. Inventario Físico & Valorización
-    variantes_activas = VarianteProducto.objects.filter(
+    variantes_activas = list(VarianteProducto.objects.filter(
         activo=True,
         producto__activo=True,
-    ).select_related('producto')
+    ).select_related('producto'))
     total_unidades_stock = sum(v.stock for v in variantes_activas)
     valor_inventario_costo = sum(v.stock * (v.producto.costo_pyg or 0) for v in variantes_activas)
     valor_inventario_venta = sum(v.stock * (v.producto.precio_venta or 0) for v in variantes_activas)
@@ -572,34 +579,43 @@ def dashboard_stats(request):
         1 for stock_total in stock_por_producto.values() if stock_total == 0
     )
 
-    # Detección de productos sin movimiento (sin ventas en los últimos 45 días)
+    # Detección de productos sin movimiento (sin ventas en los últimos 45 días) en 1 sola consulta
     hace_45_dias = ahora - timedelta(days=45)
     detalles_recientes_var_ids = set(DetalleVenta.objects.filter(venta__fecha_venta__gte=hace_45_dias).values_list('variante_id', flat=True))
+    
+    cand_sin_mov = [v for v in variantes_activas if v.stock > 0 and v.id not in detalles_recientes_var_ids]
+    cand_ids = [v.id for v in cand_sin_mov]
+    
+    # Pre-obtener última venta por variante en 1 sola query
+    ultimas_ventas = {}
+    if cand_ids:
+        for dv in DetalleVenta.objects.filter(variante_id__in=cand_ids).select_related('venta').order_by('venta__fecha_venta'):
+            ultimas_ventas[dv.variante_id] = dv.venta.fecha_venta
+
     productos_sin_movimiento = []
-    for v in variantes_activas:
-        if v.stock > 0 and v.id not in detalles_recientes_var_ids:
-            ultima_venta = DetalleVenta.objects.filter(variante=v).order_by('-venta__fecha_venta').first()
-            dias_sin_vender = (ahora.date() - ultima_venta.venta.fecha_venta.date()).days if ultima_venta else 90
-            productos_sin_movimiento.append({
-                'variante_id': v.id,
-                'producto_id': v.producto.id,
-                'producto': v.producto.nombre,
-                'color': v.color,
-                'talle': v.talle_medida,
-                'stock': v.stock,
-                'dias_sin_venta': dias_sin_vender
-            })
+    for v in cand_sin_mov:
+        f_ult = ultimas_ventas.get(v.id)
+        dias_sin_vender = (ahora.date() - f_ult.date()).days if f_ult else 90
+        productos_sin_movimiento.append({
+            'variante_id': v.id,
+            'producto_id': v.producto.id,
+            'producto': v.producto.nombre,
+            'color': v.color,
+            'talle': v.talle_medida,
+            'stock': v.stock,
+            'dias_sin_venta': dias_sin_vender
+        })
     productos_sin_movimiento.sort(key=lambda x: x['dias_sin_venta'], reverse=True)
 
-    # 4. Serie Temporal para el Gráfico
-    # Si el período es <= 31 días -> agrupar por día. Si es mayor -> agrupar por intervalos/semanas.
+    # 4. Serie Temporal para el Gráfico (Calculada 100% en memoria)
     intervalos_dias = 1 if duracion_dias <= 31 else (7 if duracion_dias <= 120 else 30)
     chart_data = []
     step_cursor = fecha_inicio
     while step_cursor <= fecha_fin:
         step_end = min(step_cursor + timedelta(days=intervalos_dias), fecha_fin)
-        v_step = Venta.objects.filter(fecha_venta__range=(step_cursor, step_end))
-        g_step = Gasto.objects.filter(fecha__range=(step_cursor.date(), step_end.date()))
+        
+        v_step = [v for v in ventas_curr if step_cursor <= v.fecha_venta <= step_end]
+        g_step = [g for g in gastos_curr if step_cursor.date() <= g.fecha <= step_end.date()]
         
         fac_step = sum(v.total_cobrado for v in v_step)
         cost_step = sum(v.costo_total_pedido for v in v_step)
@@ -612,12 +628,13 @@ def dashboard_stats(request):
             'fecha': step_cursor.strftime('%Y-%m-%d'),
             'facturacion': fac_step,
             'ganancia': max(0, gan_step),
-            'pedidos': v_step.count(),
+            'pedidos': len(v_step),
         })
         step_cursor += timedelta(days=intervalos_dias)
 
     # 5. Rankings de Productos (Más vendidos vs Más rentables)
-    detalles_periodo = DetalleVenta.objects.filter(venta__in=ventas_curr).select_related('variante__producto')
+    ventas_curr_ids = [v.id for v in ventas_curr]
+    detalles_periodo = DetalleVenta.objects.filter(venta_id__in=ventas_curr_ids).select_related('variante__producto')
     ventas_por_producto = {}
     ventas_por_variante = {}
 
@@ -668,7 +685,7 @@ def dashboard_stats(request):
         p['margen_pct'] = round((p['ganancia'] / p['facturacion'] * 100), 1) if p['facturacion'] > 0 else 0.0
 
     # 6. Estadísticas de Ventas & Ticket Promedio
-    total_pedidos_curr = ventas_curr.count()
+    total_pedidos_curr = len(ventas_curr)
     unidades_vendidas_curr = sum(d.cantidad for d in detalles_periodo)
     ticket_promedio = int(round(facturacion_neta_curr / total_pedidos_curr)) if total_pedidos_curr > 0 else 0
     unidades_por_pedido = round(unidades_vendidas_curr / total_pedidos_curr, 1) if total_pedidos_curr > 0 else 0.0
@@ -690,8 +707,8 @@ def dashboard_stats(request):
 
     # 7. Importaciones & Lotes
     config = Configuracion.get_config()
-    lotes_todos = LoteImportacion.objects.all().select_related('courier').order_by('-fecha_creacion')
-    lotes_en_transito = lotes_todos.exclude(estado__in=['RECIBIDO', 'CANCELADO'])
+    lotes_todos = LoteImportacion.objects.all().select_related('courier').prefetch_related('itemlote_set__producto').order_by('-fecha_creacion')
+    lotes_en_transito = [l for l in lotes_todos if l.estado not in ['RECIBIDO', 'CANCELADO']]
     
     # Calcular valor mercadería en tránsito (sumando ítems asociados)
     valor_transito_fob_pyg = 0
@@ -800,41 +817,42 @@ def dashboard_stats(request):
     meta_ads = config.meta_ads_mensual_pyg if config.meta_ads_mensual_pyg is not None else 800000
     sueldo_libre = config.meta_sueldo_libre_pyg if config.meta_sueldo_libre_pyg is not None else 800000
 
-    costos_fijos_mes = cuota_deudas + meta_ads  # Gs. 2.132.000
-    meta_ganancia_bruta = costos_fijos_mes + sueldo_libre  # Gs. 2.932.000
+    # Ventas y ganancia del mes calendario actual
+    primer_dia_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    ventas_mes_actual = list(Venta.objects.filter(fecha_venta__gte=primer_dia_mes))
+    facturacion_mes_actual = sum(v.total_cobrado for v in ventas_mes_actual)
+    costos_mercaderia_mes_actual = sum(v.costo_total_pedido for v in ventas_mes_actual)
+    ganancia_bruta_mes_actual = facturacion_mes_actual - costos_mercaderia_mes_actual
+
+    gastos_mes_actual = list(Gasto.objects.filter(fecha__gte=primer_dia_mes.date()))
+    gastos_reales_mes_actual = sum(g.monto_pyg for g in gastos_mes_actual)
+    ganancia_neta_mes_actual = ganancia_bruta_mes_actual - gastos_reales_mes_actual
 
     # Margen comercial promedio (default 60% = 0.60)
     margen_comercial_decimal = (config.margen_sugerido_porcentaje or 60) / 100.0
     if margen_comercial_decimal <= 0 or margen_comercial_decimal >= 1:
         margen_comercial_decimal = 0.60
 
-    # Punto de Equilibrio en Ventas (Gs.): Costos Fijos / Margen
-    ventas_punto_equilibrio = int(round(costos_fijos_mes / margen_comercial_decimal))  # ~3.553.333 Gs.
-    # Meta de Ventas Total (Gs.): Meta Ganancia Bruta / Margen
-    ventas_meta_mensual = int(round(meta_ganancia_bruta / margen_comercial_decimal))  # ~4.886.667 Gs.
+    # Meta Neta Objetivo: cubriendo las cuotas de deuda + tu sueldo libre en mano
+    meta_neta_objetivo = cuota_deudas + sueldo_libre
+    costos_totales_reales_mes = cuota_deudas + gastos_reales_mes_actual
 
-    # Ventas y ganancia del mes calendario actual
-    primer_dia_mes = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    ventas_mes_actual_qs = Venta.objects.filter(fecha_venta__gte=primer_dia_mes)
-    facturacion_mes_actual = sum(v.total_cobrado for v in ventas_mes_actual_qs)
-    costos_mercaderia_mes_actual = sum(v.costo_total_pedido for v in ventas_mes_actual_qs)
-    ganancia_bruta_mes_actual = facturacion_mes_actual - costos_mercaderia_mes_actual
+    # Ventas necesarias dinámicas (se recalculan con los gastos reales incurridos):
+    ventas_punto_equilibrio = int(round(costos_totales_reales_mes / margen_comercial_decimal)) if margen_comercial_decimal > 0 else 0
+    ventas_meta_mensual = int(round((costos_totales_reales_mes + sueldo_libre) / margen_comercial_decimal)) if margen_comercial_decimal > 0 else 0
 
-    gastos_mes_actual_qs = Gasto.objects.filter(fecha__gte=primer_dia_mes.date())
-    gastos_reales_mes_actual = sum(g.monto_pyg for g in gastos_mes_actual_qs)
-    ganancia_neta_mes_actual = ganancia_bruta_mes_actual - gastos_reales_mes_actual
+    # Progreso de meta y equilibrio basado en Ganancia Neta Real:
+    pct_meta = round((ganancia_neta_mes_actual / meta_neta_objetivo) * 100, 1) if meta_neta_objetivo > 0 else 0.0
+    pct_punto_equilibrio = round((ganancia_neta_mes_actual / cuota_deudas) * 100, 1) if cuota_deudas > 0 else (100.0 if ganancia_neta_mes_actual >= 0 else 0.0)
 
-    pct_meta = round((ganancia_bruta_mes_actual / meta_ganancia_bruta) * 100, 1) if meta_ganancia_bruta > 0 else 0.0
-    pct_punto_equilibrio = round((ganancia_bruta_mes_actual / costos_fijos_mes) * 100, 1) if costos_fijos_mes > 0 else 0.0
-
-    if ganancia_bruta_mes_actual < costos_fijos_mes:
+    if ganancia_neta_mes_actual < cuota_deudas:
         estado_meta = 'CUBRIENDO_COSTOS'
-        faltante_equilibrio = costos_fijos_mes - ganancia_bruta_mes_actual
-        faltante_meta = meta_ganancia_bruta - ganancia_bruta_mes_actual
-    elif ganancia_bruta_mes_actual < meta_ganancia_bruta:
+        faltante_equilibrio = max(0, cuota_deudas - ganancia_neta_mes_actual)
+        faltante_meta = max(0, meta_neta_objetivo - ganancia_neta_mes_actual)
+    elif ganancia_neta_mes_actual < meta_neta_objetivo:
         estado_meta = 'EQUILIBRIO_ALCANZADO'
         faltante_equilibrio = 0
-        faltante_meta = meta_ganancia_bruta - ganancia_bruta_mes_actual
+        faltante_meta = max(0, meta_neta_objetivo - ganancia_neta_mes_actual)
     else:
         estado_meta = 'META_SUPERADA'
         faltante_equilibrio = 0
@@ -844,8 +862,10 @@ def dashboard_stats(request):
         'cuota_deudas': cuota_deudas,
         'meta_ads': meta_ads,
         'sueldo_libre': sueldo_libre,
-        'costos_fijos_mes': costos_fijos_mes,
-        'meta_ganancia_bruta': meta_ganancia_bruta,
+        'costos_fijos_mes': cuota_deudas,
+        'costos_totales_reales_mes': costos_totales_reales_mes,
+        'meta_ganancia_bruta': meta_neta_objetivo,
+        'meta_neta_objetivo': meta_neta_objetivo,
         'margen_comercial_pct': int(margen_comercial_decimal * 100),
         'ventas_punto_equilibrio': ventas_punto_equilibrio,
         'ventas_meta_mensual': ventas_meta_mensual,
@@ -853,13 +873,13 @@ def dashboard_stats(request):
         'ganancia_bruta_mes_actual': ganancia_bruta_mes_actual,
         'gastos_reales_mes_actual': gastos_reales_mes_actual,
         'ganancia_neta_mes_actual': ganancia_neta_mes_actual,
-        'pct_meta': min(100.0, pct_meta),
+        'pct_meta': max(0.0, min(100.0, pct_meta)),
         'pct_meta_real': pct_meta,
-        'pct_punto_equilibrio': min(100.0, pct_punto_equilibrio),
+        'pct_punto_equilibrio': max(0.0, min(100.0, pct_punto_equilibrio)),
         'estado_meta': estado_meta,
         'faltante_equilibrio': faltante_equilibrio,
         'faltante_meta': faltante_meta,
-        'pedidos_mes_actual': ventas_mes_actual_qs.count()
+        'pedidos_mes_actual': len(ventas_mes_actual)
     }
 
     return Response({
@@ -905,7 +925,7 @@ def dashboard_stats(request):
             'desglose_pagos': desglose_pagos
         },
         'importaciones': {
-            'en_transito_count': lotes_en_transito.count(),
+            'en_transito_count': len(lotes_en_transito),
             'valor_mercaderia_transito_pyg': valor_transito_fob_pyg,
             'flete_estimado_transito_pyg': flete_estimado_transito_pyg,
             'lotes_recientes': lotes_recientes_data,

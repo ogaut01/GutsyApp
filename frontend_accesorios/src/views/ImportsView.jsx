@@ -9,6 +9,7 @@ import {
   fetchCouriers, fetchProveedores, fetchProductos, fetchConfiguracion,
   createItemLote, updateItemLote, deleteItemLote
 } from '../services/api';
+import { formatGsInput, parseGsInput, formatDecimalInput, parseDecimalInput } from '../currency';
 
 const STATUS_FLOW = ['COMPRADO', 'EN_CASILLA', 'EN_TRANSITO', 'EN_COURIER_PY', 'RECIBIDO'];
 
@@ -119,7 +120,7 @@ export default function ImportsView({ lotes = [], onReload }) {
   const handleOpenLiquidacion = (lote) => {
     setSelectedLote(lote);
     setPesoGramos(lote.peso_total_gramos || '');
-    setFletePyg(lote.costo_flete_total_pyg || '');
+    setFletePyg(formatGsInput(lote.costo_flete_total_pyg || ''));
   };
 
   const handleSaveLiquidacion = async (e) => {
@@ -130,7 +131,7 @@ export default function ImportsView({ lotes = [], onReload }) {
     try {
       await updateLoteFlete(selectedLote.id, {
         peso_total_gramos: parseInt(pesoGramos) || 0,
-        costo_flete_total_pyg: parseInt(fletePyg) || 0,
+        costo_flete_total_pyg: parseGsInput(fletePyg),
         estado: 'RECIBIDO',
       });
       setSelectedLote(null);
@@ -692,18 +693,18 @@ export default function ImportsView({ lotes = [], onReload }) {
                   <div>
                     <label className="text-[11px] text-stone-500 dark:text-zinc-400 block mb-1">Costo Unitario</label>
                     <input
-                      type="number"
-                      step="0.01"
+                      type="text"
+                      inputMode="decimal"
                       placeholder="0.00"
                       value={itemCostoFob}
-                      onChange={(e) => setItemCostoFob(e.target.value)}
+                      onChange={(e) => setItemCostoFob(formatDecimalInput(e.target.value))}
                       className="w-full px-2.5 py-2 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-xs text-black dark:text-white font-bold focus:border-black dark:focus:border-white outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Previsualización en Guaraníes */}
-                {parseFloat(itemCostoFob) > 0 && (
+                {parseDecimalInput(itemCostoFob) > 0 && (
                   <div className="pt-2 mt-1 border-t border-neutral-200 dark:border-zinc-800/80 flex items-center justify-between text-xs">
                     <span className="text-stone-400 dark:text-zinc-500 text-[11px]">Conversión estimada:</span>
                     <span className="font-bold text-emerald-400">
@@ -877,28 +878,29 @@ export default function ImportsView({ lotes = [], onReload }) {
               <div>
                 <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Flete Total Pagado al Courier / Encomienda (Gs.)</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  placeholder="Ej: 337500"
+                  placeholder="Ej: 337.500"
                   value={fletePyg}
-                  onChange={(e) => setFletePyg(e.target.value)}
+                  onChange={(e) => setFletePyg(formatGsInput(e.target.value))}
                   className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm font-bold text-black dark:text-white focus:border-black dark:focus:border-white outline-none"
                 />
               </div>
 
               {/* Cálculo en Vivo del Flete */}
-              {parseInt(pesoGramos) > 0 && parseInt(fletePyg) > 0 && (
+              {parseInt(pesoGramos) > 0 && parseGsInput(fletePyg) > 0 && (
                 <div className="p-3 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 rounded-2xl border border-neutral-200 dark:border-zinc-800 space-y-1 animate-in fade-in-50">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-stone-500 dark:text-zinc-400">Costo de flete por gramo:</span>
                     <span className="font-bold text-black dark:text-white">
-                      Gs. {Math.round(parseInt(fletePyg) / parseInt(pesoGramos)).toLocaleString('es-PY')} / g
+                      Gs. {Math.round(parseGsInput(fletePyg) / parseInt(pesoGramos)).toLocaleString('es-PY')} / g
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-stone-400 dark:text-zinc-500">
                     <span>Costo equivalente por kilo:</span>
                     <span className="text-stone-700 dark:text-zinc-300 font-semibold">
-                      Gs. {Math.round((parseInt(fletePyg) / parseInt(pesoGramos)) * 1000).toLocaleString('es-PY')} / kg
+                      Gs. {Math.round((parseGsInput(fletePyg) / parseInt(pesoGramos)) * 1000).toLocaleString('es-PY')} / kg
                     </span>
                   </div>
                 </div>

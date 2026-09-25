@@ -5,6 +5,7 @@ import {
   CreditCard, Users, UserPlus, Check
 } from 'lucide-react';
 import { createVenta, fetchClientes, createCliente } from '../services/api';
+import { formatGsInput, parseGsInput } from '../currency';
 
 export default function POSView({ productos = [], onSaleSuccess, cart, setCart, isCartOpen, setIsCartOpen }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -682,9 +683,10 @@ export default function POSView({ productos = [], onSaleSuccess, cart, setCart, 
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-[10px] text-stone-400 dark:text-zinc-500">Precio u.:</span>
                         <input
-                          type="number"
-                          value={item.unitPrice}
-                          onChange={(e) => handleUpdateCartPrice(item.variant.id, e.target.value)}
+                          type="text"
+                          inputMode="numeric"
+                          value={formatGsInput(item.unitPrice)}
+                          onChange={(e) => handleUpdateCartPrice(item.variant.id, parseGsInput(e.target.value))}
                           className="w-24 px-2 py-0.5 bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-[#d6cebf] dark:border-zinc-700 focus:border-black dark:focus:border-white rounded-lg text-xs font-bold text-black dark:text-white outline-none"
                         />
                         <span className="text-[10px] text-stone-400 dark:text-zinc-500 font-bold">
