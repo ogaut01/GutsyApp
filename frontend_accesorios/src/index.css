@@ -32,3 +32,12 @@ h1, h2, h3, .font-luxury-serif {
 ::-webkit-scrollbar-thumb:hover {
   background: #a3a3a390;
 }
+
+/* Ocultar barra de scroll nativa en todos los navegadores */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE y Edge */
+  scrollbar-width: none; /* Firefox */
+}

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import {
   ShoppingBag, Search, Sparkles, ShieldCheck, Droplets, Truck,
   Heart, X, Plus, Minus, Trash2, ArrowRight, CheckCircle2,
@@ -20,9 +21,9 @@ export const BANK_ACCOUNTS = [
     tipoAlias: 'Cédula de Identidad (C.I.)',
     tipoAliasBadge: 'C.I.',
     alias: '5554700',
-    titular: 'Jorge Sanabria / Gutsy',
+    titular: 'Osmar Jose Gauto Martinez',
     documento: '5.554.700',
-    cuenta: 'Cta. Digital ueno',
+    cuenta: '15782039',
     tipoCuenta: 'Caja de Ahorro',
   },
   {
@@ -32,37 +33,38 @@ export const BANK_ACCOUNTS = [
     tipoAlias: 'Correo Electrónico (Email)',
     tipoAliasBadge: 'Email',
     alias: 'ogautom01@gmail.com',
-    titular: 'Jorge Sanabria / Gutsy',
+    titular: 'Osmar Jose Gauto Martinez',
     documento: '5.554.700',
-    cuenta: '01-234567-89',
+    cuenta: '010045504404',
     tipoCuenta: 'Caja de Ahorro',
   },
   {
-    id: 'familiar',
-    name: 'Banco Familiar S.A.E.C.A.',
-    shortName: 'Banco Familiar',
+    id: 'Itau',
+    name: 'Banco Itaú Paraguay S.A.',
+    shortName: 'Banco Itaú',
     tipoAlias: 'Número de Celular',
     tipoAliasBadge: 'Celular',
     alias: '0986191356',
-    titular: 'Jorge Sanabria / Gutsy',
+    titular: 'Osmar Jose Gauto Martinez',
     documento: '5.554.700',
-    cuenta: '78-901234-56',
+    cuenta: '320568978',
     tipoCuenta: 'Caja de Ahorro',
   },
 ];
 
 // Categorías amigables para el cliente
-const STORE_CATEGORIES = [
+const ALL_STORE_CATEGORIES = [
   { id: 'ALL', label: 'Todos los Accesorios', icon: Gem },
   { id: 'AN', label: 'Anillos', icon: Tag },
   { id: 'CA', label: 'Cadenas', icon: Tag },
   { id: 'CO', label: 'Collares', icon: Tag },
   { id: 'PU', label: 'Pulseras & Brazaletes', icon: Tag },
   { id: 'AR', label: 'Aros & Aretes', icon: Tag },
-  { id: 'ST', label: 'Sets & Parejas', icon: Tag },
+  { id: 'ST', label: 'Sets & Combos', icon: Tag },
+  { id: 'PA', label: 'Parejas & Dúos', icon: Tag },
+  { id: 'LE', label: 'Lentes', icon: Tag },
   { id: 'TO', label: 'Tobilleras', icon: Tag },
   { id: 'DI', label: 'Dijes & Colgantes', icon: Tag },
-  { id: 'LE', label: 'Lentes & Gafas', icon: Tag },
   { id: 'OT', label: 'Otros', icon: Tag },
 ];
 
@@ -131,6 +133,35 @@ export default function StorefrontView({
   const STORE_WHATSAPP = '595983794353'; // Formato internacional
   const STORE_WHATSAPP_DISPLAY = '+595 983 794 353';
 
+  // Helper para identificar accesorios de parejas / dúos
+  const isCoupleProduct = (p) => {
+    if (p.categoria === 'PA') return true;
+    const n = (p.nombre || '').toLowerCase();
+    return (
+      n.includes('par ') ||
+      n.includes('par.') ||
+      n.includes('pareja') ||
+      n.includes('astronautas') ||
+      n.includes('deadpool') ||
+      n.includes('corazon y llave') ||
+      n.includes('chimuelo') ||
+      n.includes('eternal lock')
+    );
+  };
+
+  // Categorías activas (solo las que tienen productos con stock/activos cargados)
+  const activeCategories = useMemo(() => {
+    const existingCats = new Set();
+    productos.filter(p => p.activo !== false).forEach(p => {
+      if (isCoupleProduct(p)) {
+        existingCats.add('PA');
+      } else {
+        existingCats.add(p.categoria);
+      }
+    });
+    return ALL_STORE_CATEGORIES.filter(c => c.id === 'ALL' || existingCats.has(c.id));
+  }, [productos]);
+
   // ─── Filtrado de Productos ────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
     return productos.filter(product => {
@@ -145,8 +176,17 @@ export default function StorefrontView({
         product.materiales?.some(m => m.nombre?.toLowerCase().includes(term)) ||
         product.variantes?.some(v => v.color?.toLowerCase().includes(term) || v.sku?.toLowerCase().includes(term));
 
-      // Filtro por categoría
-      const matchCategory = selectedCategory === 'ALL' || product.categoria === selectedCategory;
+      // Filtro por categoría (reconoce Sets vs Parejas)
+      let matchCategory = true;
+      if (selectedCategory !== 'ALL') {
+        if (selectedCategory === 'PA') {
+          matchCategory = isCoupleProduct(product);
+        } else if (selectedCategory === 'ST') {
+          matchCategory = product.categoria === 'ST' && !isCoupleProduct(product);
+        } else {
+          matchCategory = product.categoria === selectedCategory && !isCoupleProduct(product);
+        }
+      }
 
       // Filtro por género
       const matchGender = selectedGender === 'ALL' || product.genero === selectedGender;
@@ -542,29 +582,40 @@ export default function StorefrontView({
       {/* ─── FILTROS Y CATEGORÍAS ────────────────────────────────────────── */}
       <section className="sticky top-20 z-20 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 py-3">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-col gap-3">
             {/* Scroll Horizontal de Categorías */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
-              {STORE_CATEGORIES.map(cat => {
-                const isActive = selectedCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all whitespace-nowrap flex-shrink-0 ${
-                      isActive
-                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm scale-105'
-                        : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-800'
-                    }`}
-                  >
-                    {cat.label}
-                  </button>
-                );
-              })}
+            <div className="relative w-full">
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-8">
+                {activeCategories.map(cat => {
+                   const isActive = selectedCategory === cat.id;
+                   return (
+                     <button
+                       key={cat.id}
+                       onClick={() => setSelectedCategory(cat.id)}
+                       className={`relative px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase transition-colors whitespace-nowrap flex-shrink-0 ${
+                         isActive
+                           ? 'text-white dark:text-black'
+                           : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-800'
+                       }`}
+                     >
+                       {isActive && (
+                         <motion.div
+                           layoutId="categoryActivePill"
+                           className="absolute inset-0 bg-black dark:bg-white rounded-full shadow-sm"
+                           transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                         />
+                       )}
+                       <span className="relative z-10">{cat.label}</span>
+                     </button>
+                   );
+                 })}
+              </div>
+              {/* Fade visual en el borde derecho para indicar scroll */}
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent z-10" />
             </div>
 
-            {/* Filtros Secundarios: Género y Orden */}
-            <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 text-xs">
+            {/* Filtros Secundarios: Género y Orden (Alineados a la izquierda) */}
+            <div className="flex items-center justify-start gap-2.5 flex-wrap text-xs">
               <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-full border border-zinc-200 dark:border-zinc-800">
                 {[
                   { id: 'ALL', label: 'Todos' },
@@ -575,13 +626,20 @@ export default function StorefrontView({
                   <button
                     key={g.id}
                     onClick={() => setSelectedGender(g.id)}
-                    className={`px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition text-[11px] ${
+                    className={`relative px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition-colors text-[11px] ${
                       selectedGender === g.id
-                        ? 'bg-white dark:bg-black text-black dark:text-white shadow-xs'
+                        ? 'text-black dark:text-white'
                         : 'text-zinc-500 hover:text-black dark:hover:text-white'
                     }`}
                   >
-                    {g.label}
+                    {selectedGender === g.id && (
+                      <motion.div
+                        layoutId="genderActivePill"
+                        className="absolute inset-0 bg-white dark:bg-black rounded-full shadow-xs"
+                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-10">{g.label}</span>
                   </button>
                 ))}
               </div>
@@ -607,7 +665,7 @@ export default function StorefrontView({
         <div className="flex items-center justify-between mb-6 pb-3 border-b border-zinc-200 dark:border-zinc-800">
           <div>
             <h2 className="text-lg font-bold tracking-wider uppercase font-serif">
-              {STORE_CATEGORIES.find(c => c.id === selectedCategory)?.label || 'Catálogo'}
+              {ALL_STORE_CATEGORIES.find(c => c.id === selectedCategory)?.label || 'Catálogo'}
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
               Mostrando {filteredProducts.length} modelo{filteredProducts.length !== 1 ? 's' : ''} disponibles
