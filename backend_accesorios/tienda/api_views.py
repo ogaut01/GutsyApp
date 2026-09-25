@@ -1,4 +1,5 @@
 from rest_framework import viewsets, status, filters
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated, AllowAny
 from rest_framework.decorators import action, api_view
 from rest_framework.response import Response
 from django.utils import timezone
@@ -102,6 +103,7 @@ class CourierViewSet(viewsets.ModelViewSet):
 class MaterialViewSet(viewsets.ModelViewSet):
     queryset = Material.objects.all()
     serializer_class = MaterialSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
@@ -115,6 +117,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
     )
     serializer_class = ProductoSerializer
     filter_backends = [filters.SearchFilter]
+    permission_classes = [IsAuthenticatedOrReadOnly]
     search_fields = ['nombre', 'variantes__sku', 'variantes__codigo_barras']
 
     def get_queryset(self):
@@ -132,7 +135,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
 
         return qs
 
-    @action(detail=True, methods=['post'], url_path='upload-foto')
+    @action(detail=True, methods=['post'], url_path='upload-foto', permission_classes=[IsAuthenticated])
     def upload_foto(self, request, pk=None):
         """Recibe una foto (multipart/form-data) y la guarda en imagen_archivo del producto."""
         producto = self.get_object()
@@ -176,7 +179,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-    @action(detail=False, methods=['get'], url_path='catalogo-unificado')
+    @action(detail=False, methods=['get'], url_path='catalogo-unificado', permission_classes=[AllowAny])
     def catalogo_unificado(self, request):
         """
         Endpoint que devuelve un catálogo unificado de productos agrupados por nombre comercial.
@@ -254,10 +257,11 @@ class ProductoViewSet(viewsets.ModelViewSet):
 class VarianteProductoViewSet(viewsets.ModelViewSet):
     queryset = VarianteProducto.objects.filter(activo=True).select_related('producto')
     serializer_class = VarianteProductoSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
     filter_backends = [filters.SearchFilter]
     search_fields = ['sku', 'codigo_barras', 'producto__nombre', 'color', 'talle_medida']
 
-    @action(detail=True, methods=['post'], url_path='upload-foto')
+    @action(detail=True, methods=['post'], url_path='upload-foto', permission_classes=[IsAuthenticated])
     def upload_foto(self, request, pk=None):
         """Guarda una foto optimizada exclusiva para esta variante."""
         variante = self.get_object()
