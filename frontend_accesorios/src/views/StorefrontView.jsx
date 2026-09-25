@@ -14,34 +14,40 @@ import { formatGsInput } from '../currency';
 // ============================================================================
 export const BANK_ACCOUNTS = [
   {
-    id: 'continental',
-    name: 'Banco Continental S.A.E.C.A.',
-    shortName: 'Continental',
-    titular: 'Jorge Sanabria / Gutsy', // ✏️ EDITAR: Nombre del Titular
-    documento: '5.123.456',            // ✏️ EDITAR: Nro. Cédula o RUC
-    cuenta: '01-234567-89',            // ✏️ EDITAR: Nro. de Cuenta
-    tipoCuenta: 'Caja de Ahorro',
-    alias: 'gutsy.conti',              // ✏️ EDITAR: Tu Alias SIPAP en Continental
-  },
-  {
     id: 'ueno',
     name: 'ueno bank',
     shortName: 'ueno bank',
-    titular: 'Jorge Sanabria / Gutsy', // ✏️ EDITAR: Nombre del Titular
-    documento: '5.123.456',            // ✏️ EDITAR: Nro. Cédula o RUC
-    cuenta: '12-345678-90',            // ✏️ EDITAR: Nro. de Cuenta
+    tipoAlias: 'Cédula de Identidad (C.I.)',
+    tipoAliasBadge: 'C.I.',
+    alias: '5554700',
+    titular: 'Jorge Sanabria / Gutsy',
+    documento: '5.554.700',
+    cuenta: 'Cta. Digital ueno',
     tipoCuenta: 'Caja de Ahorro',
-    alias: 'gutsy.ueno',               // ✏️ EDITAR: Tu Alias SIPAP en ueno
   },
   {
-    id: 'itau',
-    name: 'Banco Itaú Paraguay',
-    shortName: 'Banco Itaú',
-    titular: 'Jorge Sanabria / Gutsy', // ✏️ EDITAR: Nombre del Titular
-    documento: '5.123.456',            // ✏️ EDITAR: Nro. Cédula o RUC
-    cuenta: '98-765432-10',            // ✏️ EDITAR: Nro. de Cuenta
+    id: 'continental',
+    name: 'Banco Continental S.A.E.C.A.',
+    shortName: 'Continental',
+    tipoAlias: 'Correo Electrónico (Email)',
+    tipoAliasBadge: 'Email',
+    alias: 'ogautom01@gmail.com',
+    titular: 'Jorge Sanabria / Gutsy',
+    documento: '5.554.700',
+    cuenta: '01-234567-89',
     tipoCuenta: 'Caja de Ahorro',
-    alias: 'gutsy.itau',               // ✏️ EDITAR: Tu Alias SIPAP en Itaú
+  },
+  {
+    id: 'familiar',
+    name: 'Banco Familiar S.A.E.C.A.',
+    shortName: 'Banco Familiar',
+    tipoAlias: 'Número de Celular',
+    tipoAliasBadge: 'Celular',
+    alias: '0986191356',
+    titular: 'Jorge Sanabria / Gutsy',
+    documento: '5.554.700',
+    cuenta: '78-901234-56',
+    tipoCuenta: 'Caja de Ahorro',
   },
 ];
 
@@ -1230,24 +1236,28 @@ export default function StorefrontView({
                             </div>
                           </div>
 
-                          {/* Destacado Especial para ALIAS (Copia en 1 Clic) */}
-                          <div className="p-2.5 rounded-xl bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2 shadow-xs">
-                            <div className="min-w-0">
-                              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 block">
-                                Alias SIPAP ({selectedBank.shortName})
-                              </span>
-                              <span className="text-sm font-black text-black dark:text-white font-mono truncate block">
+                          {/* Destacado Especial para TIPO DE ALIAS & ALIAS (Copia en 1 Clic del dato limpio) */}
+                          <div className="p-3 rounded-2xl bg-white dark:bg-black border-2 border-black dark:border-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
+                            <div className="min-w-0 space-y-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white text-[10px] font-bold tracking-wider uppercase border border-zinc-300 dark:border-zinc-700">
+                                  Tipo: {selectedBank.tipoAlias}
+                                </span>
+                                <span className="text-[10px] text-zinc-400 font-sans">({selectedBank.shortName})</span>
+                              </div>
+                              <div className="text-base sm:text-lg font-black text-black dark:text-white font-mono tracking-tight select-all">
                                 {selectedBank.alias}
-                              </span>
+                              </div>
                             </div>
 
                             <button
                               type="button"
                               onClick={() => copyAliasOnly(selectedBank.alias)}
-                              className="px-3 py-1.5 rounded-lg bg-black text-white dark:bg-white dark:text-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm active:scale-95 transition flex-shrink-0"
+                              className="px-4 py-2 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition flex-shrink-0"
+                              title="Copiar solo el alias"
                             >
-                              {copiedAlias ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                              <span>{copiedAlias ? '¡Copiado!' : 'Copiar Alias'}</span>
+                              {copiedAlias ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                              <span>{copiedAlias ? '¡Alias Copiado!' : 'Copiar Alias'}</span>
                             </button>
                           </div>
 
@@ -1412,7 +1422,7 @@ export default function StorefrontView({
             <h4 className="font-bold uppercase tracking-wider text-zinc-300">Medios de Pago</h4>
             <ul className="space-y-1.5 text-zinc-400 text-[11px]">
               <li>• Link ContiMóvil (Crédito / Débito)</li>
-              <li>• Transferencias SIPAP (Continental, ueno, Itaú)</li>
+              <li>• Transferencias SIPAP (ueno bank, Continental, Familiar)</li>
               <li>• Código QR Bancario</li>
               <li>• POS Bancard & Efectivo (Villarrica)</li>
             </ul>
