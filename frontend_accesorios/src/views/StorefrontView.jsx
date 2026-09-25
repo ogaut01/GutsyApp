@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, Search, Sparkles, ShieldCheck, Droplets, Truck,
   Heart, X, Plus, Minus, Trash2, ArrowRight, CheckCircle2,
@@ -708,134 +708,141 @@ export default function StorefrontView({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {filteredProducts.map(product => {
-              const imageSrc = product.imagen_url_completa || product.imagen_url || null;
-              const hasStock = (product.stock_total || 0) > 0;
-              const isLowStock = hasStock && (product.stock_total || 0) <= 3;
-              const variants = product.variantes || [];
-              const hasMultipleVariants = variants.length > 1;
+          <motion.div layout className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            <AnimatePresence mode="popLayout">
+              {filteredProducts.map((product, index) => {
+                const imageSrc = product.imagen_url_completa || product.imagen_url || null;
+                const hasStock = (product.stock_total || 0) > 0;
+                const isLowStock = hasStock && (product.stock_total || 0) <= 3;
+                const variants = product.variantes || [];
+                const hasMultipleVariants = variants.length > 1;
 
-              return (
-                <div
-                  key={product.id}
-                  className="group relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col hover:border-black dark:hover:border-white transition-all duration-300 hover:shadow-xl"
-                >
-                  {/* Contenedor de Imagen */}
-                  <div
-                    className="relative aspect-square bg-zinc-100 dark:bg-zinc-900 overflow-hidden cursor-pointer"
-                    onClick={() => handleOpenProductModal(product)}
+                return (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, y: 14 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.96 }}
+                    transition={{ duration: 0.22, delay: Math.min(index * 0.02, 0.2) }}
+                    key={product.id}
+                    className="group relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col hover:border-black dark:hover:border-white transition-all duration-300 hover:shadow-xl"
                   >
-                    {imageSrc ? (
-                      <img
-                        src={imageSrc}
-                        alt={product.nombre}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 p-4 text-center">
-                        <Gem className="w-10 h-10 stroke-[1.5] mb-2" />
-                        <span className="text-[10px] uppercase font-bold tracking-widest">GUTSY</span>
-                      </div>
-                    )}
-
-                    {/* Badges Flotantes */}
-                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
-                      {isLowStock && (
-                        <span className="px-2 py-0.5 rounded-md bg-black text-white dark:bg-white dark:text-black text-[9px] font-black tracking-wider uppercase shadow-sm">
-                          ¡Últimas {product.stock_total}!
-                        </span>
-                      )}
-                      {!hasStock && (
-                        <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[9px] font-black tracking-wider uppercase shadow-sm">
-                          Agotado
-                        </span>
-                      )}
-                      {product.genero_display && (
-                        <span className="px-2 py-0.5 rounded-md bg-white/90 dark:bg-black/90 backdrop-blur-sm text-black dark:text-white text-[9px] font-bold tracking-wider uppercase border border-zinc-200 dark:border-zinc-800">
-                          {product.genero_display}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Botón Vista Rápida en hover */}
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenProductModal(product);
-                      }}
-                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white dark:bg-black text-black dark:text-white shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200"
-                      title="Ver detalle"
+                    {/* Contenedor de Imagen */}
+                    <div
+                      className="relative aspect-square bg-zinc-100 dark:bg-zinc-900 overflow-hidden cursor-pointer"
+                      onClick={() => handleOpenProductModal(product)}
                     >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                  </div>
+                      {imageSrc ? (
+                        <img
+                          src={imageSrc}
+                          alt={product.nombre}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 p-4 text-center">
+                          <Gem className="w-10 h-10 stroke-[1.5] mb-2" />
+                          <span className="text-[10px] uppercase font-bold tracking-widest">GUTSY</span>
+                        </div>
+                      )}
 
-                  {/* Información del Producto */}
-                  <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between">
-                    <div>
-                      {/* Categoría & Materiales */}
-                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                        <span>{product.categoria_display || 'Accesorio'}</span>
-                        {product.materiales?.length > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="truncate">{product.materiales[0].nombre}</span>
-                          </>
+                      {/* Badges Flotantes */}
+                      <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+                        {isLowStock && (
+                          <span className="px-2 py-0.5 rounded-md bg-black text-white dark:bg-white dark:text-black text-[9px] font-black tracking-wider uppercase shadow-sm">
+                            ¡Últimas {product.stock_total}!
+                          </span>
+                        )}
+                        {!hasStock && (
+                          <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[9px] font-black tracking-wider uppercase shadow-sm">
+                            Agotado
+                          </span>
+                        )}
+                        {product.genero_display && (
+                          <span className="px-2 py-0.5 rounded-md bg-white/90 dark:bg-black/90 backdrop-blur-sm text-black dark:text-white text-[9px] font-bold tracking-wider uppercase border border-zinc-200 dark:border-zinc-800">
+                            {product.genero_display}
+                          </span>
                         )}
                       </div>
 
-                      {/* Nombre */}
-                      <h3
-                        onClick={() => handleOpenProductModal(product)}
-                        className="text-xs sm:text-sm font-bold text-black dark:text-white tracking-wide uppercase line-clamp-2 cursor-pointer hover:underline"
-                      >
-                        {product.nombre}
-                      </h3>
-
-                      {/* Variantes mini preview */}
-                      {hasMultipleVariants && (
-                        <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-                          {variants.map((v, i) => (
-                            <span
-                              key={v.id || i}
-                              className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold"
-                            >
-                              {v.color || v.talle_medida || `Var ${i+1}`}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Precio y Botón de Compra */}
-                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between gap-2">
-                      <div>
-                        <span className="text-[10px] text-zinc-400 uppercase font-medium block leading-none">Precio</span>
-                        <span className="text-xs sm:text-sm font-black text-black dark:text-white tracking-wider">
-                          Gs. {formatGsInput(product.precio_venta || 0)}
-                        </span>
-                      </div>
-
+                      {/* Botón Vista Rápida en hover */}
                       <button
-                        onClick={() => handleOpenProductModal(product)}
-                        disabled={!hasStock}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 ${
-                          hasStock
-                            ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 shadow-sm'
-                            : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed'
-                        }`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenProductModal(product);
+                        }}
+                        className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white dark:bg-black text-black dark:text-white shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200"
+                        title="Ver detalle"
                       >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Comprar</span>
+                        <Eye className="w-4 h-4" />
                       </button>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+
+                    {/* Información del Producto */}
+                    <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between">
+                      <div>
+                        {/* Categoría & Materiales */}
+                        <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                          <span>{product.categoria_display || 'Accesorio'}</span>
+                          {product.materiales?.length > 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="truncate">{product.materiales[0].nombre}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Nombre */}
+                        <h3
+                          onClick={() => handleOpenProductModal(product)}
+                          className="text-xs sm:text-sm font-bold text-black dark:text-white tracking-wide uppercase line-clamp-2 cursor-pointer hover:underline"
+                        >
+                          {product.nombre}
+                        </h3>
+
+                        {/* Variantes mini preview */}
+                        {hasMultipleVariants && (
+                          <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                            {variants.map((v, i) => (
+                              <span
+                                key={v.id || i}
+                                className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold"
+                              >
+                                {v.color || v.talle_medida || `Var ${i+1}`}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Precio y Botón de Compra */}
+                      <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] text-zinc-400 uppercase font-medium block leading-none">Precio</span>
+                          <span className="text-xs sm:text-sm font-black text-black dark:text-white tracking-wider">
+                            Gs. {formatGsInput(product.precio_venta || 0)}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => handleOpenProductModal(product)}
+                          disabled={!hasStock}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 ${
+                            hasStock
+                              ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 shadow-sm'
+                              : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed'
+                          }`}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Comprar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+          </motion.div>
         )}
       </main>
 
