@@ -8,6 +8,43 @@ import {
 } from 'lucide-react';
 import { formatGsInput } from '../currency';
 
+// ============================================================================
+// 🏦 CONFIGURACIÓN DE CUENTAS BANCARIAS & ALIAS (EDITABLE)
+// Modifica aquí los datos de tus cuentas bancarias vinculadas:
+// ============================================================================
+export const BANK_ACCOUNTS = [
+  {
+    id: 'continental',
+    name: 'Banco Continental S.A.E.C.A.',
+    shortName: 'Continental',
+    titular: 'Jorge Sanabria / Gutsy', // ✏️ EDITAR: Nombre del Titular
+    documento: '5.123.456',            // ✏️ EDITAR: Nro. Cédula o RUC
+    cuenta: '01-234567-89',            // ✏️ EDITAR: Nro. de Cuenta
+    tipoCuenta: 'Caja de Ahorro',
+    alias: 'gutsy.conti',              // ✏️ EDITAR: Tu Alias SIPAP en Continental
+  },
+  {
+    id: 'ueno',
+    name: 'ueno bank',
+    shortName: 'ueno bank',
+    titular: 'Jorge Sanabria / Gutsy', // ✏️ EDITAR: Nombre del Titular
+    documento: '5.123.456',            // ✏️ EDITAR: Nro. Cédula o RUC
+    cuenta: '12-345678-90',            // ✏️ EDITAR: Nro. de Cuenta
+    tipoCuenta: 'Caja de Ahorro',
+    alias: 'gutsy.ueno',               // ✏️ EDITAR: Tu Alias SIPAP en ueno
+  },
+  {
+    id: 'itau',
+    name: 'Banco Itaú Paraguay',
+    shortName: 'Banco Itaú',
+    titular: 'Jorge Sanabria / Gutsy', // ✏️ EDITAR: Nombre del Titular
+    documento: '5.123.456',            // ✏️ EDITAR: Nro. Cédula o RUC
+    cuenta: '98-765432-10',            // ✏️ EDITAR: Nro. de Cuenta
+    tipoCuenta: 'Caja de Ahorro',
+    alias: 'gutsy.itau',               // ✏️ EDITAR: Tu Alias SIPAP en Itaú
+  },
+];
+
 // Categorías amigables para el cliente
 const STORE_CATEGORIES = [
   { id: 'ALL', label: 'Todos los Accesorios', icon: Gem },
@@ -66,6 +103,12 @@ export default function StorefrontView({
   // Formulario de Envío y Checkout
   const [shippingType, setShippingType] = useState('villarrica'); // 'villarrica', 'pickup', 'interior'
   const [paymentMethod, setPaymentMethod] = useState('contimovil'); // 'contimovil', 'transferencia', 'qr', 'contraentrega'
+  const [selectedBankId, setSelectedBankId] = useState('continental'); // 'continental', 'ueno', 'itau'
+  
+  const selectedBank = useMemo(() => {
+    return BANK_ACCOUNTS.find(b => b.id === selectedBankId) || BANK_ACCOUNTS[0];
+  }, [selectedBankId]);
+
   const [customerName, setCustomerName] = useState('');
   const [customerDoc, setCustomerDoc] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -73,6 +116,7 @@ export default function StorefrontView({
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
+  const [copiedAlias, setCopiedAlias] = useState(false);
   const [copiedBank, setCopiedBank] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderSentSuccess, setOrderSentSuccess] = useState(false);
@@ -80,16 +124,6 @@ export default function StorefrontView({
   // Teléfono WhatsApp oficial de Gutsy (Paraguay)
   const STORE_WHATSAPP = '595983794353'; // Formato internacional
   const STORE_WHATSAPP_DISPLAY = '+595 983 794 353';
-
-  // Datos Bancarios SIPAP de Gutsy
-  const BANK_INFO = {
-    banco: 'Banco Continental S.A.E.C.A.',
-    titular: 'Jorge Sanabria / Gutsy',
-    documento: '5.123.456',
-    cuenta: '01-234567-89',
-    alias: 'gutsy.accesorios',
-    tipo: 'Cuenta Corriente / Ahorro'
-  };
 
   // ─── Filtrado de Productos ────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
@@ -209,13 +243,20 @@ export default function StorefrontView({
     setCart(prev => prev.filter(i => i.key !== key));
   };
 
-  const copyBankDetails = () => {
+  const copyAliasOnly = (alias) => {
+    navigator.clipboard.writeText(alias);
+    setCopiedAlias(true);
+    setTimeout(() => setCopiedAlias(false), 2200);
+  };
+
+  const copyBankDetails = (bank) => {
     const text = `🏦 *DATOS BANCARIOS PARA TRANSFERENCIA - GUTSY*
-• Banco: ${BANK_INFO.banco}
-• Titular: ${BANK_INFO.titular}
-• C.I. / RUC: ${BANK_INFO.documento}
-• Nro. de Cuenta: ${BANK_INFO.cuenta}
-• Alias SIPAP: ${BANK_INFO.alias}`;
+• Banco: ${bank.name}
+• Titular: ${bank.titular}
+• C.I. / RUC: ${bank.documento}
+• Nro. de Cuenta: ${bank.cuenta}
+• Tipo de Cuenta: ${bank.tipoCuenta}
+• Alias SIPAP: ${bank.alias}`;
     navigator.clipboard.writeText(text);
     setCopiedBank(true);
     setTimeout(() => setCopiedBank(false), 2500);
@@ -247,10 +288,15 @@ export default function StorefrontView({
 
     // Mapeo de Método de Pago
     let paymentLabel = '';
-    if (paymentMethod === 'contimovil') paymentLabel = '💳 Link de Pago ContiMóvil (Tarjeta Crédito/Débito)';
-    else if (paymentMethod === 'transferencia') paymentLabel = '🏦 Transferencia Bancaria SIPAP (Envío comprobante)';
-    else if (paymentMethod === 'qr') paymentLabel = '📲 Pago con QR Bancario';
-    else if (paymentMethod === 'contraentrega') paymentLabel = '💵 Pago Contra Entrega en Villarrica (Efectivo / POS Bancard)';
+    if (paymentMethod === 'contimovil') {
+      paymentLabel = '💳 Link de Pago ContiMóvil (Tarjeta Crédito/Débito)';
+    } else if (paymentMethod === 'transferencia') {
+      paymentLabel = `🏦 Transferencia SIPAP (${selectedBank.shortName} - Alias: ${selectedBank.alias})`;
+    } else if (paymentMethod === 'qr') {
+      paymentLabel = '📲 Pago con QR Bancario';
+    } else if (paymentMethod === 'contraentrega') {
+      paymentLabel = '💵 Pago Contra Entrega en Villarrica (Efectivo / POS Bancard)';
+    }
 
     // Mapeo de Tipo de Envío
     let shippingLabel = '';
@@ -279,14 +325,14 @@ export default function StorefrontView({
       message += `🛵 *COSTO DELIVERY:* Gs. ${formatGsInput(deliveryCost)}\n`;
     }
     message += `💰 *TOTAL A PAGAR:* *Gs. ${formatGsInput(cartTotal)}*\n`;
-    message += `💳 *MEDIO DE PAGO SELECCIONADO:* ${paymentLabel}\n\n`;
+    message += `💳 *MEDIO DE PAGO:* ${paymentLabel}\n\n`;
 
     if (paymentMethod === 'contimovil') {
       message += `👉 *Solicitud:* Por favor envíenme el link de ContiMóvil para abonar con mi tarjeta.\n`;
     } else if (paymentMethod === 'qr') {
       message += `👉 *Solicitud:* Por favor envíenme el código QR con el monto de Gs. ${formatGsInput(cartTotal)} para pagar.\n`;
     } else if (paymentMethod === 'transferencia') {
-      message += `👉 *Aviso:* Ya tengo los datos para la transferencia y les adjuntaré el comprobante enseguida.\n`;
+      message += `👉 *Aviso:* Ya tengo los datos de transferencia para *${selectedBank.shortName}* (Alias: ${selectedBank.alias}) y les adjuntaré el comprobante enseguida.\n`;
     }
 
     message += `\n¡Muchas gracias! Quedo a la espera de su confirmación. 😊`;
@@ -1149,37 +1195,85 @@ export default function StorefrontView({
                           <div>
                             <div className="font-bold">Transferencia Bancaria (SIPAP)</div>
                             <div className="text-[10px] opacity-80">
-                              Transferencia bancaria directa con envío de comprobante
+                              Transferencia directa a Continental, ueno bank o Itaú
                             </div>
                           </div>
                         </div>
                       </button>
 
-                      {/* Caja Desplegable con Datos Bancarios */}
+                      {/* CAJA DESPLEGABLE CON SELECTOR DE 3 BANCOS & COPIA DE ALIAS */}
                       {paymentMethod === 'transferencia' && (
-                        <div className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs animate-in fade-in">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold uppercase tracking-wider text-[10px] text-zinc-500">
-                              Datos Bancarios para Transferir:
+                        <div className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs animate-in fade-in">
+                          {/* Pestañas de Bancos */}
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">
+                              Selecciona tu Banco de preferencia:
                             </span>
+                            <div className="grid grid-cols-3 gap-1.5">
+                              {BANK_ACCOUNTS.map(bank => {
+                                const isBankActive = selectedBankId === bank.id;
+                                return (
+                                  <button
+                                    key={bank.id}
+                                    type="button"
+                                    onClick={() => setSelectedBankId(bank.id)}
+                                    className={`py-2 px-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider transition text-center truncate ${
+                                      isBankActive
+                                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                                        : 'bg-white dark:bg-black text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:text-black dark:hover:text-white'
+                                    }`}
+                                  >
+                                    {bank.shortName}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          {/* Destacado Especial para ALIAS (Copia en 1 Clic) */}
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-between gap-2 shadow-xs">
+                            <div className="min-w-0">
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 block">
+                                Alias SIPAP ({selectedBank.shortName})
+                              </span>
+                              <span className="text-sm font-black text-black dark:text-white font-mono truncate block">
+                                {selectedBank.alias}
+                              </span>
+                            </div>
+
                             <button
-                              onClick={copyBankDetails}
-                              className="px-2.5 py-1 rounded-lg bg-black text-white dark:bg-white dark:text-black text-[10px] font-bold flex items-center gap-1 shadow-sm active:scale-95 transition"
+                              type="button"
+                              onClick={() => copyAliasOnly(selectedBank.alias)}
+                              className="px-3 py-1.5 rounded-lg bg-black text-white dark:bg-white dark:text-black text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm active:scale-95 transition flex-shrink-0"
                             >
-                              {copiedBank ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                              <span>{copiedBank ? '¡Copiado!' : 'Copiar Datos'}</span>
+                              {copiedAlias ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{copiedAlias ? '¡Copiado!' : 'Copiar Alias'}</span>
                             </button>
                           </div>
-                          <div className="text-[11px] space-y-0.5 text-zinc-700 dark:text-zinc-300 font-mono">
-                            <div><strong>Banco:</strong> {BANK_INFO.banco}</div>
-                            <div><strong>Titular:</strong> {BANK_INFO.titular}</div>
-                            <div><strong>C.I. / RUC:</strong> {BANK_INFO.documento}</div>
-                            <div><strong>Nro. Cuenta:</strong> {BANK_INFO.cuenta}</div>
-                            <div><strong>Alias SIPAP:</strong> {BANK_INFO.alias}</div>
+
+                          {/* Todos los detalles de la cuenta */}
+                          <div className="text-[11px] space-y-0.5 text-zinc-700 dark:text-zinc-300 font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                            <div><strong>Banco:</strong> {selectedBank.name}</div>
+                            <div><strong>Titular:</strong> {selectedBank.titular}</div>
+                            <div><strong>C.I. / RUC:</strong> {selectedBank.documento}</div>
+                            <div><strong>Nro. Cuenta:</strong> {selectedBank.cuenta}</div>
+                            <div><strong>Tipo:</strong> {selectedBank.tipoCuenta}</div>
                           </div>
-                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">
-                            * Al confirmar tu pedido, podrás adjuntar tu comprobante por WhatsApp.
-                          </p>
+
+                          {/* Botón secundario para copiar todos los datos */}
+                          <div className="flex items-center justify-between pt-1">
+                            <span className="text-[10px] text-zinc-500 italic">
+                              * Adjuntarás tu comprobante por WhatsApp.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => copyBankDetails(selectedBank)}
+                              className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white underline flex items-center gap-1"
+                            >
+                              {copiedBank ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                              <span>{copiedBank ? '¡Datos Copiados!' : 'Copiar todo el bloque'}</span>
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -1197,7 +1291,7 @@ export default function StorefrontView({
                           <div>
                             <div className="font-bold">Pago con QR Bancario</div>
                             <div className="text-[10px] opacity-80">
-                              Te enviamos el código QR con el monto exacto para escanear
+                              Te enviamos el código QR con el monto exacto de tu pedido para escanearlo y pagar desde tu app bancaria
                             </div>
                           </div>
                         </div>
@@ -1218,7 +1312,7 @@ export default function StorefrontView({
                             <div>
                               <div className="font-bold">Pago Contra Entrega (Villarrica)</div>
                               <div className="text-[10px] opacity-80">
-                                Pagas al recibir en efectivo o con tarjeta en nuestro POS Bancard
+                                Pagas al recibir en efectivo o con tu tarjeta en nuestro POS Bancard
                               </div>
                             </div>
                           </div>
@@ -1318,7 +1412,7 @@ export default function StorefrontView({
             <h4 className="font-bold uppercase tracking-wider text-zinc-300">Medios de Pago</h4>
             <ul className="space-y-1.5 text-zinc-400 text-[11px]">
               <li>• Link ContiMóvil (Crédito / Débito)</li>
-              <li>• Transferencias Bancarias SIPAP</li>
+              <li>• Transferencias SIPAP (Continental, ueno, Itaú)</li>
               <li>• Código QR Bancario</li>
               <li>• POS Bancard & Efectivo (Villarrica)</li>
             </ul>
