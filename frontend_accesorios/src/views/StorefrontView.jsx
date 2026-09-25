@@ -508,9 +508,23 @@ export default function StorefrontView({
               <ShoppingBag className="w-4 h-4" />
               <span className="hidden sm:inline">Mi Carrito</span>
               {totalCartItems > 0 && (
-                <span className="px-2 py-0.5 text-[10px] bg-white text-black dark:bg-black dark:text-white rounded-full font-black">
-                  {totalCartItems}
-                </span>
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={totalCartItems}
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.5, opacity: 0 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 500,
+                      damping: 15,
+                      mass: 0.6,
+                    }}
+                    className="px-2 py-0.5 text-[10px] bg-white text-black dark:bg-black dark:text-white rounded-full font-black"
+                  >
+                    {totalCartItems}
+                  </motion.span>
+                </AnimatePresence>
               )}
             </button>
           </div>
