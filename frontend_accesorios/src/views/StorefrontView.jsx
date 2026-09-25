@@ -1,0 +1,1369 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import {
+  ShoppingBag, Search, Sparkles, ShieldCheck, Droplets, Truck,
+  Heart, X, Plus, Minus, Trash2, ArrowRight, CheckCircle2,
+  Copy, Check, MessageCircle, ChevronRight, Phone, Instagram,
+  MapPin, CreditCard, QrCode, Building2, Banknote, Filter,
+  Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw
+} from 'lucide-react';
+import { formatGsInput } from '../currency';
+
+// Categorías amigables para el cliente
+const STORE_CATEGORIES = [
+  { id: 'ALL', label: 'Todos los Accesorios', icon: Gem },
+  { id: 'AN', label: 'Anillos', icon: Tag },
+  { id: 'CA', label: 'Cadenas', icon: Tag },
+  { id: 'CO', label: 'Collares', icon: Tag },
+  { id: 'PU', label: 'Pulseras & Brazaletes', icon: Tag },
+  { id: 'AR', label: 'Aros & Aretes', icon: Tag },
+  { id: 'ST', label: 'Sets & Parejas', icon: Tag },
+  { id: 'TO', label: 'Tobilleras', icon: Tag },
+  { id: 'DI', label: 'Dijes & Colgantes', icon: Tag },
+  { id: 'LE', label: 'Lentes & Gafas', icon: Tag },
+  { id: 'OT', label: 'Otros', icon: Tag },
+];
+
+export default function StorefrontView({
+  productos = [],
+  onOpenAdminLogin,
+  user,
+  onGoToAdmin,
+  theme,
+  onToggleTheme
+}) {
+  // Filtros y Búsqueda
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [selectedGender, setSelectedGender] = useState('ALL');
+  const [sortBy, setSortBy] = useState('featured'); // 'featured', 'price-asc', 'price-desc', 'name'
+
+  // Carrito de compras público (persistido en localStorage)
+  const [cart, setCart] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gutsy_public_cart');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [cartBounce, setCartBounce] = useState(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('gutsy_public_cart', JSON.stringify(cart));
+    } catch (e) {
+      console.warn('No se pudo guardar el carrito:', e);
+    }
+  }, [cart]);
+
+  // Modal de Detalle de Producto
+  const [activeModalProduct, setActiveModalProduct] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null);
+  const [modalQuantity, setModalQuantity] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+
+  // Formulario de Envío y Checkout
+  const [shippingType, setShippingType] = useState('villarrica'); // 'villarrica', 'pickup', 'interior'
+  const [paymentMethod, setPaymentMethod] = useState('contimovil'); // 'contimovil', 'transferencia', 'qr', 'contraentrega'
+  const [customerName, setCustomerName] = useState('');
+  const [customerDoc, setCustomerDoc] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerCity, setCustomerCity] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerNotes, setCustomerNotes] = useState('');
+
+  const [copiedBank, setCopiedBank] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [orderSentSuccess, setOrderSentSuccess] = useState(false);
+
+  // Teléfono WhatsApp oficial de Gutsy (Paraguay)
+  const STORE_WHATSAPP = '595983794353'; // Formato internacional
+  const STORE_WHATSAPP_DISPLAY = '+595 983 794 353';
+
+  // Datos Bancarios SIPAP de Gutsy
+  const BANK_INFO = {
+    banco: 'Banco Continental S.A.E.C.A.',
+    titular: 'Jorge Sanabria / Gutsy',
+    documento: '5.123.456',
+    cuenta: '01-234567-89',
+    alias: 'gutsy.accesorios',
+    tipo: 'Cuenta Corriente / Ahorro'
+  };
+
+  // ─── Filtrado de Productos ────────────────────────────────────────────────
+  const filteredProducts = useMemo(() => {
+    return productos.filter(product => {
+      // Ocultar productos inactivos
+      if (product.activo === false) return false;
+
+      // Filtro por búsqueda
+      const term = searchTerm.toLowerCase().trim();
+      const matchSearch = !term ||
+        product.nombre?.toLowerCase().includes(term) ||
+        product.categoria_display?.toLowerCase().includes(term) ||
+        product.materiales?.some(m => m.nombre?.toLowerCase().includes(term)) ||
+        product.variantes?.some(v => v.color?.toLowerCase().includes(term) || v.sku?.toLowerCase().includes(term));
+
+      // Filtro por categoría
+      const matchCategory = selectedCategory === 'ALL' || product.categoria === selectedCategory;
+
+      // Filtro por género
+      const matchGender = selectedGender === 'ALL' || product.genero === selectedGender;
+
+      return matchSearch && matchCategory && matchGender;
+    }).sort((a, b) => {
+      if (sortBy === 'price-asc') return (a.precio_venta || 0) - (b.precio_venta || 0);
+      if (sortBy === 'price-desc') return (b.precio_venta || 0) - (a.precio_venta || 0);
+      if (sortBy === 'name') return (a.nombre || '').localeCompare(b.nombre || '');
+      // featured: mayor stock disponible primero
+      return (b.stock_total || 0) - (a.stock_total || 0);
+    });
+  }, [productos, searchTerm, selectedCategory, selectedGender, sortBy]);
+
+  // Total de unidades en el carrito
+  const totalCartItems = useMemo(() => {
+    return cart.reduce((acc, item) => acc + item.quantity, 0);
+  }, [cart]);
+
+  // Subtotal en Guaraníes
+  const cartSubtotal = useMemo(() => {
+    return cart.reduce((acc, item) => acc + ((item.price || 0) * item.quantity), 0);
+  }, [cart]);
+
+  // Costo de Delivery
+  const deliveryCost = useMemo(() => {
+    if (shippingType === 'villarrica') return 15000;
+    return 0; // Para pickup es 0, para interior se paga a la transportadora o se coordina
+  }, [shippingType]);
+
+  const cartTotal = cartSubtotal + deliveryCost;
+
+  // ─── Manejo de Selección de Producto & Modal ──────────────────────────────
+  const handleOpenProductModal = (product) => {
+    setActiveModalProduct(product);
+    setActiveImageIndex(0);
+    setModalQuantity(1);
+
+    // Seleccionar por defecto la primera variante con stock, o la primera disponible
+    if (product.variantes && product.variantes.length > 0) {
+      const firstWithStock = product.variantes.find(v => v.stock > 0) || product.variantes[0];
+      setSelectedVariant(firstWithStock);
+    } else {
+      setSelectedVariant(null);
+    }
+  };
+
+  const handleAddToCart = (product, variant, qty = 1) => {
+    const itemKey = variant ? `${product.id}-${variant.id}` : `${product.id}-default`;
+    const itemPrice = variant?.precio_venta_pyg || product.precio_venta || 0;
+    const itemImage = variant?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
+
+    setCart(prevCart => {
+      const existing = prevCart.find(i => i.key === itemKey);
+      if (existing) {
+        return prevCart.map(i =>
+          i.key === itemKey ? { ...i, quantity: i.quantity + qty } : i
+        );
+      }
+      return [
+        ...prevCart,
+        {
+          key: itemKey,
+          productId: product.id,
+          variantId: variant?.id || null,
+          name: product.nombre,
+          color: variant?.color || null,
+          size: variant?.talle_medida || null,
+          sku: variant?.sku || null,
+          price: itemPrice,
+          image: itemImage,
+          maxStock: variant ? variant.stock : product.stock_total || 99,
+          quantity: qty,
+        }
+      ];
+    });
+
+    // Efecto de rebote en el ícono del carrito
+    setCartBounce(true);
+    setTimeout(() => setCartBounce(false), 600);
+    setActiveModalProduct(null);
+  };
+
+  const updateCartItemQuantity = (key, delta) => {
+    setCart(prev => prev.map(item => {
+      if (item.key === key) {
+        const newQty = item.quantity + delta;
+        if (newQty <= 0) return null;
+        if (item.maxStock && newQty > item.maxStock) {
+          alert(`Solo disponemos de ${item.maxStock} unidades en stock de este accesorio.`);
+          return item;
+        }
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    }).filter(Boolean));
+  };
+
+  const removeCartItem = (key) => {
+    setCart(prev => prev.filter(i => i.key !== key));
+  };
+
+  const copyBankDetails = () => {
+    const text = `🏦 *DATOS BANCARIOS PARA TRANSFERENCIA - GUTSY*
+• Banco: ${BANK_INFO.banco}
+• Titular: ${BANK_INFO.titular}
+• C.I. / RUC: ${BANK_INFO.documento}
+• Nro. de Cuenta: ${BANK_INFO.cuenta}
+• Alias SIPAP: ${BANK_INFO.alias}`;
+    navigator.clipboard.writeText(text);
+    setCopiedBank(true);
+    setTimeout(() => setCopiedBank(false), 2500);
+  };
+
+  // ─── Envío de Pedido a WhatsApp ───────────────────────────────────────────
+  const handleSendOrderWhatsApp = () => {
+    if (cart.length === 0) {
+      alert('Tu carrito está vacío. Agrega accesorios antes de finalizar.');
+      return;
+    }
+
+    if (!customerName.trim()) {
+      alert('Por favor, ingresa tu Nombre y Apellido para preparar tu pedido.');
+      return;
+    }
+
+    if (!customerPhone.trim()) {
+      alert('Por favor, ingresa tu número de Celular o WhatsApp de contacto.');
+      return;
+    }
+
+    if (shippingType !== 'pickup' && !customerAddress.trim()) {
+      alert('Por favor, ingresa tu dirección de entrega o ciudad de destino.');
+      return;
+    }
+
+    setIsSubmittingOrder(true);
+
+    // Mapeo de Método de Pago
+    let paymentLabel = '';
+    if (paymentMethod === 'contimovil') paymentLabel = '💳 Link de Pago ContiMóvil (Tarjeta Crédito/Débito)';
+    else if (paymentMethod === 'transferencia') paymentLabel = '🏦 Transferencia Bancaria SIPAP (Envío comprobante)';
+    else if (paymentMethod === 'qr') paymentLabel = '📲 Pago con QR Bancario';
+    else if (paymentMethod === 'contraentrega') paymentLabel = '💵 Pago Contra Entrega en Villarrica (Efectivo / POS Bancard)';
+
+    // Mapeo de Tipo de Envío
+    let shippingLabel = '';
+    if (shippingType === 'villarrica') shippingLabel = '🛵 Delivery en Villarrica y alrededores (Gs. 15.000)';
+    else if (shippingType === 'pickup') shippingLabel = '🏪 Retiro Local en Villarrica (Sin costo de envío)';
+    else if (shippingType === 'interior') shippingLabel = '📦 Envío al Interior del País (Transportadora / AEX - A convenir)';
+
+    // Construcción del mensaje
+    let message = `✨ *¡HOLA GUTSY! QUIERO REALIZAR ESTE PEDIDO* ✨\n\n`;
+    message += `👤 *CLIENTE:* ${customerName.trim()}\n`;
+    if (customerDoc.trim()) message += `🆔 *C.I. / RUC:* ${customerDoc.trim()}\n`;
+    message += `📱 *TELÉFONO:* ${customerPhone.trim()}\n`;
+    if (customerCity.trim()) message += `📍 *CIUDAD:* ${customerCity.trim()}\n`;
+    if (customerAddress.trim()) message += `🏠 *DIRECCIÓN:* ${customerAddress.trim()}\n`;
+    if (customerNotes.trim()) message += `📝 *NOTAS:* ${customerNotes.trim()}\n\n`;
+
+    message += `🛒 *DETALLE DEL PEDIDO:*\n`;
+    cart.forEach((item, index) => {
+      const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
+      message += `${index + 1}. *${item.name}* ${variantDesc ? `(${variantDesc})` : ''}\n`;
+      message += `   • Cant: ${item.quantity} un. x Gs. ${formatGsInput(item.price)} = Gs. ${formatGsInput(item.price * item.quantity)}\n`;
+    });
+
+    message += `\n📦 *MÉTODO DE ENTREGA:* ${shippingLabel}\n`;
+    if (deliveryCost > 0) {
+      message += `🛵 *COSTO DELIVERY:* Gs. ${formatGsInput(deliveryCost)}\n`;
+    }
+    message += `💰 *TOTAL A PAGAR:* *Gs. ${formatGsInput(cartTotal)}*\n`;
+    message += `💳 *MEDIO DE PAGO SELECCIONADO:* ${paymentLabel}\n\n`;
+
+    if (paymentMethod === 'contimovil') {
+      message += `👉 *Solicitud:* Por favor envíenme el link de ContiMóvil para abonar con mi tarjeta.\n`;
+    } else if (paymentMethod === 'qr') {
+      message += `👉 *Solicitud:* Por favor envíenme el código QR con el monto de Gs. ${formatGsInput(cartTotal)} para pagar.\n`;
+    } else if (paymentMethod === 'transferencia') {
+      message += `👉 *Aviso:* Ya tengo los datos para la transferencia y les adjuntaré el comprobante enseguida.\n`;
+    }
+
+    message += `\n¡Muchas gracias! Quedo a la espera de su confirmación. 😊`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${STORE_WHATSAPP}?text=${encodedMessage}`;
+
+    // Abrir WhatsApp
+    window.open(whatsappUrl, '_blank');
+
+    setIsSubmittingOrder(false);
+    setOrderSentSuccess(true);
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
+      {/* ─── BANNER SUPERIOR DE BENEFICIOS (Persuasivo) ────────────────── */}
+      <div className="bg-black dark:bg-zinc-900 text-white text-[11px] sm:text-xs py-2 px-4 border-b border-zinc-800">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-center sm:text-left">
+          <div className="flex items-center gap-4 mx-auto sm:mx-0 overflow-x-auto no-scrollbar py-0.5">
+            <span className="flex items-center gap-1.5 font-medium tracking-wide">
+              <Sparkles className="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />
+              <span>Acero Quirúrgico 316L • Hipoalergénico • Resistente al agua</span>
+            </span>
+            <span className="hidden md:inline text-zinc-600">|</span>
+            <span className="hidden md:flex items-center gap-1.5 font-medium text-zinc-300">
+              <Truck className="w-3.5 h-3.5 flex-shrink-0" />
+              <span>Envíos a todo el país vía AEX • Delivery en Villarrica Gs. 15.000</span>
+            </span>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-4 text-zinc-400">
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-zinc-300" />
+              <span>Garantía de Calidad Gutsy</span>
+            </span>
+            <a
+              href={`https://wa.me/${STORE_WHATSAPP}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-white transition flex items-center gap-1 text-zinc-300 font-semibold"
+            >
+              <Phone className="w-3 h-3" />
+              <span>{STORE_WHATSAPP_DISPLAY}</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── HEADER / NAVBAR PRINCIPAL ──────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 transition-colors">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+          {/* Logo & Slogan de Gutsy */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shadow-md">
+              <Gem className="w-5 h-5 stroke-[2.2]" />
+            </div>
+            <div>
+              <span className="text-xl sm:text-2xl font-black tracking-[0.2em] uppercase font-serif block leading-none">
+                GUTSY
+              </span>
+              <span className="text-[10px] sm:text-[11px] font-medium tracking-widest text-zinc-500 dark:text-zinc-400 uppercase font-sans mt-1 block">
+                Tu propio estilo, tu propia esencia.
+              </span>
+            </div>
+          </div>
+
+          {/* Barra de Búsqueda Desktop */}
+          <div className="hidden md:flex flex-1 max-w-md mx-6">
+            <div className="relative w-full">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                placeholder="Buscar collares, anillos, pulseras, acero 316L..."
+                className="w-full pl-10 pr-4 py-2 text-xs bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full focus:outline-none focus:border-black dark:focus:border-white transition"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black dark:hover:text-white"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Acciones: Carrito, Modo Claro/Oscuro y Panel Admin */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Si el dueño ya está autenticado, botón directo a su panel */}
+            {user ? (
+              <button
+                onClick={onGoToAdmin}
+                className="px-3 py-2 rounded-full bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-xs font-bold tracking-wide uppercase border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5 transition"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Panel Admin</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenAdminLogin}
+                className="p-2 rounded-full text-zinc-400 hover:text-black dark:hover:text-white transition"
+                title="Acceso Administrativo"
+              >
+                <Lock className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Selector de Tema */}
+            <button
+              onClick={onToggleTheme}
+              className="p-2.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-black dark:text-white hover:border-black dark:hover:border-white transition"
+              title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+            >
+              <Sparkles className="w-4 h-4" />
+            </button>
+
+            {/* Botón Carrito de Compras */}
+            <button
+              onClick={() => setIsCartOpen(true)}
+              className={`relative px-4 py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg active:scale-95 transition-all ${
+                cartBounce ? 'scale-110 ring-4 ring-black/20 dark:ring-white/20' : ''
+              }`}
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span className="hidden sm:inline">Mi Carrito</span>
+              {totalCartItems > 0 && (
+                <span className="px-2 py-0.5 text-[10px] bg-white text-black dark:bg-black dark:text-white rounded-full font-black">
+                  {totalCartItems}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Barra de Búsqueda Mobile */}
+        <div className="md:hidden px-4 pb-3">
+          <div className="relative w-full">
+            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Buscar joyas, accesorios..."
+              className="w-full pl-9 pr-4 py-2 text-xs bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full focus:outline-none"
+            />
+          </div>
+        </div>
+      </header>
+
+      {/* ─── HERO LOOKBOOK (Elegante Blanco & Negro) ──────────────────────── */}
+      <section className="relative overflow-hidden bg-zinc-950 text-white py-16 sm:py-24 border-b border-zinc-800">
+        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+        
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-zinc-300 text-xs font-semibold tracking-widest uppercase mb-4 border border-white/15">
+            <Gem className="w-3.5 h-3.5 text-white" />
+            <span>Colección Exclusiva • Acero 316L</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight uppercase font-serif leading-tight">
+            TU PROPIO ESTILO,<br />
+            <span className="italic font-light tracking-wide text-zinc-300">TU PROPIA ESENCIA.</span>
+          </h1>
+
+          <p className="mt-4 text-xs sm:text-sm md:text-base text-zinc-400 max-w-2xl mx-auto font-light leading-relaxed">
+            Joyas y accesorios diseñados para destacar tu personalidad. Piezas duraderas, hipoalergénicas y resistentes al agua que no pierden su brillo con el tiempo.
+          </p>
+
+          {/* Grid de 4 Pilares de Confianza */}
+          <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto text-left">
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <Droplets className="w-4 h-4 text-white mb-2" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Waterproof</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Resistente al agua y perfume.</p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <ShieldCheck className="w-4 h-4 text-white mb-2" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Hipoalergénico</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Libre de níquel, cuida tu piel.</p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <Truck className="w-4 h-4 text-white mb-2" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Delivery & AEX</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Villarrica y todo el país.</p>
+            </div>
+
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <CreditCard className="w-4 h-4 text-white mb-2" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Pagos Seguros</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">ContiMóvil, SIPAP, QR o POS.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FILTROS Y CATEGORÍAS ────────────────────────────────────────── */}
+      <section className="sticky top-20 z-20 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Scroll Horizontal de Categorías */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+              {STORE_CATEGORIES.map(cat => {
+                const isActive = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase transition-all whitespace-nowrap flex-shrink-0 ${
+                      isActive
+                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm scale-105'
+                        : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-800'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Filtros Secundarios: Género y Orden */}
+            <div className="flex items-center justify-between sm:justify-end gap-2 flex-shrink-0 text-xs">
+              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-full border border-zinc-200 dark:border-zinc-800">
+                {[
+                  { id: 'ALL', label: 'Todos' },
+                  { id: 'F', label: 'Dama' },
+                  { id: 'M', label: 'Hombre' },
+                  { id: 'U', label: 'Unisex' }
+                ].map(g => (
+                  <button
+                    key={g.id}
+                    onClick={() => setSelectedGender(g.id)}
+                    className={`px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition text-[11px] ${
+                      selectedGender === g.id
+                        ? 'bg-white dark:bg-black text-black dark:text-white shadow-xs'
+                        : 'text-zinc-500 hover:text-black dark:hover:text-white'
+                    }`}
+                  >
+                    {g.label}
+                  </button>
+                ))}
+              </div>
+
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none"
+              >
+                <option value="featured">Destacados</option>
+                <option value="price-asc">Menor Precio</option>
+                <option value="price-desc">Mayor Precio</option>
+                <option value="name">Nombre A-Z</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── GRILLA DEL CATÁLOGO ─────────────────────────────────────────── */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+        {/* Encabezado del listado */}
+        <div className="flex items-center justify-between mb-6 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+          <div>
+            <h2 className="text-lg font-bold tracking-wider uppercase font-serif">
+              {STORE_CATEGORIES.find(c => c.id === selectedCategory)?.label || 'Catálogo'}
+            </h2>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+              Mostrando {filteredProducts.length} modelo{filteredProducts.length !== 1 ? 's' : ''} disponibles
+            </p>
+          </div>
+
+          {(searchTerm || selectedCategory !== 'ALL' || selectedGender !== 'ALL') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('ALL');
+                setSelectedGender('ALL');
+              }}
+              className="text-xs text-zinc-500 hover:text-black dark:hover:text-white underline font-medium"
+            >
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+
+        {/* Empty state si no hay productos */}
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-20 bg-zinc-50 dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8">
+            <div className="w-14 h-14 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto mb-4">
+              <Search className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold uppercase tracking-wider font-serif">No se encontraron joyas</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-md mx-auto">
+              No encontramos artículos que coincidan con tu búsqueda. Prueba seleccionando otra categoría o limpiando los filtros.
+            </p>
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setSelectedCategory('ALL');
+                setSelectedGender('ALL');
+              }}
+              className="mt-5 px-5 py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black text-xs font-bold uppercase tracking-wider"
+            >
+              Ver Todo el Catálogo
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {filteredProducts.map(product => {
+              const imageSrc = product.imagen_url_completa || product.imagen_url || null;
+              const hasStock = (product.stock_total || 0) > 0;
+              const isLowStock = hasStock && (product.stock_total || 0) <= 3;
+              const variants = product.variantes || [];
+              const hasMultipleVariants = variants.length > 1;
+
+              return (
+                <div
+                  key={product.id}
+                  className="group relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col hover:border-black dark:hover:border-white transition-all duration-300 hover:shadow-xl"
+                >
+                  {/* Contenedor de Imagen */}
+                  <div
+                    className="relative aspect-square bg-zinc-100 dark:bg-zinc-900 overflow-hidden cursor-pointer"
+                    onClick={() => handleOpenProductModal(product)}
+                  >
+                    {imageSrc ? (
+                      <img
+                        src={imageSrc}
+                        alt={product.nombre}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 p-4 text-center">
+                        <Gem className="w-10 h-10 stroke-[1.5] mb-2" />
+                        <span className="text-[10px] uppercase font-bold tracking-widest">GUTSY</span>
+                      </div>
+                    )}
+
+                    {/* Badges Flotantes */}
+                    <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+                      {isLowStock && (
+                        <span className="px-2 py-0.5 rounded-md bg-black text-white dark:bg-white dark:text-black text-[9px] font-black tracking-wider uppercase shadow-sm">
+                          ¡Últimas {product.stock_total}!
+                        </span>
+                      )}
+                      {!hasStock && (
+                        <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[9px] font-black tracking-wider uppercase shadow-sm">
+                          Agotado
+                        </span>
+                      )}
+                      {product.genero_display && (
+                        <span className="px-2 py-0.5 rounded-md bg-white/90 dark:bg-black/90 backdrop-blur-sm text-black dark:text-white text-[9px] font-bold tracking-wider uppercase border border-zinc-200 dark:border-zinc-800">
+                          {product.genero_display}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Botón Vista Rápida en hover */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenProductModal(product);
+                      }}
+                      className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white dark:bg-black text-black dark:text-white shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200"
+                      title="Ver detalle"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Información del Producto */}
+                  <div className="p-3.5 sm:p-4 flex-1 flex flex-col justify-between">
+                    <div>
+                      {/* Categoría & Materiales */}
+                      <div className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">
+                        <span>{product.categoria_display || 'Accesorio'}</span>
+                        {product.materiales?.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="truncate">{product.materiales[0].nombre}</span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Nombre */}
+                      <h3
+                        onClick={() => handleOpenProductModal(product)}
+                        className="text-xs sm:text-sm font-bold text-black dark:text-white tracking-wide uppercase line-clamp-2 cursor-pointer hover:underline"
+                      >
+                        {product.nombre}
+                      </h3>
+
+                      {/* Variantes mini preview */}
+                      {hasMultipleVariants && (
+                        <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                          {variants.map((v, i) => (
+                            <span
+                              key={v.id || i}
+                              className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold"
+                            >
+                              {v.color || v.talle_medida || `Var ${i+1}`}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Precio y Botón de Compra */}
+                    <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] text-zinc-400 uppercase font-medium block leading-none">Precio</span>
+                        <span className="text-xs sm:text-sm font-black text-black dark:text-white tracking-wider">
+                          Gs. {formatGsInput(product.precio_venta || 0)}
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleOpenProductModal(product)}
+                        disabled={!hasStock}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 ${
+                          hasStock
+                            ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 shadow-sm'
+                            : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed'
+                        }`}
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Comprar</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
+
+      {/* ─── MODAL DETALLE DE PRODUCTO (Lookbook View) ────────────────────── */}
+      {activeModalProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Botón Cerrar */}
+            <button
+              onClick={() => setActiveModalProduct(null)}
+              className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-black/90 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-md hover:scale-105 transition"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Columna Imagen */}
+            <div className="md:w-1/2 bg-zinc-100 dark:bg-zinc-900 relative flex flex-col items-center justify-center p-6 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800">
+              <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white dark:bg-black flex items-center justify-center shadow-inner">
+                {selectedVariant?.imagen_url || activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url ? (
+                  <img
+                    src={selectedVariant?.imagen_url || activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url}
+                    alt={activeModalProduct.nombre}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-zinc-400">
+                    <Gem className="w-12 h-12 stroke-[1.5] mb-2" />
+                    <span className="text-xs font-bold tracking-widest uppercase">GUTSY</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Beneficios Rápidos */}
+              <div className="mt-4 grid grid-cols-2 gap-2 w-full text-[11px] text-zinc-500 dark:text-zinc-400">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-black dark:text-white flex-shrink-0" />
+                  <span>Acero 316L Inoxidable</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Droplets className="w-3.5 h-3.5 text-black dark:text-white flex-shrink-0" />
+                  <span>Resistente al agua</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Columna Detalles y Variantes */}
+            <div className="md:w-1/2 p-6 overflow-y-auto flex flex-col justify-between">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 block">
+                  {activeModalProduct.categoria_display} • {activeModalProduct.genero_display}
+                </span>
+
+                <h2 className="text-lg font-black tracking-wide uppercase font-serif mt-1">
+                  {activeModalProduct.nombre}
+                </h2>
+
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-2xl font-black text-black dark:text-white">
+                    Gs. {formatGsInput(selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0)}
+                  </span>
+                </div>
+
+                {/* Selector de Variantes (Color / Talle) */}
+                {activeModalProduct.variantes && activeModalProduct.variantes.length > 0 && (
+                  <div className="mt-5 space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-wider block text-zinc-700 dark:text-zinc-300">
+                      Selecciona una opción:
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {activeModalProduct.variantes.map(v => {
+                        const isSelected = selectedVariant?.id === v.id;
+                        const hasVarStock = v.stock > 0;
+                        return (
+                          <button
+                            key={v.id}
+                            disabled={!hasVarStock}
+                            onClick={() => setSelectedVariant(v)}
+                            className={`p-2.5 rounded-xl text-left border text-xs transition relative ${
+                              isSelected
+                                ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold shadow-sm'
+                                : hasVarStock
+                                  ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-black dark:text-white hover:border-zinc-400'
+                                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/50 text-zinc-400 opacity-50 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="font-bold truncate">{v.color || v.sku || 'Estándar'}</div>
+                            <div className="text-[10px] opacity-80">
+                              {v.talle_medida ? `Talle: ${v.talle_medida}` : ''} • Stock: {v.stock}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Selector de Cantidad */}
+                <div className="mt-5 flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                    Cantidad
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                      className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-sm font-black w-6 text-center">{modalQuantity}</span>
+                    <button
+                      onClick={() => {
+                        const max = selectedVariant ? selectedVariant.stock : (activeModalProduct.stock_total || 99);
+                        if (modalQuantity < max) {
+                          setModalQuantity(modalQuantity + 1);
+                        } else {
+                          alert(`Solo hay ${max} unidades disponibles.`);
+                        }
+                      }}
+                      className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botón Agregar al Carrito */}
+              <div className="mt-6">
+                <button
+                  onClick={() => handleAddToCart(activeModalProduct, selectedVariant, modalQuantity)}
+                  disabled={(selectedVariant ? selectedVariant.stock : activeModalProduct.stock_total) <= 0}
+                  className="w-full py-3.5 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] active:scale-95 transition"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>
+                    Agregar al Carrito • Gs. {formatGsInput((selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0) * modalQuantity)}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── CARRITO & CHECKOUT DRAWER (Optimizado para Paraguay) ──────────── */}
+      {isCartOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="w-full max-w-lg bg-white dark:bg-zinc-950 h-full flex flex-col border-l border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header del Carrito */}
+            <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center">
+                  <ShoppingBag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold uppercase tracking-wider font-serif">Tu Pedido</h3>
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest block">
+                    {totalCartItems} artículo{totalCartItems !== 1 ? 's' : ''} seleccionado{totalCartItems !== 1 ? 's' : ''}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsCartOpen(false)}
+                className="w-8 h-8 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center hover:scale-105 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Contenido del Carrito */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6">
+              {cart.length === 0 ? (
+                <div className="text-center py-20">
+                  <div className="w-14 h-14 rounded-2xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 flex items-center justify-center mx-auto mb-4">
+                    <ShoppingBag className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-sm font-bold uppercase tracking-wider font-serif">Tu carrito está vacío</h4>
+                  <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto">
+                    Explora nuestras joyas y añade tus favoritas para armar tu pedido.
+                  </p>
+                  <button
+                    onClick={() => setIsCartOpen(false)}
+                    className="mt-4 px-4 py-2 rounded-full bg-black text-white dark:bg-white dark:text-black text-xs font-bold uppercase tracking-wider"
+                  >
+                    Ver Catálogo
+                  </button>
+                </div>
+              ) : (
+                <>
+                  {/* Lista de Ítems */}
+                  <div className="space-y-3">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
+                      Artículos seleccionados
+                    </span>
+                    {cart.map(item => (
+                      <div
+                        key={item.key}
+                        className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center gap-3"
+                      >
+                        <div className="w-14 h-14 rounded-xl bg-white dark:bg-black overflow-hidden flex-shrink-0 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
+                          {item.image ? (
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Gem className="w-5 h-5 text-zinc-400" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <h5 className="text-xs font-bold uppercase tracking-wide truncate">{item.name}</h5>
+                          {(item.color || item.size) && (
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block truncate">
+                              {[item.color, item.size ? `Talle: ${item.size}` : ''].filter(Boolean).join(' • ')}
+                            </span>
+                          )}
+                          <span className="text-xs font-black text-black dark:text-white mt-0.5 block">
+                            Gs. {formatGsInput(item.price * item.quantity)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 bg-white dark:bg-black p-1 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                          <button
+                            onClick={() => updateCartItemQuantity(item.key, -1)}
+                            className="w-6 h-6 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center"
+                          >
+                            <Minus className="w-3 h-3" />
+                          </button>
+                          <span className="text-xs font-bold w-4 text-center">{item.quantity}</span>
+                          <button
+                            onClick={() => updateCartItemQuantity(item.key, 1)}
+                            className="w-6 h-6 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center"
+                          >
+                            <Plus className="w-3 h-3" />
+                          </button>
+                        </div>
+
+                        <button
+                          onClick={() => removeCartItem(item.key)}
+                          className="p-1.5 text-zinc-400 hover:text-rose-500 transition"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* ─── PASO 1: Destino de Entrega ──────────────────────── */}
+                  <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
+                      1. Selecciona tu Ubicación y Envío:
+                    </span>
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        onClick={() => {
+                          setShippingType('villarrica');
+                        }}
+                        className={`p-3 rounded-2xl text-left border text-xs transition flex items-center justify-between ${
+                          shippingType === 'villarrica'
+                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Truck className="w-4 h-4 flex-shrink-0" />
+                          <div>
+                            <div className="font-bold">Delivery Villarrica y alrededores</div>
+                            <div className="text-[10px] opacity-80">Entrega rápida en tu puerta</div>
+                          </div>
+                        </div>
+                        <span className="font-black text-xs">+ Gs. 15.000</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShippingType('pickup');
+                        }}
+                        className={`p-3 rounded-2xl text-left border text-xs transition flex items-center justify-between ${
+                          shippingType === 'pickup'
+                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <div>
+                            <div className="font-bold">Retiro en Villarrica</div>
+                            <div className="text-[10px] opacity-80">Punto céntrico a coordinar</div>
+                          </div>
+                        </div>
+                        <span className="font-black text-xs">Gratis</span>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setShippingType('interior');
+                          if (paymentMethod === 'contraentrega') setPaymentMethod('contimovil');
+                        }}
+                        className={`p-3 rounded-2xl text-left border text-xs transition flex items-center justify-between ${
+                          shippingType === 'interior'
+                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Truck className="w-4 h-4 flex-shrink-0" />
+                          <div>
+                            <div className="font-bold">Interior del País (Envíos a todo Paraguay)</div>
+                            <div className="text-[10px] opacity-80">Vía AEX o Transportadora / Encomienda</div>
+                          </div>
+                        </div>
+                        <span className="font-black text-xs">Pago previo</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ─── PASO 2: Datos de Envío / Rótulo ────────────────── */}
+                  <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
+                      2. Tus Datos para el Envío y Rótulo:
+                    </span>
+                    <div className="space-y-2 text-xs">
+                      <div>
+                        <input
+                          type="text"
+                          value={customerName}
+                          onChange={e => setCustomerName(e.target.value)}
+                          placeholder="Nombre y Apellido completo *"
+                          className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          value={customerDoc}
+                          onChange={e => setCustomerDoc(e.target.value)}
+                          placeholder="Nro. Cédula (C.I.)"
+                          className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                        />
+                        <input
+                          type="text"
+                          value={customerPhone}
+                          onChange={e => setCustomerPhone(e.target.value)}
+                          placeholder="Celular / WhatsApp *"
+                          className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                        />
+                      </div>
+
+                      {shippingType !== 'pickup' && (
+                        <>
+                          <input
+                            type="text"
+                            value={customerCity}
+                            onChange={e => setCustomerCity(e.target.value)}
+                            placeholder={shippingType === 'villarrica' ? 'Barrio / Zona en Villarrica' : 'Ciudad y Departamento de destino *'}
+                            className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                          />
+                          <textarea
+                            rows={2}
+                            value={customerAddress}
+                            onChange={e => setCustomerAddress(e.target.value)}
+                            placeholder="Dirección exacta y referencias (ej: Casa blanca frente al colegio) *"
+                            className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white resize-none"
+                          />
+                        </>
+                      )}
+
+                      <input
+                        type="text"
+                        value={customerNotes}
+                        onChange={e => setCustomerNotes(e.target.value)}
+                        placeholder="Nota o dedicatoria para regalo (opcional)"
+                        className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white text-[11px]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* ─── PASO 3: Medio de Pago ──────────────────────────── */}
+                  <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
+                      3. Selecciona tu Medio de Pago:
+                    </span>
+                    <div className="grid grid-cols-1 gap-2">
+                      {/* Link ContiMóvil */}
+                      <button
+                        onClick={() => setPaymentMethod('contimovil')}
+                        className={`p-3 rounded-2xl text-left border text-xs transition ${
+                          paymentMethod === 'contimovil'
+                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <CreditCard className="w-4 h-4 flex-shrink-0" />
+                          <div>
+                            <div className="font-bold">Link de Pago ContiMóvil (Tarjetas)</div>
+                            <div className="text-[10px] opacity-80">
+                              Te enviamos el link seguro a tu WhatsApp para pagar con tarjeta
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Transferencia SIPAP */}
+                      <button
+                        onClick={() => setPaymentMethod('transferencia')}
+                        className={`p-3 rounded-2xl text-left border text-xs transition ${
+                          paymentMethod === 'transferencia'
+                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <Building2 className="w-4 h-4 flex-shrink-0" />
+                          <div>
+                            <div className="font-bold">Transferencia Bancaria (SIPAP)</div>
+                            <div className="text-[10px] opacity-80">
+                              Transferencia bancaria directa con envío de comprobante
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Caja Desplegable con Datos Bancarios */}
+                      {paymentMethod === 'transferencia' && (
+                        <div className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs animate-in fade-in">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold uppercase tracking-wider text-[10px] text-zinc-500">
+                              Datos Bancarios para Transferir:
+                            </span>
+                            <button
+                              onClick={copyBankDetails}
+                              className="px-2.5 py-1 rounded-lg bg-black text-white dark:bg-white dark:text-black text-[10px] font-bold flex items-center gap-1 shadow-sm active:scale-95 transition"
+                            >
+                              {copiedBank ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                              <span>{copiedBank ? '¡Copiado!' : 'Copiar Datos'}</span>
+                            </button>
+                          </div>
+                          <div className="text-[11px] space-y-0.5 text-zinc-700 dark:text-zinc-300 font-mono">
+                            <div><strong>Banco:</strong> {BANK_INFO.banco}</div>
+                            <div><strong>Titular:</strong> {BANK_INFO.titular}</div>
+                            <div><strong>C.I. / RUC:</strong> {BANK_INFO.documento}</div>
+                            <div><strong>Nro. Cuenta:</strong> {BANK_INFO.cuenta}</div>
+                            <div><strong>Alias SIPAP:</strong> {BANK_INFO.alias}</div>
+                          </div>
+                          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">
+                            * Al confirmar tu pedido, podrás adjuntar tu comprobante por WhatsApp.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* QR Bancario */}
+                      <button
+                        onClick={() => setPaymentMethod('qr')}
+                        className={`p-3 rounded-2xl text-left border text-xs transition ${
+                          paymentMethod === 'qr'
+                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <QrCode className="w-4 h-4 flex-shrink-0" />
+                          <div>
+                            <div className="font-bold">Pago con QR Bancario</div>
+                            <div className="text-[10px] opacity-80">
+                              Te enviamos el código QR con el monto exacto para escanear
+                            </div>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Contra Entrega (Solo para Villarrica) */}
+                      {shippingType === 'villarrica' && (
+                        <button
+                          onClick={() => setPaymentMethod('contraentrega')}
+                          className={`p-3 rounded-2xl text-left border text-xs transition ${
+                            paymentMethod === 'contraentrega'
+                              ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
+                              : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <Banknote className="w-4 h-4 flex-shrink-0" />
+                            <div>
+                              <div className="font-bold">Pago Contra Entrega (Villarrica)</div>
+                              <div className="text-[10px] opacity-80">
+                                Pagas al recibir en efectivo o con tarjeta en nuestro POS Bancard
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Footer del Carrito con Totales y Botón WhatsApp */}
+            {cart.length > 0 && (
+              <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80 space-y-3">
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-zinc-500">
+                    <span>Subtotal Productos</span>
+                    <span>Gs. {formatGsInput(cartSubtotal)}</span>
+                  </div>
+                  {deliveryCost > 0 && (
+                    <div className="flex items-center justify-between text-zinc-500">
+                      <span>Delivery en Villarrica</span>
+                      <span>Gs. {formatGsInput(deliveryCost)}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm sm:text-base font-black text-black dark:text-white pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                    <span>Total a Pagar</span>
+                    <span className="text-base sm:text-lg">Gs. {formatGsInput(cartTotal)}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleSendOrderWhatsApp}
+                  disabled={isSubmittingOrder}
+                  className="w-full py-4 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-bold text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-2xl hover:scale-[1.02] active:scale-95 transition"
+                >
+                  <MessageCircle className="w-5 h-5 text-emerald-500 fill-emerald-500/20" />
+                  <span>Finalizar Pedido por WhatsApp</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ─── MODAL DE ÉXITO TRAS ENVIAR PEDIDO ──────────────────────────── */}
+      {orderSentSuccess && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-zinc-950 p-6 sm:p-8 rounded-3xl border border-zinc-200 dark:border-zinc-800 text-center shadow-2xl space-y-4">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-8 h-8 stroke-[2.5]" />
+            </div>
+
+            <h3 className="text-lg font-black uppercase font-serif tracking-wide">
+              ¡Pedido Enviado a WhatsApp!
+            </h3>
+
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Tu pedido fue generado con éxito. En instantes nos pondremos en contacto contigo por WhatsApp para coordinar la entrega y el pago.
+            </p>
+
+            <button
+              onClick={() => {
+                setOrderSentSuccess(false);
+                setIsCartOpen(false);
+                setCart([]);
+              }}
+              className="w-full py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-xs font-bold uppercase tracking-wider"
+            >
+              Entendido, volver a la tienda
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── FOOTER PERSUASIVO & ELEGANTE ───────────────────────────────── */}
+      <footer className="bg-zinc-950 text-white border-t border-zinc-900 py-12 px-4 sm:px-6 lg:px-8 mt-auto">
+        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+          {/* Marca */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-white text-black flex items-center justify-center">
+                <Gem className="w-4 h-4" />
+              </div>
+              <span className="text-xl font-black uppercase tracking-widest font-serif">GUTSY</span>
+            </div>
+            <p className="text-xs text-zinc-400 font-light leading-relaxed">
+              Tu propio estilo, tu propia esencia. Joyas y accesorios de acero inoxidable diseñados para durar.
+            </p>
+            <p className="text-[11px] text-zinc-500">
+              📍 Villarrica, Guairá, Paraguay.
+            </p>
+          </div>
+
+          {/* Medios de Pago */}
+          <div className="space-y-2 text-xs">
+            <h4 className="font-bold uppercase tracking-wider text-zinc-300">Medios de Pago</h4>
+            <ul className="space-y-1.5 text-zinc-400 text-[11px]">
+              <li>• Link ContiMóvil (Crédito / Débito)</li>
+              <li>• Transferencias Bancarias SIPAP</li>
+              <li>• Código QR Bancario</li>
+              <li>• POS Bancard & Efectivo (Villarrica)</li>
+            </ul>
+          </div>
+
+          {/* Envíos */}
+          <div className="space-y-2 text-xs">
+            <h4 className="font-bold uppercase tracking-wider text-zinc-300">Logística & Envíos</h4>
+            <ul className="space-y-1.5 text-zinc-400 text-[11px]">
+              <li>• <strong>Villarrica:</strong> Delivery local (Gs. 15.000)</li>
+              <li>• <strong>Interior del País:</strong> Vía AEX / Transportadora</li>
+              <li>• Empaque seguro y presentación de regalo</li>
+            </ul>
+          </div>
+
+          {/* Contacto & Acceso */}
+          <div className="space-y-3 text-xs">
+            <h4 className="font-bold uppercase tracking-wider text-zinc-300">Atención al Cliente</h4>
+            <a
+              href={`https://wa.me/${STORE_WHATSAPP}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white hover:border-zinc-600 transition"
+            >
+              <MessageCircle className="w-4 h-4 text-emerald-400" />
+              <span>WhatsApp: {STORE_WHATSAPP_DISPLAY}</span>
+            </a>
+
+            <div className="pt-2">
+              <button
+                onClick={user ? onGoToAdmin : onOpenAdminLogin}
+                className="text-[10px] text-zinc-600 hover:text-zinc-400 uppercase tracking-widest flex items-center gap-1 transition"
+              >
+                <Lock className="w-3 h-3" />
+                <span>{user ? 'Ir al Panel Administrativo' : 'Acceso Administrador'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-600 gap-2">
+          <span>© {new Date().getFullYear()} GUTSY. Todos los derechos reservados.</span>
+          <span>Desarrollado para Gutsy Paraguay</span>
+        </div>
+      </footer>
+    </div>
+  );
+}

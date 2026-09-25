@@ -9,6 +9,7 @@ import ImportsView from './views/ImportsView';
 import DashboardView from './views/DashboardView';
 import SettingsView from './views/SettingsView';
 import BulkUploadView from './views/BulkUploadView';
+import StorefrontView from './views/StorefrontView';
 import LoginView from './views/LoginView';
 import {
   fetchProductos, fetchLotes, syncCotizaciones,
@@ -18,6 +19,9 @@ import {
 export default function App() {
   const [user, setUser] = useState(() => getStoredUser());
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [showAdminLogin, setShowAdminLogin] = useState(() => {
+    return window.location.hash === '#admin' || window.location.hash === '#login';
+  });
 
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('gutsy_active_tab') || 'dashboard';
@@ -91,24 +95,31 @@ export default function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
+    setShowAdminLogin(false);
+    setActiveTab('dashboard');
   };
 
   const handleLogout = async () => {
     await logoutApi();
     setUser(null);
+    setActiveTab('dashboard');
   };
 
-  // ─── Carga de Datos Principales (Solo si está autenticado) ────────────────
+  // ─── Carga de Datos Principales (Catálogo para clientes y Admin) ──────────
   const loadData = async () => {
-    if (!user) return;
     try {
       setLoading(true);
-      const [prodsData, lotesData] = await Promise.all([
-        fetchProductos(),
-        fetchLotes(),
-      ]);
-      setProductos(prodsData);
-      setLotes(lotesData);
+      if (user) {
+        const [prodsData, lotesData] = await Promise.all([
+          fetchProductos().catch(() => []),
+          fetchLotes().catch(() => []),
+        ]);
+        setProductos(prodsData || []);
+        setLotes(lotesData || []);
+      } else {
+        const prodsData = await fetchProductos().catch(() => []);
+        setProductos(prodsData || []);
+      }
     } catch (err) {
       console.error('Error cargando datos iniciales:', err);
     } finally {
@@ -117,9 +128,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
+    loadData();
   }, [user]);
 
   const handleQuickSync = async () => {
@@ -141,17 +150,48 @@ export default function App() {
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center text-zinc-500 text-xs">
-        <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
-        <span>Verificando credenciales de seguridad...</span>
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mb-3" />
+        <span className="uppercase tracking-widest font-mono text-[10px]">Cargando Gutsy...</span>
       </div>
     );
   }
 
-  // Si no está autenticado, mostrar Login
+  // ─── VISTA PÚBLICA (Para clientes o cuando no hay sesión) ─────────────────
   if (!user) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+    if (showAdminLogin) {
+      return (
+        <LoginView
+          onLoginSuccess={handleLoginSuccess}
+          onBackToStore={() => setShowAdminLogin(false)}
+        />
+      );
+    }
+
+    return (
+      <StorefrontView
+        productos={productos}
+        onOpenAdminLogin={() => setShowAdminLogin(true)}
+        user={null}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
   }
 
+  // Si el usuario autenticado decide navegar a la tienda pública
+  if (activeTab === 'storefront') {
+    return (
+      <StorefrontView
+        productos={productos}
+        user={user}
+        onGoToAdmin={() => setActiveTab('dashboard')}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
+  }
+
+  // ─── PANEL ADMINISTRATIVO PRIVADO ─────────────────────────────────────────
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col font-sans transition-colors duration-200">
       {/* Sidebar de Navegación (Solo Desktop md:flex) */}
@@ -166,7 +206,7 @@ export default function App() {
         onLogout={handleLogout}
       />
 
-      {/* Contenedor Principal (Ajustado con md:pl-64 para dejar espacio al Sidebar en Desktop) */}
+      {/* Contenedor Principal */}
       <div className="flex-1 flex flex-col md:pl-64 min-w-0">
         {/* Barra Superior */}
         <Header
@@ -185,8 +225,8 @@ export default function App() {
         <main className="flex-1 w-full">
           {loading && productos.length === 0 && (activeTab === 'pos' || activeTab === 'inventory') ? (
             <div className="flex flex-col items-center justify-center py-32 text-zinc-500 text-xs">
-              <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
-              <span>Cargando catálogo de accesorios...</span>
+              <div className="w-8 h-8 border-2 border-white dark:border-white border-t-transparent rounded-full animate-spin mb-3" />
+              <span className="uppercase tracking-widest font-mono text-[10px]">Cargando catálogo de accesorios...</span>
             </div>
           ) : (
             <>
@@ -246,7 +286,7 @@ export default function App() {
         </main>
       </div>
 
-      {/* Navegación Inferior Móvil (Solo Mobile/Tablet, oculta con md:hidden) */}
+      {/* Navegación Inferior Móvil */}
       <BottomNav
         activeTab={activeTab === 'bulk-upload' ? 'inventory' : activeTab}
         setActiveTab={setActiveTab}

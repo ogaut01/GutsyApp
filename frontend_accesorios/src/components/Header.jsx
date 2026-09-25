@@ -5,6 +5,7 @@ export default function Header({ activeTab, cartCount, onOpenCart, theme, onTogg
   const titles = {
     dashboard: 'PANEL DE CONTROL',
     pos: 'PUNTO DE VENTA',
+    storefront: 'TIENDA PÚBLICA',
     inventory: 'CATÁLOGO & STOCK',
     imports: 'LOGÍSTICA & ENVÍOS',
     clientes: 'CARTERA DE CLIENTES',
