@@ -62,7 +62,7 @@ const ALL_STORE_CATEGORIES = [
   { id: 'PU', label: 'Pulseras & Brazaletes', icon: Tag },
   { id: 'AR', label: 'Aros & Aretes', icon: Tag },
   { id: 'ST', label: 'Sets & Combos', icon: Tag },
-  { id: 'PA', label: 'Parejas & Dúos', icon: Tag },
+  { id: 'PA', label: 'Parejas', icon: Tag },
   { id: 'LE', label: 'Lentes', icon: Tag },
   { id: 'TO', label: 'Tobilleras', icon: Tag },
   { id: 'DI', label: 'Dijes & Colgantes', icon: Tag },
@@ -179,8 +179,8 @@ export default function StorefrontView({
   const [orderSentSuccess, setOrderSentSuccess] = useState(false);
 
   // Teléfono WhatsApp oficial de Gutsy (Paraguay)
-  const STORE_WHATSAPP = '595983794353'; // Formato internacional
-  const STORE_WHATSAPP_DISPLAY = '+595 983 794 353';
+  const STORE_WHATSAPP = '595961370929'; // Formato internacional
+  const STORE_WHATSAPP_DISPLAY = '+595 961 370 929';
 
   // Helper para identificar accesorios de parejas / dúos
   const isCoupleProduct = (p) => {
@@ -214,9 +214,6 @@ export default function StorefrontView({
   // ─── Filtrado de Productos ────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
     return productos.filter(product => {
-      // Ocultar productos inactivos
-      if (product.activo === false) return false;
-
       // Filtro por búsqueda
       const term = searchTerm.toLowerCase().trim();
       const matchSearch = !term ||
@@ -272,6 +269,11 @@ export default function StorefrontView({
 
       return matchSearch && matchCategory && matchGender && matchMaterial && matchColor;
     }).sort((a, b) => {
+      // Priorizar productos con stock disponible arriba
+      const aInStock = (a.activo !== false && (a.stock_total || 0) > 0) ? 1 : 0;
+      const bInStock = (b.activo !== false && (b.stock_total || 0) > 0) ? 1 : 0;
+      if (aInStock !== bInStock) return bInStock - aInStock;
+
       if (sortBy === 'price-asc') return (a.precio_venta || 0) - (b.precio_venta || 0);
       if (sortBy === 'price-desc') return (b.precio_venta || 0) - (a.precio_venta || 0);
       if (sortBy === 'name') return (a.nombre || '').localeCompare(b.nombre || '');
@@ -913,7 +915,7 @@ export default function StorefrontView({
             >
               {filteredProducts.map((product) => {
                 const imageSrc = product.imagen_url_completa || product.imagen_url || null;
-                const hasStock = (product.stock_total || 0) > 0;
+                const hasStock = product.activo !== false && (product.stock_total || 0) > 0;
                 const isLowStock = hasStock && (product.stock_total || 0) <= 3;
                 const variants = product.variantes || [];
                 const hasMultipleVariants = variants.length > 1;
@@ -941,7 +943,9 @@ export default function StorefrontView({
                         <img
                           src={imageSrc}
                           alt={product.nombre}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          className={`w-full h-full object-cover transition-all duration-500 ${
+                            hasStock ? 'group-hover:scale-105' : 'opacity-75 grayscale-[20%] group-hover:opacity-100'
+                          }`}
                           loading="lazy"
                         />
                       ) : (
@@ -959,7 +963,7 @@ export default function StorefrontView({
                           </span>
                         )}
                         {!hasStock && (
-                          <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-300 text-[9px] font-black tracking-wider uppercase shadow-sm">
+                          <span className="px-2.5 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-zinc-300 border border-white/10 text-[9px] font-bold tracking-widest uppercase shadow-sm">
                             Agotado
                           </span>
                         )}
@@ -1031,15 +1035,20 @@ export default function StorefrontView({
 
                         <button
                           onClick={() => handleOpenProductModal(product)}
-                          disabled={!hasStock}
                           className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 ${
                             hasStock
                               ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 shadow-sm'
-                              : 'bg-zinc-200 text-zinc-400 dark:bg-zinc-800 dark:text-zinc-600 cursor-not-allowed'
+                              : 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 hover:border-zinc-400'
                           }`}
                         >
-                          <Plus className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline">Comprar</span>
+                          {hasStock ? (
+                            <>
+                              <Plus className="w-3.5 h-3.5" />
+                              <span className="hidden sm:inline">Comprar</span>
+                            </>
+                          ) : (
+                            <span className="text-[11px]">Agotado</span>
+                          )}
                         </button>
                       </div>
                     </div>

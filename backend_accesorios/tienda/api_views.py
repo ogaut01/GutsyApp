@@ -107,7 +107,7 @@ class MaterialViewSet(viewsets.ModelViewSet):
 
 
 class ProductoViewSet(viewsets.ModelViewSet):
-    queryset = Producto.objects.filter(activo=True).select_related(
+    queryset = Producto.objects.all().select_related(
         'proveedor_real'
     ).prefetch_related(
         'variantes',
