@@ -1,7 +1,8 @@
-import { ShoppingCart, Gem, Package, Sliders, Home, Users, Store } from 'lucide-react';
+import { ShoppingCart, Gem, Package, Sliders, Home, Users, Store, Inbox } from 'lucide-react';
 
 export const getNavItems = (cartCount = 0) => [
   { id: 'dashboard', label: 'Inicio', icon: Home },
+  { id: 'pedidos-web', label: 'Pedidos Web', icon: Inbox },
   { id: 'pos', label: 'Vender', icon: ShoppingCart, badge: cartCount },
   { id: 'storefront', label: 'Tienda Web', icon: Store },
   { id: 'inventory', label: 'Stock', icon: Gem },

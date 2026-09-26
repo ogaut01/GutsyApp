@@ -8,7 +8,7 @@ import {
   Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw
 } from 'lucide-react';
 import { formatGsInput } from '../currency';
-import { fetchMateriales } from '../services/api';
+import { fetchMateriales, createPedidoWeb } from '../services/api';
 
 // ============================================================================
 // 🏦 CONFIGURACIÓN DE CUENTAS BANCARIAS & ALIAS (EDITABLE)
@@ -533,6 +533,32 @@ export default function StorefrontView({
     }
 
     message += `\n¡Muchas gracias! Quedo a la espera de su confirmación. 😊`;
+
+    // Registrar el pedido en la base de datos (segundo plano, sin bloquear WhatsApp)
+    const pedidoPayload = {
+      cliente_nombre: customerName.trim(),
+      cliente_telefono: customerPhone.trim(),
+      cliente_ci: customerDoc.trim(),
+      cliente_ciudad: customerCity.trim(),
+      cliente_direccion: customerAddress.trim(),
+      tipo_envio: shippingType,
+      metodo_pago: paymentMethod,
+      subtotal_productos: cartSubtotal,
+      costo_envio: deliveryCost,
+      total_pedido: cartTotal,
+      notas: customerNotes.trim(),
+      items: cart.map(item => ({
+        variante_id: item.variantId,
+        cantidad: item.quantity,
+        precio_unitario: item.price,
+        nombre_producto: item.name,
+        grabado_texto: item.customText || '',
+      })),
+    };
+
+    createPedidoWeb(pedidoPayload).catch(err => {
+      console.warn('No se pudo registrar pedido web en BD:', err);
+    });
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${STORE_WHATSAPP}?text=${encodedMessage}`;

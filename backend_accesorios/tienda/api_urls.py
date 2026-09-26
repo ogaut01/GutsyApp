@@ -4,7 +4,7 @@ from .api_views import (
     PlataformaViewSet, ProveedorViewSet, CourierViewSet, MaterialViewSet,
     ProductoViewSet, VarianteProductoViewSet, LoteImportacionViewSet,
     VentaViewSet, GastoViewSet, ConfiguracionViewSet, ItemLoteViewSet,
-    ClienteViewSet, dashboard_stats
+    ClienteViewSet, dashboard_stats, PedidoWebViewSet
 )
 from .bulk_import_views import (
     carga_masiva_productos_api, descargar_plantilla_excel, parsear_archivo_carga_masiva
@@ -24,6 +24,7 @@ router.register(r'itemlotes', ItemLoteViewSet)
 router.register(r'ventas', VentaViewSet)
 router.register(r'gastos', GastoViewSet)
 router.register(r'configuracion', ConfiguracionViewSet, basename='configuracion')
+router.register(r'pedidos-web', PedidoWebViewSet)
 
 urlpatterns = [
     path('auth/login/', login_view, name='auth-login'),

@@ -14,13 +14,15 @@ import datetime
 from .models import (
     Plataforma, ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
     Producto, VarianteProducto, Venta, DetalleVenta,
-    Gasto, Configuracion, ItemLote, Cliente
+    Gasto, Configuracion, ItemLote, Cliente,
+    PedidoWeb, DetallePedidoWeb
 )
 from .serializers import (
     PlataformaSerializer, ProveedorSerializer, CourierSerializer, MaterialSerializer,
     LoteImportacionSerializer, ProductoSerializer, VarianteProductoSerializer,
     VentaCreateSerializer, GastoSerializer, ConfiguracionSerializer,
-    ItemLoteSerializer, ClienteSerializer, ClienteDetalleSerializer
+    ItemLoteSerializer, ClienteSerializer, ClienteDetalleSerializer,
+    PedidoWebSerializer, PedidoWebCreateSerializer
 )
 from .services.currency import sincronizar_cotizaciones_en_bd
 
@@ -942,4 +944,66 @@ def dashboard_stats(request):
         },
         'alertas': alertas
     })
+
+
+# ── Pedidos Web ───────────────────────────────────────────────────────────────
+
+class PedidoWebViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet para gestión de pedidos recibidos desde la tienda online.
+    - create: público (cualquier cliente puede crear un pedido)
+    - list / retrieve / confirm / cancel: solo admin autenticado
+    """
+    queryset = PedidoWeb.objects.prefetch_related('detalles__variante').all()
+    serializer_class = PedidoWebSerializer
+
+    def get_permissions(self):
+        if self.action == 'create':
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def create(self, request, *args, **kwargs):
+        serializer = PedidoWebCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        pedido = serializer.save()
+        return Response(
+            PedidoWebSerializer(pedido).data,
+            status=status.HTTP_201_CREATED
+        )
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        estado = self.request.query_params.get('estado')
+        if estado:
+            qs = qs.filter(estado=estado)
+        return qs
+
+    @action(detail=True, methods=['post'], url_path='confirmar')
+    def confirmar(self, request, pk=None):
+        pedido = self.get_object()
+        metodo = request.data.get('metodo_pago_venta', 'TR')
+        try:
+            venta = pedido.confirmar(metodo_pago_venta=metodo)
+            return Response({
+                'ok': True,
+                'mensaje': f'Pedido #{pedido.id} confirmado. Venta #{venta.id} registrada. Stock descontado.',
+                'pedido': PedidoWebSerializer(pedido).data,
+            })
+        except Exception as e:
+            return Response({'ok': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='cancelar')
+    def cancelar(self, request, pk=None):
+        pedido = self.get_object()
+        try:
+            pedido.cancelar()
+            return Response({
+                'ok': True,
+                'mensaje': f'Pedido #{pedido.id} cancelado.',
+                'pedido': PedidoWebSerializer(pedido).data,
+            })
+        except Exception as e:
+            return Response({'ok': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 

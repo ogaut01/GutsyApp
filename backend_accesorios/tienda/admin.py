@@ -6,7 +6,8 @@ from .models import (
     Plataforma,
     ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
     Producto, VarianteProducto, Venta, DetalleVenta,
-    Gasto, Configuracion, ItemLote, Cliente
+    Gasto, Configuracion, ItemLote, Cliente,
+    PedidoWeb, DetallePedidoWeb
 )
 
 from import_export import resources, fields, widgets
@@ -414,3 +415,32 @@ class ClienteAdmin(admin.ModelAdmin):
     def total_gastado_display(self, obj):
         return f"Gs. {obj.total_gastado:,}".replace(",", ".")
     total_gastado_display.short_description = "Total Comprado"
+
+
+class DetallePedidoWebInline(admin.TabularInline):
+    model = DetallePedidoWeb
+    extra = 0
+    readonly_fields = ('variante', 'cantidad', 'precio_unitario', 'nombre_producto', 'grabado_texto', 'subtotal')
+
+
+@admin.register(PedidoWeb)
+class PedidoWebAdmin(admin.ModelAdmin):
+    list_display = ('id', 'cliente_nombre', 'cliente_telefono', 'cliente_ciudad', 'tipo_envio', 'total_pedido', 'estado', 'fecha_pedido')
+    list_filter = ('estado', 'tipo_envio', 'fecha_pedido')
+    search_fields = ('cliente_nombre', 'cliente_telefono', 'cliente_ciudad', 'cliente_ci')
+    inlines = [DetallePedidoWebInline]
+    readonly_fields = ('fecha_pedido', 'fecha_confirmacion', 'venta')
+    actions = ['confirmar_pedidos_action']
+
+    @admin.action(description="✅ Confirmar pedidos seleccionados (crea venta y descuenta stock)")
+    def confirmar_pedidos_action(self, request, queryset):
+        confirmados = 0
+        for pedido in queryset.filter(estado='PENDIENTE'):
+            try:
+                pedido.confirmar()
+                confirmados += 1
+            except Exception as e:
+                self.message_user(request, f"Error en pedido #{pedido.id}: {e}", level='ERROR')
+        if confirmados:
+            self.message_user(request, f"✅ {confirmados} pedidos confirmados y stock descontado.")
+

@@ -1191,3 +1191,126 @@ class Configuracion(models.Model):
     def get_config(cls):
         config, _ = cls.objects.get_or_create(pk=1)
         return config
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PEDIDOS WEB — Órdenes recibidas desde la tienda online por WhatsApp
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PedidoWeb(models.Model):
+    ESTADOS = [
+        ('PENDIENTE',  '⏳ Pendiente de confirmación'),
+        ('CONFIRMADO', '✅ Pago confirmado — Venta registrada'),
+        ('CANCELADO',  '❌ Cancelado'),
+    ]
+
+    TIPOS_ENVIO = [
+        ('villarrica', '🛵 Delivery Villarrica / Alrededores'),
+        ('interior',   '📦 Envío por Transportadora'),
+    ]
+
+    METODOS_PAGO = [
+        ('contimovil', 'ContiMóvil / QR'),
+        ('billetera',  'Billetera Tigo'),
+        ('transferencia', 'Transferencia Bancaria'),
+        ('otro', 'Otro'),
+    ]
+
+    estado = models.CharField(
+        max_length=12, choices=ESTADOS, default='PENDIENTE', verbose_name='Estado'
+    )
+    fecha_pedido = models.DateTimeField(default=timezone.now, verbose_name='Fecha del Pedido')
+    fecha_confirmacion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha de Confirmación')
+
+    # Datos del cliente
+    cliente_nombre = models.CharField(max_length=120, verbose_name='Nombre del Cliente')
+    cliente_telefono = models.CharField(max_length=40, blank=True, null=True, verbose_name='Teléfono / WhatsApp')
+    cliente_ci = models.CharField(max_length=20, blank=True, null=True, verbose_name='CI')
+    cliente_ciudad = models.CharField(max_length=100, blank=True, null=True, verbose_name='Ciudad')
+    cliente_direccion = models.TextField(blank=True, null=True, verbose_name='Dirección / Sucursal Transportadora')
+
+    # Logística
+    tipo_envio = models.CharField(max_length=12, choices=TIPOS_ENVIO, default='villarrica', verbose_name='Tipo de Envío')
+    metodo_pago = models.CharField(max_length=15, choices=METODOS_PAGO, default='contimovil', verbose_name='Método de Pago')
+
+    # Totales
+    subtotal_productos = models.IntegerField(default=0, verbose_name='Subtotal Productos (Gs.)')
+    costo_envio = models.IntegerField(default=0, verbose_name='Costo de Envío (Gs.)')
+    total_pedido = models.IntegerField(default=0, verbose_name='Total del Pedido (Gs.)')
+
+    # Venta generada al confirmar
+    venta = models.OneToOneField(
+        Venta, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='pedido_web', verbose_name='Venta Generada'
+    )
+
+    notas = models.TextField(blank=True, null=True, verbose_name='Notas / Mensaje del Cliente')
+
+    class Meta:
+        verbose_name = 'Pedido Web (WhatsApp)'
+        verbose_name_plural = 'Pedidos Web (WhatsApp)'
+        ordering = ['-fecha_pedido']
+
+    def __str__(self):
+        return f'Pedido #{self.id} — {self.cliente_nombre} ({self.get_estado_display()})'
+
+    def confirmar(self, metodo_pago_venta='TR'):
+        """
+        Confirma el pedido: crea una Venta con sus DetalleVenta,
+        lo que descuenta el stock automáticamente via el save() de DetalleVenta.
+        """
+        if self.estado != 'PENDIENTE':
+            raise ValidationError('Solo se pueden confirmar pedidos en estado PENDIENTE.')
+
+        with transaction.atomic():
+            venta = Venta.objects.create(
+                cliente_nombre=self.cliente_nombre,
+                cliente_telefono=self.cliente_telefono or '',
+                metodo_pago=metodo_pago_venta,
+                total_cobrado=self.total_pedido,
+                notas=f'Pedido Web #{self.id} — {self.get_tipo_envio_display()}',
+            )
+            for detalle in self.detalles.select_related('variante'):
+                DetalleVenta.objects.create(
+                    venta=venta,
+                    variante=detalle.variante,
+                    cantidad=detalle.cantidad,
+                    precio_unitario=detalle.precio_unitario,
+                )
+            self.venta = venta
+            self.estado = 'CONFIRMADO'
+            self.fecha_confirmacion = timezone.now()
+            self.save()
+
+        return venta
+
+    def cancelar(self):
+        if self.estado != 'PENDIENTE':
+            raise ValidationError('Solo se pueden cancelar pedidos en estado PENDIENTE.')
+        self.estado = 'CANCELADO'
+        self.save()
+
+
+class DetallePedidoWeb(models.Model):
+    pedido = models.ForeignKey(
+        PedidoWeb, related_name='detalles', on_delete=models.CASCADE
+    )
+    variante = models.ForeignKey(
+        VarianteProducto, on_delete=models.PROTECT,
+        verbose_name='Variante del Producto'
+    )
+    cantidad = models.PositiveIntegerField(default=1)
+    precio_unitario = models.IntegerField(verbose_name='Precio Unitario (Gs.)')
+    nombre_producto = models.CharField(max_length=200, blank=True, verbose_name='Nombre (snapshot)')
+    grabado_texto = models.TextField(blank=True, null=True, verbose_name='Grabado / Personalización')
+
+    class Meta:
+        verbose_name = 'Ítem del Pedido Web'
+        verbose_name_plural = 'Ítems del Pedido Web'
+
+    @property
+    def subtotal(self):
+        return self.precio_unitario * self.cantidad
+
+    def __str__(self):
+        return f'{self.nombre_producto} x{self.cantidad}'

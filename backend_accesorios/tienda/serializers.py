@@ -3,7 +3,8 @@ from django.db import transaction
 from .models import (
     Plataforma, ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
     Producto, VarianteProducto, Venta, DetalleVenta,
-    Gasto, Configuracion, ItemLote, Cliente
+    Gasto, Configuracion, ItemLote, Cliente,
+    PedidoWeb, DetallePedidoWeb
 )
 
 class ClienteSerializer(serializers.ModelSerializer):
@@ -302,3 +303,79 @@ class ConfiguracionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Configuracion
         fields = '__all__'
+
+
+# ── Pedidos Web ───────────────────────────────────────────────────────────────
+
+class DetallePedidoWebSerializer(serializers.ModelSerializer):
+    subtotal = serializers.IntegerField(read_only=True)
+    variante_color = serializers.CharField(source='variante.color', read_only=True)
+    variante_talle = serializers.CharField(source='variante.talle', read_only=True)
+    imagen_url = serializers.CharField(source='variante.imagen_url', read_only=True)
+
+    class Meta:
+        model = DetallePedidoWeb
+        fields = [
+            'id', 'variante', 'variante_color', 'variante_talle',
+            'imagen_url', 'nombre_producto', 'grabado_texto',
+            'cantidad', 'precio_unitario', 'subtotal',
+        ]
+
+
+class PedidoWebSerializer(serializers.ModelSerializer):
+    detalles = DetallePedidoWebSerializer(many=True, read_only=True)
+    estado_display = serializers.CharField(source='get_estado_display', read_only=True)
+    tipo_envio_display = serializers.CharField(source='get_tipo_envio_display', read_only=True)
+    metodo_pago_display = serializers.CharField(source='get_metodo_pago_display', read_only=True)
+
+    class Meta:
+        model = PedidoWeb
+        fields = '__all__'
+
+
+class DetallePedidoWebCreateSerializer(serializers.Serializer):
+    variante_id = serializers.IntegerField()
+    cantidad = serializers.IntegerField(min_value=1)
+    precio_unitario = serializers.IntegerField(min_value=0)
+    nombre_producto = serializers.CharField(max_length=200)
+    grabado_texto = serializers.CharField(required=False, allow_blank=True, default='')
+
+
+class PedidoWebCreateSerializer(serializers.Serializer):
+    """Serializer para crear un pedido desde la tienda pública."""
+    cliente_nombre = serializers.CharField(max_length=120)
+    cliente_telefono = serializers.CharField(max_length=40, required=False, allow_blank=True, default='')
+    cliente_ci = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
+    cliente_ciudad = serializers.CharField(max_length=100, required=False, allow_blank=True, default='')
+    cliente_direccion = serializers.CharField(required=False, allow_blank=True, default='')
+    tipo_envio = serializers.ChoiceField(choices=['villarrica', 'interior'])
+    metodo_pago = serializers.ChoiceField(
+        choices=['contimovil', 'billetera', 'transferencia', 'otro'],
+        default='contimovil'
+    )
+    subtotal_productos = serializers.IntegerField(min_value=0)
+    costo_envio = serializers.IntegerField(min_value=0, default=0)
+    total_pedido = serializers.IntegerField(min_value=0)
+    notas = serializers.CharField(required=False, allow_blank=True, default='')
+    items = DetallePedidoWebCreateSerializer(many=True)
+
+    def validate_items(self, value):
+        if not value:
+            raise serializers.ValidationError('El pedido debe tener al menos un producto.')
+        return value
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items')
+        with transaction.atomic():
+            pedido = PedidoWeb.objects.create(**validated_data)
+            for item in items_data:
+                variante = VarianteProducto.objects.get(pk=item['variante_id'])
+                DetallePedidoWeb.objects.create(
+                    pedido=pedido,
+                    variante=variante,
+                    cantidad=item['cantidad'],
+                    precio_unitario=item['precio_unitario'],
+                    nombre_producto=item['nombre_producto'],
+                    grabado_texto=item.get('grabado_texto', ''),
+                )
+        return pedido

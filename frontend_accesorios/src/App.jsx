@@ -10,6 +10,7 @@ import DashboardView from './views/DashboardView';
 import SettingsView from './views/SettingsView';
 import BulkUploadView from './views/BulkUploadView';
 import StorefrontView from './views/StorefrontView';
+import PedidosWebView from './views/PedidosWebView';
 import LoginView from './views/LoginView';
 import {
   fetchProductos, fetchLotes, syncCotizaciones,
@@ -260,6 +261,10 @@ export default function App() {
                   isCartOpen={isCartOpen}
                   setIsCartOpen={setIsCartOpen}
                 />
+              )}
+
+              {activeTab === 'pedidos-web' && (
+                <PedidosWebView onReloadParent={loadData} />
               )}
 
               {activeTab === 'inventory' && (

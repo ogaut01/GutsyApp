@@ -613,3 +613,48 @@ export async function deleteCliente(id) {
   if (!res.ok) throw new Error('Error al eliminar cliente');
   return true;
 }
+
+// ── Pedidos Web (WhatsApp Storefront) ─────────────────────────────────────────
+
+export async function createPedidoWeb(data) {
+  const res = await apiRequest('/pedidos-web/', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'Error al registrar pedido');
+  }
+  return res.json();
+}
+
+export async function fetchPedidosWeb(estado = null) {
+  const query = estado ? `?estado=${estado}` : '';
+  const res = await apiRequest(`/pedidos-web/${query}`);
+  if (!res.ok) throw new Error('Error al cargar pedidos web');
+  return res.json();
+}
+
+export async function confirmarPedidoWeb(id, metodoPagoVenta = 'TR') {
+  const res = await apiRequest(`/pedidos-web/${id}/confirmar/`, {
+    method: 'POST',
+    body: JSON.stringify({ metodo_pago_venta: metodoPagoVenta }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Error al confirmar pedido');
+  }
+  return res.json();
+}
+
+export async function cancelarPedidoWeb(id) {
+  const res = await apiRequest(`/pedidos-web/${id}/cancelar/`, {
+    method: 'POST',
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Error al cancelar pedido');
+  }
+  return res.json();
+}
+
