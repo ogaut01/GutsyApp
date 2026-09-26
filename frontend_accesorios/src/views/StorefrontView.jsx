@@ -622,20 +622,12 @@ export default function StorefrontView({
 
           {/* Acciones: Carrito, Modo Claro/Oscuro y Panel Admin */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Si el dueño ya está autenticado, botón directo a su panel */}
-            {user ? (
+            {/* Acceso admin solo visible si ya está autenticado */}
+            {user && (
               <button
                 onClick={onGoToAdmin}
-                className="px-3 py-2 rounded-full bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-xs font-bold tracking-wide uppercase border border-zinc-200 dark:border-zinc-800 flex items-center gap-1.5 transition"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Panel Admin</span>
-              </button>
-            ) : (
-              <button
-                onClick={onOpenAdminLogin}
                 className="p-2 rounded-full text-zinc-400 hover:text-black dark:hover:text-white transition"
-                title="Acceso Administrativo"
+                title="Panel"
               >
                 <Lock className="w-4 h-4" />
               </button>
@@ -754,13 +746,24 @@ export default function StorefrontView({
           <div className="flex flex-col gap-3">
             {/* Scroll Horizontal de Categorías (Centrado en Desktop) */}
             <div className="relative w-full">
-              <div className="flex items-center md:justify-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-8 md:pr-0">
-                {activeCategories.map(cat => {
+              {/* Fades laterales — solo mobile */}
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-black to-transparent z-10 md:hidden" />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent z-10 md:hidden" />
+
+              <motion.div
+                className="flex items-center md:justify-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-2 md:px-0"
+              >
+                {activeCategories.map((cat) => {
                    const isActive = selectedCategory === cat.id;
                    return (
-                     <button
+                     <motion.button
                        key={cat.id}
-                       onClick={() => setSelectedCategory(cat.id)}
+                       whileTap={{ scale: 0.94 }}
+                       transition={{ duration: 0.12 }}
+                       onClick={(e) => {
+                         setSelectedCategory(cat.id);
+                         e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                       }}
                        className={`relative px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase transition-colors whitespace-nowrap flex-shrink-0 ${
                          isActive
                            ? 'text-white dark:text-black'
@@ -771,16 +774,14 @@ export default function StorefrontView({
                          <motion.div
                            layoutId="categoryActivePill"
                            className="absolute inset-0 bg-black dark:bg-white rounded-full shadow-sm"
-                           transition={{ type: 'spring', stiffness: 380, damping: 28 }}
+                           transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                          />
                        )}
                        <span className="relative z-10">{cat.label}</span>
-                     </button>
+                     </motion.button>
                    );
                  })}
-              </div>
-              {/* Fade visual en el borde derecho solo en móvil */}
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent z-10 md:hidden" />
+              </motion.div>
             </div>
 
             {/* Filtros Secundarios: Desktop (Centrado - Recomendación B) */}
@@ -977,7 +978,7 @@ export default function StorefrontView({
                 const activeVariantForCard = getMatchingColorVariant(product, selectedColor);
                 const imageSrc = activeVariantForCard?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
                 const hasStock = product.activo !== false && (product.stock_total || 0) > 0;
-                const isLowStock = hasStock && (product.stock_total || 0) <= 3;
+                const isLastUnit = hasStock && (product.stock_total || 0) === 1;
                 const variants = product.variantes || [];
                 const hasMultipleVariants = variants.length > 1;
 
@@ -1018,9 +1019,9 @@ export default function StorefrontView({
 
                       {/* Badges Flotantes */}
                       <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
-                        {isLowStock && (
+                        {isLastUnit && (
                           <span className="px-2 py-0.5 rounded-md bg-black text-white dark:bg-white dark:text-black text-[9px] font-black tracking-wider uppercase shadow-sm">
-                            ¡Últimas {product.stock_total}!
+                            ¡Última unidad!
                           </span>
                         )}
                         {!hasStock && (
@@ -2022,15 +2023,7 @@ export default function StorefrontView({
               <span>WhatsApp: {STORE_WHATSAPP_DISPLAY}</span>
             </a>
 
-            <div className="pt-2">
-              <button
-                onClick={user ? onGoToAdmin : onOpenAdminLogin}
-                className="text-[10px] text-zinc-600 hover:text-zinc-400 uppercase tracking-widest flex items-center gap-1 transition"
-              >
-                <Lock className="w-3 h-3" />
-                <span>{user ? 'Ir al Panel Administrativo' : 'Acceso Administrador'}</span>
-              </button>
-            </div>
+
           </div>
         </div>
 
