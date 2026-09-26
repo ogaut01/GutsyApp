@@ -103,6 +103,7 @@ export default function StorefrontView({
   const [selectedColor, setSelectedColor] = useState('ALL');
   const [sortBy, setSortBy] = useState('featured'); // 'featured', 'price-asc', 'price-desc', 'name'
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [customEngravingText, setCustomEngravingText] = useState('');
   const [dbMaterials, setDbMaterials] = useState([]);
 
   // Carga dinámica de materiales de la BD (CAMBIO 5)
@@ -195,6 +196,22 @@ export default function StorefrontView({
       n.includes('corazon y llave') ||
       n.includes('chimuelo') ||
       n.includes('eternal lock')
+    );
+  };
+
+  // Helper para identificar accesorios personalizables / grabados láser
+  const isCustomizableProduct = (p) => {
+    if (!p || !p.nombre) return false;
+    const n = (p.nombre || '').toLowerCase();
+    const d = (p.descripcion || '').toLowerCase();
+    return (
+      n.includes('personaliz') ||
+      n.includes('grabado') ||
+      n.includes('grabar') ||
+      n.includes('inicial') ||
+      n.includes('barra 3d') ||
+      d.includes('personaliz') ||
+      d.includes('grabado')
     );
   };
 
@@ -313,6 +330,7 @@ export default function StorefrontView({
     setActiveModalProduct(product);
     setActiveImageIndex(0);
     setModalQuantity(1);
+    setCustomEngravingText('');
 
     // Seleccionar por defecto la primera variante con stock, o la primera disponible
     if (product.variantes && product.variantes.length > 0) {
@@ -323,13 +341,14 @@ export default function StorefrontView({
     }
   };
 
-  const handleAddToCart = (product, variant, qty = 1) => {
+  const handleAddToCart = (product, variant, qty = 1, customText = '') => {
     const availableStock = variant ? (variant.stock || 0) : (product.stock_total || 0);
     if (product.activo === false || availableStock <= 0) {
       return;
     }
 
-    const itemKey = variant ? `${product.id}-${variant.id}` : `${product.id}-default`;
+    const customKeySuffix = customText && customText.trim() ? `-${customText.trim().substring(0, 15)}` : '';
+    const itemKey = variant ? `${product.id}-${variant.id}${customKeySuffix}` : `${product.id}-default${customKeySuffix}`;
     const itemPrice = variant?.precio_venta_pyg || product.precio_venta || 0;
     const itemImage = variant?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
 
@@ -354,6 +373,7 @@ export default function StorefrontView({
           image: itemImage,
           maxStock: variant ? variant.stock : product.stock_total || 99,
           quantity: qty,
+          customText: customText.trim() || null,
         }
       ];
     });
@@ -457,6 +477,9 @@ export default function StorefrontView({
     cart.forEach((item, index) => {
       const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
       message += `${index + 1}. *${item.name}* ${variantDesc ? `(${variantDesc})` : ''}\n`;
+      if (item.customText) {
+        message += `   • Grabado / Logo: "${item.customText}"\n`;
+      }
       message += `   • Cant: ${item.quantity} un. x Gs. ${formatGsInput(item.price)} = Gs. ${formatGsInput(item.price * item.quantity)}\n`;
     });
 
@@ -1179,6 +1202,29 @@ export default function StorefrontView({
                   </div>
                 )}
 
+                {/* Personalización / Grabado Láser */}
+                {isCustomizableProduct(activeModalProduct) && (
+                  <div className="mt-5 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-black dark:text-white flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Personalización / Grabado Láser</span>
+                      </label>
+                      <span className="text-[10px] text-zinc-400 font-medium">Láser de precisión</span>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={customEngravingText}
+                      onChange={e => setCustomEngravingText(e.target.value)}
+                      placeholder="Ej: Cara 1: Lucas · Cara 2: 15.08.2024 · Cara 3: Coordenadas (o 'Adjuntaré logo en el chat')"
+                      className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white transition resize-none text-black dark:text-white"
+                    />
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
+                      Si deseas grabar un logo, foto o diseño especial, indícalo aquí y podrás adjuntar el archivo directamente en el chat de WhatsApp al finalizar.
+                    </p>
+                  </div>
+                )}
+
                 {/* Estado de disponibilidad */}
                 {(() => {
                   const currentStock = selectedVariant != null
@@ -1222,7 +1268,7 @@ export default function StorefrontView({
                       {/* Botón Agregar al Carrito o Agotado */}
                       <div className="mt-6">
                         <button
-                          onClick={() => isAvailable && handleAddToCart(activeModalProduct, selectedVariant, modalQuantity)}
+                          onClick={() => isAvailable && handleAddToCart(activeModalProduct, selectedVariant, modalQuantity, customEngravingText)}
                           disabled={!isAvailable}
                           className={`w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition ${
                             isAvailable
@@ -1337,6 +1383,12 @@ export default function StorefrontView({
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block truncate">
                               {[item.color, item.size ? `Talle: ${item.size}` : ''].filter(Boolean).join(' • ')}
                             </span>
+                          )}
+                          {item.customText && (
+                            <div className="mt-1 flex items-start gap-1 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-lg border border-amber-200 dark:border-amber-900/50 font-medium">
+                              <Sparkles className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                              <span className="truncate">Grabado: {item.customText}</span>
+                            </div>
                           )}
                           <span className="text-xs font-black text-black dark:text-white mt-0.5 block">
                             Gs. {formatGsInput(item.price * item.quantity)}
