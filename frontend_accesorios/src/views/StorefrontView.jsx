@@ -228,6 +228,30 @@ export default function StorefrontView({
     return ALL_STORE_CATEGORIES.filter(c => c.id === 'ALL' || existingCats.has(c.id));
   }, [productos]);
 
+  // Helper para comparar color de variante con el filtro seleccionado
+  const isColorMatch = (variantColor, filterColor) => {
+    if (!filterColor || filterColor === 'ALL') return false;
+    const c = (variantColor || '').toLowerCase();
+    if (filterColor === 'negro') return c.includes('negro') || c.includes('black');
+    if (filterColor === 'plateado') return c.includes('plateado') || c.includes('plata') || c.includes('silver');
+    if (filterColor === 'dorado') return c.includes('dorado') || c.includes('oro') || c.includes('gold');
+    if (filterColor === 'rose_gold') return c.includes('rose') || c.includes('rosado') || c.includes('rosa');
+    if (filterColor === 'blanco') return c.includes('blanco') || c.includes('white');
+    return false;
+  };
+
+  // Helper para obtener la variante que coincide con el filtro de color
+  const getMatchingColorVariant = (product, filterColor) => {
+    if (!product || !product.variantes || product.variantes.length === 0 || !filterColor || filterColor === 'ALL') {
+      return null;
+    }
+    // Primero buscar variante con stock disponible que coincida con el color
+    const withStock = product.variantes.find(v => v.activo !== false && (v.stock || 0) > 0 && isColorMatch(v.color, filterColor));
+    if (withStock) return withStock;
+    // Sino, cualquier variante activa que coincida con el color
+    return product.variantes.find(v => v.activo !== false && isColorMatch(v.color, filterColor)) || null;
+  };
+
   // ─── Filtrado de Productos ────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
     return productos.filter(product => {
@@ -332,10 +356,15 @@ export default function StorefrontView({
     setModalQuantity(1);
     setCustomEngravingText('');
 
-    // Seleccionar por defecto la primera variante con stock, o la primera disponible
+    // Seleccionar por defecto la variante del color filtrado, o la primera con stock
     if (product.variantes && product.variantes.length > 0) {
-      const firstWithStock = product.variantes.find(v => v.stock > 0) || product.variantes[0];
-      setSelectedVariant(firstWithStock);
+      const colorMatchVar = getMatchingColorVariant(product, selectedColor);
+      if (colorMatchVar) {
+        setSelectedVariant(colorMatchVar);
+      } else {
+        const firstWithStock = product.variantes.find(v => v.stock > 0) || product.variantes[0];
+        setSelectedVariant(firstWithStock);
+      }
     } else {
       setSelectedVariant(null);
     }
@@ -945,7 +974,8 @@ export default function StorefrontView({
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
             >
               {filteredProducts.map((product) => {
-                const imageSrc = product.imagen_url_completa || product.imagen_url || null;
+                const activeVariantForCard = getMatchingColorVariant(product, selectedColor);
+                const imageSrc = activeVariantForCard?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
                 const hasStock = product.activo !== false && (product.stock_total || 0) > 0;
                 const isLowStock = hasStock && (product.stock_total || 0) <= 3;
                 const variants = product.variantes || [];
@@ -1963,10 +1993,9 @@ export default function StorefrontView({
           <div className="space-y-2 text-xs">
             <h4 className="font-bold uppercase tracking-wider text-zinc-300">Medios de Pago</h4>
             <ul className="space-y-1.5 text-zinc-400 text-[11px]">
-              <li>• Link ContiMóvil (Crédito / Débito)</li>
-              <li>• Transferencias SIPAP (ueno bank, Continental, Familiar)</li>
-              <li>• Código QR Bancario</li>
-              <li>• POS Bancard & Efectivo (Villarrica)</li>
+              <li>• Tarjetas (Crédito / Débito)</li>
+              <li>• Transferencias</li>
+              <li>• Pagos QR</li>
             </ul>
           </div>
 
@@ -1974,9 +2003,9 @@ export default function StorefrontView({
           <div className="space-y-2 text-xs">
             <h4 className="font-bold uppercase tracking-wider text-zinc-300">Logística & Envíos</h4>
             <ul className="space-y-1.5 text-zinc-400 text-[11px]">
-              <li>• <strong>Villarrica:</strong> Delivery local (Gs. 15.000)</li>
-              <li>• <strong>Interior del País:</strong> Vía Transportadora (Flete en destino)</li>
-              <li>• Empaque seguro y presentación de regalo</li>
+              <li>• <strong>Villarrica:</strong> Delivery local</li>
+              <li>• <strong>Interior del País:</strong> Vía Transportadora</li>
+              <li>• Entrega garantizada.</li>
             </ul>
           </div>
 
