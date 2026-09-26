@@ -19,8 +19,16 @@ import {
 export default function App() {
   const [user, setUser] = useState(() => getStoredUser());
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  // Hash secreto para acceso admin — no aparece en ningún enlace de la UI
+  const SECRET_ADMIN_HASH = '#gsy-cp-2024';
+
   const [showAdminLogin, setShowAdminLogin] = useState(() => {
-    return window.location.hash === '#admin' || window.location.hash === '#login';
+    const isSecret = window.location.hash === SECRET_ADMIN_HASH;
+    if (isSecret) {
+      // Limpiar el hash de la URL inmediatamente para no dejarlo visible
+      history.replaceState(null, '', window.location.pathname);
+    }
+    return isSecret;
   });
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -90,7 +98,20 @@ export default function App() {
       setUser(null);
     };
     window.addEventListener('auth:unauthorized', handleUnauthorized);
-    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+
+    // Escuchar cambio de hash para acceso admin secreto (por si el app ya está corriendo)
+    const handleHashChange = () => {
+      if (window.location.hash === SECRET_ADMIN_HASH) {
+        history.replaceState(null, '', window.location.pathname);
+        setShowAdminLogin(true);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+
+    return () => {
+      window.removeEventListener('auth:unauthorized', handleUnauthorized);
+      window.removeEventListener('hashchange', handleHashChange);
+    };
   }, []);
 
   const handleLoginSuccess = (userData) => {
