@@ -69,6 +69,16 @@ const ALL_STORE_CATEGORIES = [
   { id: 'OT', label: 'Otros', icon: Tag },
 ];
 
+// Mensajes para la marquesina infinita superior
+const ANNOUNCEMENT_ITEMS = [
+  { text: 'Acero Quirúrgico 316L • Hipoalergénico • Resistente al agua', icon: Sparkles },
+  { text: 'Envíos a todo el país vía AEX', icon: Truck },
+  { text: 'Delivery en Villarrica Gs. 15.000', icon: Truck },
+  { text: 'Garantía de Calidad Gutsy', icon: ShieldCheck },
+  { text: '+80 Modelos Disponibles', icon: Gem },
+  { text: 'Gutsy desde 2023', icon: Sparkles },
+];
+
 export default function StorefrontView({
   productos = [],
   onOpenAdminLogin,
@@ -396,33 +406,34 @@ export default function StorefrontView({
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white flex flex-col font-sans selection:bg-black selection:text-white dark:selection:bg-white dark:selection:text-black">
-      {/* ─── BANNER SUPERIOR DE BENEFICIOS (Persuasivo) ────────────────── */}
-      <div className="bg-black dark:bg-zinc-900 text-white text-[11px] sm:text-xs py-2 px-4 border-b border-zinc-800">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-center sm:text-left">
-          <div className="flex items-center gap-4 mx-auto sm:mx-0 overflow-x-auto no-scrollbar py-0.5">
-            <span className="flex items-center gap-1.5 font-medium tracking-wide">
-              <Sparkles className="w-3.5 h-3.5 text-zinc-300 flex-shrink-0" />
-              <span>Acero Quirúrgico 316L • Hipoalergénico • Resistente al agua</span>
-            </span>
-            <span className="hidden md:inline text-zinc-600">|</span>
-            <span className="hidden md:flex items-center gap-1.5 font-medium text-zinc-300">
-              <Truck className="w-3.5 h-3.5 flex-shrink-0" />
-              <span>Envíos a todo el país vía AEX • Delivery en Villarrica Gs. 15.000</span>
-            </span>
+      {/* ─── BANNER SUPERIOR DE BENEFICIOS (Marquesina Infinita) ────────── */}
+      <div className="bg-black dark:bg-zinc-900 text-white text-[11px] sm:text-xs py-2 border-b border-zinc-800 overflow-hidden relative select-none">
+        <div className="max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
+          {/* Pista de la marquesina con desvanecimiento en bordes */}
+          <div className="flex-1 overflow-hidden relative [mask-image:linear-gradient(to_right,transparent,black_4%,black_96%,transparent)]">
+            <div className="animate-marquee flex items-center gap-6">
+              {[...ANNOUNCEMENT_ITEMS, ...ANNOUNCEMENT_ITEMS].map((item, idx) => {
+                const IconComponent = item.icon;
+                return (
+                  <div key={idx} className="flex items-center gap-2 flex-shrink-0 text-zinc-300">
+                    <IconComponent className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
+                    <span className="font-medium tracking-wide whitespace-nowrap">{item.text}</span>
+                    <span className="text-zinc-600 font-bold">•</span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <div className="hidden lg:flex items-center gap-4 text-zinc-400">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-zinc-300" />
-              <span>Garantía de Calidad Gutsy</span>
-            </span>
+          {/* Teléfono de contacto fijo a la derecha (pantallas grandes) */}
+          <div className="hidden lg:flex items-center flex-shrink-0 pl-4 text-zinc-400 border-l border-zinc-800">
             <a
               href={`https://wa.me/${STORE_WHATSAPP}`}
               target="_blank"
               rel="noreferrer"
-              className="hover:text-white transition flex items-center gap-1 text-zinc-300 font-semibold"
+              className="hover:text-white transition flex items-center gap-1.5 text-zinc-300 font-semibold"
             >
-              <Phone className="w-3 h-3" />
+              <Phone className="w-3 h-3 text-zinc-400" />
               <span>{STORE_WHATSAPP_DISPLAY}</span>
             </a>
           </div>
