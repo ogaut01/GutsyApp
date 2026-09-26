@@ -461,7 +461,7 @@ export default function StorefrontView({
     // Mapeo de Tipo de Envío
     let shippingLabel = '';
     if (shippingType === 'villarrica') shippingLabel = '🛵 Delivery en Villarrica y/o alrededores (Gs. 15.000)';
-    else if (shippingType === 'interior') shippingLabel = '📦 Envío Nacional (Vía AEX / Transportadora - Flete a pagar al recibir en destino, prom. Gs. 35.000 según ciudad)';
+    else if (shippingType === 'interior') shippingLabel = '📦 Envío Nacional (Vía Transportadora - Costo de envío a pagar al recibir, prom. Gs. 35.000 según ciudad)';
 
     // Construcción del mensaje
     let message = `*¡HOLA GUTSY! QUIERO REALIZAR ESTE PEDIDO*\n\n`;
@@ -1439,7 +1439,7 @@ export default function StorefrontView({
                           <Truck className="w-4 h-4 flex-shrink-0" />
                           <div>
                             <div className="font-bold">Delivery Villarrica y/o alrededores</div>
-                            <div className="text-[10px] opacity-80">Entrega rápida en tu puerta</div>
+                            <div className="text-[10px] opacity-80">Entrega rápida en puerta</div>
                           </div>
                         </div>
                         <span className="font-black text-xs whitespace-nowrap">+ Gs. 15.000</span>
@@ -1459,11 +1459,11 @@ export default function StorefrontView({
                         <div className="flex items-center gap-2.5">
                           <Truck className="w-4 h-4 flex-shrink-0" />
                           <div>
-                            <div className="font-bold">Envíos a todo el país (Interior / Asunción / Chaco)</div>
-                            <div className="text-[10px] opacity-80">Vía AEX o Transportadora · Flete a pagar al recibir (Promedio Gs. 35.000)</div>
+                            <div className="font-bold">Envíos Nacionales</div>
+                            <div className="text-[10px] opacity-80">Vía Transportadora · Podes abonar el COSTO DE ENVIO al recibir (Promedio Gs. 35.000)</div>
                           </div>
                         </div>
-                        <span className="font-black text-[11px] whitespace-nowrap">Pago al recibir</span>
+                        <span className="font-black text-[11px] whitespace-nowrap">Flete en destino</span>
                       </button>
                     </div>
                   </div>
@@ -1471,7 +1471,7 @@ export default function StorefrontView({
                   {/* ─── PASO 2: Datos de Envío / Rótulo ────────────────── */}
                   <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
-                      2. Tus Datos para el Envío y Rótulo:
+                      2. Datos para el Envío:
                     </span>
                     <div className="space-y-2 text-xs">
                       <div>
@@ -1520,13 +1520,6 @@ export default function StorefrontView({
                         </>
                       )}
 
-                      <input
-                        type="text"
-                        value={customerNotes}
-                        onChange={e => setCustomerNotes(e.target.value)}
-                        placeholder="Nota o dedicatoria para regalo (opcional)"
-                        className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white text-[11px]"
-                      />
                     </div>
                   </div>
 
@@ -1958,7 +1951,7 @@ export default function StorefrontView({
             <h4 className="font-bold uppercase tracking-wider text-zinc-300">Logística & Envíos</h4>
             <ul className="space-y-1.5 text-zinc-400 text-[11px]">
               <li>• <strong>Villarrica:</strong> Delivery local (Gs. 15.000)</li>
-              <li>• <strong>Interior del País:</strong> Vía AEX / Transportadora</li>
+              <li>• <strong>Interior del País:</strong> Vía Transportadora (Flete en destino)</li>
               <li>• Empaque seguro y presentación de regalo</li>
             </ul>
           </div>
