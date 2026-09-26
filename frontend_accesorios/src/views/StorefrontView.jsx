@@ -8,6 +8,7 @@ import {
   Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw
 } from 'lucide-react';
 import { formatGsInput } from '../currency';
+import { fetchMateriales } from '../services/api';
 import CampaignBanner from '../components/CampaignBanner';
 
 // ============================================================================
@@ -69,14 +70,22 @@ const ALL_STORE_CATEGORIES = [
   { id: 'OT', label: 'Otros', icon: Tag },
 ];
 
-// Mensajes para la marquesina infinita superior
+// Mensajes para la marquesina infinita superior (CAMBIO 1)
 const ANNOUNCEMENT_ITEMS = [
-  { text: 'Acero Quirúrgico 316L • Hipoalergénico • Resistente al agua', icon: Sparkles },
-  { text: 'Envíos a todo el país vía AEX', icon: Truck },
-  { text: 'Delivery en Villarrica Gs. 15.000', icon: Truck },
-  { text: 'Garantía de Calidad Gutsy', icon: ShieldCheck },
-  { text: '+80 Modelos Disponibles', icon: Gem },
-  { text: 'Gutsy desde 2023', icon: Sparkles },
+  { text: 'MATERIALES SELECCIONADOS', icon: Sparkles },
+  { text: 'GARANTÍA DE CALIDAD', icon: ShieldCheck },
+  { text: '+80 MODELOS', icon: Gem },
+  { text: 'ENVÍOS A TODO EL PAÍS', icon: Truck },
+];
+
+// Opciones de Filtro de Color (CAMBIO 5 - Estructurado en variantes)
+const COLOR_FILTER_OPTIONS = [
+  { id: 'ALL', label: 'Todos los Colores' },
+  { id: 'negro', label: 'Negro' },
+  { id: 'plateado', label: 'Plateado' },
+  { id: 'dorado', label: 'Dorado' },
+  { id: 'rose_gold', label: 'Rose Gold' },
+  { id: 'blanco', label: 'Blanco' },
 ];
 
 export default function StorefrontView({
@@ -91,7 +100,37 @@ export default function StorefrontView({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedGender, setSelectedGender] = useState('ALL');
+  const [selectedMaterial, setSelectedMaterial] = useState('ALL');
+  const [selectedColor, setSelectedColor] = useState('ALL');
   const [sortBy, setSortBy] = useState('featured'); // 'featured', 'price-asc', 'price-desc', 'name'
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [dbMaterials, setDbMaterials] = useState([]);
+
+  // Carga dinámica de materiales de la BD (CAMBIO 5)
+  useEffect(() => {
+    fetchMateriales()
+      .then(data => {
+        if (Array.isArray(data)) setDbMaterials(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Opciones de materiales generadas dinámicamente por ID
+  const materialFilterOptions = useMemo(() => {
+    const map = new Map();
+    dbMaterials.forEach(m => {
+      if (m && m.id && m.nombre) map.set(m.id, { id: String(m.id), label: m.nombre });
+    });
+    productos.forEach(p => {
+      (p.materiales || []).forEach(m => {
+        if (m && m.id && m.nombre && !map.has(m.id)) map.set(m.id, { id: String(m.id), label: m.nombre });
+      });
+    });
+    return [
+      { id: 'ALL', label: 'Todos los Materiales' },
+      ...Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
+    ];
+  }, [dbMaterials, productos]);
 
   // Carrito de compras público (persistido en localStorage)
   const [cart, setCart] = useState(() => {
@@ -202,7 +241,37 @@ export default function StorefrontView({
       // Filtro por género
       const matchGender = selectedGender === 'ALL' || product.genero === selectedGender;
 
-      return matchSearch && matchCategory && matchGender;
+      // Filtro por material (ESTRICTO POR ID: evalúa todos los elementos de product.materiales)
+      let matchMaterial = true;
+      if (selectedMaterial !== 'ALL') {
+        if (!product.materiales || product.materiales.length === 0) {
+          matchMaterial = false;
+        } else {
+          const targetId = Number(selectedMaterial);
+          matchMaterial = product.materiales.some(m => m.id === targetId);
+        }
+      }
+
+      // Filtro por color (ESTRICTO: evalúa todas las variantes activas de product.variantes)
+      let matchColor = true;
+      if (selectedColor !== 'ALL') {
+        if (!product.variantes || product.variantes.length === 0) {
+          matchColor = false;
+        } else {
+          matchColor = product.variantes.some(v => {
+            if (v.activo === false) return false;
+            const c = (v.color || '').toLowerCase();
+            if (selectedColor === 'negro') return c.includes('negro') || c.includes('black');
+            if (selectedColor === 'plateado') return c.includes('plateado') || c.includes('plata') || c.includes('silver');
+            if (selectedColor === 'dorado') return c.includes('dorado') || c.includes('oro') || c.includes('gold');
+            if (selectedColor === 'rose_gold') return c.includes('rose') || c.includes('rosado') || c.includes('rosa');
+            if (selectedColor === 'blanco') return c.includes('blanco') || c.includes('white');
+            return false;
+          });
+        }
+      }
+
+      return matchSearch && matchCategory && matchGender && matchMaterial && matchColor;
     }).sort((a, b) => {
       if (sortBy === 'price-asc') return (a.precio_venta || 0) - (b.precio_venta || 0);
       if (sortBy === 'price-desc') return (b.precio_venta || 0) - (a.precio_venta || 0);
@@ -210,7 +279,15 @@ export default function StorefrontView({
       // featured: mayor stock disponible primero
       return (b.stock_total || 0) - (a.stock_total || 0);
     });
-  }, [productos, searchTerm, selectedCategory, selectedGender, sortBy]);
+  }, [productos, searchTerm, selectedCategory, selectedGender, selectedMaterial, selectedColor, sortBy]);
+
+  const activeFilterCount = useMemo(() => {
+    let c = 0;
+    if (selectedGender !== 'ALL') c++;
+    if (selectedMaterial !== 'ALL') c++;
+    if (selectedColor !== 'ALL') c++;
+    return c;
+  }, [selectedGender, selectedMaterial, selectedColor]);
 
   // Total de unidades en el carrito
   const totalCartItems = useMemo(() => {
@@ -564,7 +641,7 @@ export default function StorefrontView({
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-zinc-300 text-xs font-semibold tracking-widest uppercase mb-4 border border-white/15">
             <Gem className="w-3.5 h-3.5 text-white" />
-            <span>Colección Exclusiva • Acero 316L</span>
+            <span>JOYAS & ACCESORIOS · GUTSY</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight uppercase font-serif leading-tight">
@@ -576,40 +653,40 @@ export default function StorefrontView({
             Joyas y accesorios diseñados para destacar tu personalidad. Piezas duraderas, hipoalergénicas y resistentes al agua que no pierden su brillo con el tiempo.
           </p>
 
-          {/* Grid de 4 Pilares de Confianza */}
+          {/* Grid de 4 Pilares de Confianza (CAMBIO 3) */}
           <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto text-left">
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <Droplets className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Waterproof</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Resistente al agua y perfume.</p>
+              <ShieldCheck className="w-4 h-4 text-white mb-2" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">CALIDAD SELECCIONADA</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Materiales elegidos para acompañarte.</p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <ShieldCheck className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Hipoalergénico</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Libre de níquel, cuida tu piel.</p>
+              <Sparkles className="w-4 h-4 text-white mb-2" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">VARIEDAD</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Acero · Plata · Bijou</p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <Truck className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Delivery & AEX</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Villarrica y todo el país.</p>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">ENVÍOS A TODO EL PAÍS</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Enviamos a través de AEX.</p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <CreditCard className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">Pagos Seguros</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">ContiMóvil, SIPAP, QR o POS.</p>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-white">PAGOS SEGUROS</h4>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Transferencia · SIPAP · QR · POS</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ─── BANNER DE CAMPAÑA FULL-BLEED (Inspirado en Apodemia & Outribe) ─ */}
+      {/* ─── BANNER DE CAMPAÑA FULL-BLEED (CAMBIO 4) ─────────────────────── */}
       {/* Props configurables para cambiar el contenido sin tocar código */}
       <CampaignBanner
         eyebrow="Nueva Colección"
-        title="Colección Acero 316L"
+        title="Tu Próximo Favorito"
         ctaLabel="Ver Colección"
         ctaTarget="#catalogo"
         stats={[
@@ -658,40 +735,116 @@ export default function StorefrontView({
               <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent z-10" />
             </div>
 
-            {/* Filtros Secundarios: Género y Orden (Alineados a la izquierda) */}
-            <div className="flex items-center justify-start gap-2.5 flex-wrap text-xs">
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-full border border-zinc-200 dark:border-zinc-800">
-                {[
-                  { id: 'ALL', label: 'Todos' },
-                  { id: 'F', label: 'Dama' },
-                  { id: 'M', label: 'Hombre' },
-                  { id: 'U', label: 'Unisex' }
-                ].map(g => (
+            {/* Filtros Secundarios: Desktop */}
+            <div className="hidden md:flex items-center justify-between gap-3 flex-wrap text-xs">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Género */}
+                <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-full border border-zinc-200 dark:border-zinc-800">
+                  {[
+                    { id: 'ALL', label: 'Todos' },
+                    { id: 'F', label: 'Dama' },
+                    { id: 'M', label: 'Hombre' },
+                    { id: 'U', label: 'Unisex' }
+                  ].map(g => (
+                    <button
+                      key={g.id}
+                      onClick={() => setSelectedGender(g.id)}
+                      className={`relative px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition-colors text-[11px] ${
+                        selectedGender === g.id
+                          ? 'text-black dark:text-white'
+                          : 'text-zinc-500 hover:text-black dark:hover:text-white'
+                      }`}
+                    >
+                      {selectedGender === g.id && (
+                        <motion.div
+                          layoutId="genderActivePill"
+                          className="absolute inset-0 bg-white dark:bg-black rounded-full shadow-xs"
+                          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                        />
+                      )}
+                      <span className="relative z-10">{g.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Selector Material (Dinámico por ID) */}
+                <select
+                  value={selectedMaterial}
+                  onChange={e => setSelectedMaterial(e.target.value)}
+                  className={`border rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none transition ${
+                    selectedMaterial !== 'ALL'
+                      ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
+                  }`}
+                >
+                  {materialFilterOptions.map(m => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
+
+                {/* Selector Color (Estructurado en variantes) */}
+                <select
+                  value={selectedColor}
+                  onChange={e => setSelectedColor(e.target.value)}
+                  className={`border rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none transition ${
+                    selectedColor !== 'ALL'
+                      ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
+                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
+                  }`}
+                >
+                  {COLOR_FILTER_OPTIONS.map(c => (
+                    <option key={c.id} value={c.id}>{c.label}</option>
+                  ))}
+                </select>
+
+                {/* Botón limpiar si hay filtros activos */}
+                {(activeFilterCount > 0 || selectedCategory !== 'ALL' || searchTerm) && (
                   <button
-                    key={g.id}
-                    onClick={() => setSelectedGender(g.id)}
-                    className={`relative px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition-colors text-[11px] ${
-                      selectedGender === g.id
-                        ? 'text-black dark:text-white'
-                        : 'text-zinc-500 hover:text-black dark:hover:text-white'
-                    }`}
+                    onClick={() => {
+                      setSelectedCategory('ALL');
+                      setSelectedGender('ALL');
+                      setSelectedMaterial('ALL');
+                      setSelectedColor('ALL');
+                      setSearchTerm('');
+                    }}
+                    className="text-[11px] font-bold text-zinc-500 hover:text-black dark:hover:text-white underline ml-1"
                   >
-                    {selectedGender === g.id && (
-                      <motion.div
-                        layoutId="genderActivePill"
-                        className="absolute inset-0 bg-white dark:bg-black rounded-full shadow-xs"
-                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative z-10">{g.label}</span>
+                    Limpiar filtros
                   </button>
-                ))}
+                )}
               </div>
 
+              {/* Ordenar por */}
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
                 className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none"
+              >
+                <option value="featured">Destacados</option>
+                <option value="price-asc">Menor Precio</option>
+                <option value="price-desc">Mayor Precio</option>
+                <option value="name">Nombre A-Z</option>
+              </select>
+            </div>
+
+            {/* Filtros Secundarios: Mobile (Botón FILTRAR + Ordenar) */}
+            <div className="flex md:hidden items-center justify-between gap-2">
+              <button
+                onClick={() => setIsMobileFiltersOpen(true)}
+                className={`flex-1 py-2 px-4 rounded-full border text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition ${
+                  activeFilterCount > 0
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-sm'
+                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
+                }`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span>Filtrar {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}</span>
+              </button>
+
+              <select
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-full px-3 py-2 font-bold tracking-wider text-xs uppercase focus:outline-none"
               >
                 <option value="featured">Destacados</option>
                 <option value="price-asc">Menor Precio</option>
@@ -716,12 +869,14 @@ export default function StorefrontView({
             </p>
           </div>
 
-          {(searchTerm || selectedCategory !== 'ALL' || selectedGender !== 'ALL') && (
+          {(searchTerm || selectedCategory !== 'ALL' || selectedGender !== 'ALL' || selectedMaterial !== 'ALL' || selectedColor !== 'ALL') && (
             <button
               onClick={() => {
                 setSearchTerm('');
                 setSelectedCategory('ALL');
                 setSelectedGender('ALL');
+                setSelectedMaterial('ALL');
+                setSelectedColor('ALL');
               }}
               className="text-xs text-zinc-500 hover:text-black dark:hover:text-white underline font-medium"
             >
@@ -730,25 +885,29 @@ export default function StorefrontView({
           )}
         </div>
 
-        {/* Empty state si no hay productos */}
+        {/* Empty state si no hay productos (CAMBIO 5) */}
         {filteredProducts.length === 0 ? (
-          <div className="text-center py-20 bg-zinc-50 dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8">
-            <div className="w-14 h-14 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-zinc-400 flex items-center justify-center mx-auto mb-4">
-              <Search className="w-6 h-6" />
+          <div className="text-center py-20 px-4 bg-zinc-50 dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8">
+            <div className="w-16 h-16 rounded-3xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-zinc-800">
+              <Search className="w-7 h-7 stroke-[1.5]" />
             </div>
-            <h3 className="text-base font-bold uppercase tracking-wider font-serif">No se encontraron joyas</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-md mx-auto">
-              No encontramos artículos que coincidan con tu búsqueda. Prueba seleccionando otra categoría o limpiando los filtros.
+            <h3 className="text-base sm:text-lg font-bold uppercase tracking-widest font-serif">
+              NO ENCONTRAMOS PRODUCTOS
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-sm mx-auto">
+              Prueba modificando alguno de tus filtros de categoría, material o color.
             </p>
             <button
               onClick={() => {
                 setSearchTerm('');
                 setSelectedCategory('ALL');
                 setSelectedGender('ALL');
+                setSelectedMaterial('ALL');
+                setSelectedColor('ALL');
               }}
-              className="mt-5 px-5 py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black text-xs font-bold uppercase tracking-wider"
+              className="mt-6 px-6 py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black text-xs font-bold uppercase tracking-widest shadow-md hover:scale-105 active:scale-95 transition"
             >
-              Ver Todo el Catálogo
+              VER TODOS LOS PRODUCTOS
             </button>
           </div>
         ) : (
@@ -1518,6 +1677,161 @@ export default function StorefrontView({
                 </button>
               </div>
             )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── MODAL DE FILTROS EN MOBILE (CAMBIO 6) ──────────────────────── */}
+      <AnimatePresence>
+        {isMobileFiltersOpen && (
+          <motion.div
+            key="mobile-filters-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setIsMobileFiltersOpen(false)}
+          >
+            <motion.div
+              key="mobile-filters-panel"
+              initial={{ opacity: 0, y: '100%' }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: '100%' }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="w-full max-w-lg bg-white dark:bg-zinc-950 rounded-t-3xl sm:rounded-3xl border-t sm:border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-black dark:text-white" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider font-serif">
+                    Filtros {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setIsMobileFiltersOpen(false)}
+                  className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center hover:scale-105 transition"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Contenido scrolleable de filtros */}
+              <div className="p-5 overflow-y-auto space-y-6 flex-1">
+                {/* 1. Género */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 block">Público / Género</span>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {[
+                      { id: 'ALL', label: 'Todos' },
+                      { id: 'F', label: 'Dama' },
+                      { id: 'M', label: 'Hombre' },
+                      { id: 'U', label: 'Unisex' }
+                    ].map(g => (
+                      <button
+                        key={g.id}
+                        onClick={() => setSelectedGender(g.id)}
+                        className={`py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${
+                          selectedGender === g.id
+                            ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                            : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800'
+                        }`}
+                      >
+                        {g.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Material */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 block">Material</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {materialFilterOptions.map(m => (
+                      <button
+                        key={m.id}
+                        onClick={() => setSelectedMaterial(m.id)}
+                        className={`p-2.5 rounded-xl text-left text-xs font-bold uppercase tracking-wider transition ${
+                          selectedMaterial === m.id
+                            ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                            : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800'
+                        }`}
+                      >
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 3. Color */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 block">Color</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {COLOR_FILTER_OPTIONS.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => setSelectedColor(c.id)}
+                        className={`p-2.5 rounded-xl text-left text-xs font-bold uppercase tracking-wider transition ${
+                          selectedColor === c.id
+                            ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                            : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800'
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Ordenar */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500 block">Ordenar por</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      { id: 'featured', label: 'Destacados' },
+                      { id: 'price-asc', label: 'Menor Precio' },
+                      { id: 'price-desc', label: 'Mayor Precio' },
+                      { id: 'name', label: 'Nombre A-Z' }
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => setSortBy(s.id)}
+                        className={`p-2.5 rounded-xl text-left text-xs font-bold uppercase tracking-wider transition ${
+                          sortBy === s.id
+                            ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs'
+                            : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer con botones de acción */}
+              <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80 flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedGender('ALL');
+                    setSelectedMaterial('ALL');
+                    setSelectedColor('ALL');
+                    setSearchTerm('');
+                  }}
+                  className="px-4 py-3 rounded-2xl bg-zinc-200 dark:bg-zinc-800 text-black dark:text-white text-xs font-bold uppercase tracking-wider hover:opacity-80 transition"
+                >
+                  Limpiar
+                </button>
+                <button
+                  onClick={() => setIsMobileFiltersOpen(false)}
+                  className="flex-1 py-3 rounded-2xl bg-black text-white dark:bg-white dark:text-black text-xs font-bold uppercase tracking-widest shadow-lg active:scale-95 transition"
+                >
+                  Ver {filteredProducts.length} producto{filteredProducts.length !== 1 ? 's' : ''}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}
