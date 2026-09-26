@@ -324,6 +324,11 @@ export default function StorefrontView({
   };
 
   const handleAddToCart = (product, variant, qty = 1) => {
+    const availableStock = variant ? (variant.stock || 0) : (product.stock_total || 0);
+    if (product.activo === false || availableStock <= 0) {
+      return;
+    }
+
     const itemKey = variant ? `${product.id}-${variant.id}` : `${product.id}-default`;
     const itemPrice = variant?.precio_venta_pyg || product.precio_venta || 0;
     const itemImage = variant?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
@@ -1106,15 +1111,19 @@ export default function StorefrontView({
                 )}
               </div>
 
-              {/* Beneficios Rápidos */}
+              {/* Beneficios Rápidos (Dinámicos por material) */}
               <div className="mt-4 grid grid-cols-2 gap-2 w-full text-[11px] text-zinc-500 dark:text-zinc-400">
                 <div className="flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-black dark:text-white flex-shrink-0" />
-                  <span>Acero 316L Inoxidable</span>
+                  <span className="truncate">
+                    {activeModalProduct.materiales?.length > 0
+                      ? activeModalProduct.materiales.map(m => m.nombre).join(', ')
+                      : 'Garantía de Calidad'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Droplets className="w-3.5 h-3.5 text-black dark:text-white flex-shrink-0" />
-                  <span>Resistente al agua</span>
+                  <Sparkles className="w-3.5 h-3.5 text-black dark:text-white flex-shrink-0" />
+                  <span>Diseño Exclusivo</span>
                 </div>
               </div>
             </div>
@@ -1170,48 +1179,72 @@ export default function StorefrontView({
                   </div>
                 )}
 
-                {/* Selector de Cantidad */}
-                <div className="mt-5 flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                  <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                    Cantidad
-                  </span>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
-                      className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
-                    >
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="text-sm font-black w-6 text-center">{modalQuantity}</span>
-                    <button
-                      onClick={() => {
-                        const max = selectedVariant ? selectedVariant.stock : (activeModalProduct.stock_total || 99);
-                        if (modalQuantity < max) {
-                          setModalQuantity(modalQuantity + 1);
-                        } else {
-                          alert(`Solo hay ${max} unidades disponibles.`);
-                        }
-                      }}
-                      className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+                {/* Estado de disponibilidad */}
+                {(() => {
+                  const currentStock = selectedVariant != null
+                    ? (selectedVariant.stock ?? 0)
+                    : (activeModalProduct.stock_total ?? 0);
+                  const isAvailable = activeModalProduct.activo !== false && currentStock > 0;
 
-              {/* Botón Agregar al Carrito */}
-              <div className="mt-6">
-                <button
-                  onClick={() => handleAddToCart(activeModalProduct, selectedVariant, modalQuantity)}
-                  disabled={(selectedVariant ? selectedVariant.stock : activeModalProduct.stock_total) <= 0}
-                  className="w-full py-3.5 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl hover:scale-[1.02] active:scale-95 transition"
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>
-                    Agregar al Carrito • Gs. {formatGsInput((selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0) * modalQuantity)}
-                  </span>
-                </button>
+                  return (
+                    <>
+                      {/* Selector de Cantidad */}
+                      {isAvailable && (
+                        <div className="mt-5 flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                          <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
+                            Cantidad
+                          </span>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                              className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
+                            >
+                              <Minus className="w-3.5 h-3.5" />
+                            </button>
+                            <span className="text-sm font-black w-6 text-center">{modalQuantity}</span>
+                            <button
+                              onClick={() => {
+                                const max = selectedVariant ? selectedVariant.stock : (activeModalProduct.stock_total || 99);
+                                if (modalQuantity < max) {
+                                  setModalQuantity(modalQuantity + 1);
+                                } else {
+                                  alert(`Solo hay ${max} unidades disponibles.`);
+                                }
+                              }}
+                              className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Botón Agregar al Carrito o Agotado */}
+                      <div className="mt-6">
+                        <button
+                          onClick={() => isAvailable && handleAddToCart(activeModalProduct, selectedVariant, modalQuantity)}
+                          disabled={!isAvailable}
+                          className={`w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition ${
+                            isAvailable
+                              ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-[1.02] active:scale-95'
+                              : 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-75'
+                          }`}
+                        >
+                          {isAvailable ? (
+                            <>
+                              <ShoppingBag className="w-4 h-4" />
+                              <span>
+                                Agregar al Carrito • Gs. {formatGsInput((selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0) * modalQuantity)}
+                              </span>
+                            </>
+                          ) : (
+                            <span>Producto Agotado</span>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
             </motion.div>
