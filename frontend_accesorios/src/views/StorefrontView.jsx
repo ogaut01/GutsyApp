@@ -480,59 +480,58 @@ export default function StorefrontView({
 
     setIsSubmittingOrder(true);
 
-    // Mapeo de Método de Pago
-    let paymentLabel = '';
-    if (paymentMethod === 'contimovil') {
-      paymentLabel = '💳 Link de Pago ContiMóvil (Tarjeta Crédito/Débito)';
-    } else if (paymentMethod === 'transferencia') {
-      paymentLabel = `🏦 Transferencia (${selectedBank.shortName} - Alias: ${selectedBank.alias})`;
-    } else if (paymentMethod === 'qr') {
-      paymentLabel = '📲 Pago con QR Bancario';
-    } else if (paymentMethod === 'contraentrega') {
-      paymentLabel = '💵 Pago Contra Entrega en Villarrica (Efectivo)';
-    }
+    // Construccion del mensaje de WhatsApp (emojis con escapes para evitar corrupcion)
+    let message = '\u{1F6CD}\uFE0F *\u00A1HOLA GUTSY!*\n\n';
 
-    // Mapeo de Tipo de Envío
-    let shippingLabel = '';
-    if (shippingType === 'villarrica') shippingLabel = '🛵 Delivery en Villarrica y/o alrededores (Gs. 15.000)';
-    else if (shippingType === 'interior') shippingLabel = '📦 Envío Nacional (Vía Transportadora - Costo de envío a pagar al recibir, prom. Gs. 35.000 según ciudad)';
+    // -- Datos del cliente --
+    message += `\u{1F464} *${customerName.trim()}*\n`;
+    if (customerDoc.trim())     message += `   \u{1F194} CI: ${customerDoc.trim()}\n`;
+    if (customerPhone.trim())   message += `   \u{1F4F1} ${customerPhone.trim()}\n`;
+    if (customerCity.trim())    message += `   \u{1F4CD} ${customerCity.trim()}\n`;
+    if (customerAddress.trim()) message += `   \u{1F3E0} ${customerAddress.trim()}\n`;
+    message += '\n';
 
-    // Construcción del mensaje
-    let message = `*¡HOLA GUTSY! QUIERO REALIZAR ESTE PEDIDO*\n\n`;
-    message += `👤 *CLIENTE:* ${customerName.trim()}\n`;
-    if (customerDoc.trim()) message += `🆔 *C.I. / RUC:* ${customerDoc.trim()}\n`;
-    if (customerPhone.trim()) message += `📱 *TELÉFONO:* ${customerPhone.trim()}\n`;
-    if (customerCity.trim()) message += `📍 *CIUDAD:* ${customerCity.trim()}\n`;
-    if (customerAddress.trim()) message += `🏠 *DIRECCIÓN/SUCURSAL:* ${customerAddress.trim()}\n`;
-    if (shippingType === 'villarrica') message += `📍 *ENTREGA:* Les enviaré mi ubicación GPS y referencias por aquí tras confirmar el pago.\n`;
-    if (customerNotes.trim()) message += `📝 *NOTAS:* ${customerNotes.trim()}\n\n`;
-
-    message += `🛒 *DETALLE DEL PEDIDO:*\n`;
+    // -- Productos --
+    message += '\u{1F6D2} *PEDIDO*\n';
     cart.forEach((item, index) => {
       const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
-      message += `${index + 1}. *${item.name}* ${variantDesc ? `(${variantDesc})` : ''}\n`;
+      message += `${index + 1}. *${item.name}*${variantDesc ? ' \u2014 ' + variantDesc : ''}\n`;
       if (item.customText) {
-        message += `   • Grabado / Logo: "${item.customText}"\n`;
+        message += `   \u270F\uFE0F _Grabado: "${item.customText}"_\n`;
       }
-      message += `   • Cant: ${item.quantity} un. x Gs. ${formatGsInput(item.price)} = Gs. ${formatGsInput(item.price * item.quantity)}\n`;
+      message += `   ${item.quantity} un. \u00D7 Gs.\u00A0${formatGsInput(item.price)} = *Gs.\u00A0${formatGsInput(item.price * item.quantity)}*\n`;
     });
+    message += '\n';
 
-    message += `\n📦 *MÉTODO DE ENTREGA:* ${shippingLabel}\n`;
-    if (deliveryCost > 0) {
-      message += `🛵 *COSTO DELIVERY:* Gs. ${formatGsInput(deliveryCost)}\n`;
+    // -- Entrega --
+    if (shippingType === 'villarrica') {
+      message += '\u{1F6F5} *ENTREGA:* Delivery Villarrica / Alrededores \u2014 Gs.\u00A015.000\n';
+      message += '   Les enviar\u00E9 mi ubicaci\u00F3n GPS por aqu\u00ED al confirmar el pago.\n';
+    } else {
+      message += '\u{1F4E6} *ENTREGA:* Env\u00EDo por Transportadora \u2014 flete en destino (prom. Gs.\u00A035.000)\n';
     }
-    message += `💰 *TOTAL A PAGAR:* *Gs. ${formatGsInput(cartTotal)}*\n`;
-    message += `💳 *MEDIO DE PAGO:* ${paymentLabel}\n\n`;
+    message += '\n';
 
+    // -- Total y pago --
+    message += `\u{1F4B0} *TOTAL: Gs.\u00A0${formatGsInput(cartTotal)}*\n`;
     if (paymentMethod === 'contimovil') {
-      message += `👉 *Solicitud:* Por favor envíenme el link de ContiMóvil para abonar con mi tarjeta.\n`;
-    } else if (paymentMethod === 'qr') {
-      message += `👉 *Solicitud:* Por favor envíenme el código QR con el monto de Gs. ${formatGsInput(cartTotal)} para pagar.\n`;
+      message += '\u{1F4B3} *PAGO:* ContiM\u00F3vil (Tarjeta Cr\u00E9dito / D\u00E9bito)\n';
+      message += '   \u{1F449} Por favor env\u00EDenme el link de pago.\n';
     } else if (paymentMethod === 'transferencia') {
-      message += `👉 *Aviso:* Ya tengo los datos de transferencia para *${selectedBank.shortName}* (Alias: ${selectedBank.alias}) y les adjuntaré el comprobante enseguida.\n`;
+      message += `\u{1F4B3} *PAGO:* Transferencia \u2014 ${selectedBank.shortName} (Alias: ${selectedBank.alias})\n`;
+      message += '   \u{1F449} Les adjunto el comprobante enseguida.\n';
+    } else if (paymentMethod === 'qr') {
+      message += '\u{1F4B3} *PAGO:* QR Bancario\n';
+      message += `   \u{1F449} Por favor env\u00EDenme el c\u00F3digo QR por Gs.\u00A0${formatGsInput(cartTotal)}.\n`;
+    } else if (paymentMethod === 'contraentrega') {
+      message += '\u{1F4B3} *PAGO:* Efectivo al recibir\n';
     }
 
-    message += `\n¡Muchas gracias! Quedo a la espera de su confirmación. 😊`;
+    if (customerNotes.trim()) {
+      message += `\n\u{1F4DD} *Nota:* ${customerNotes.trim()}\n`;
+    }
+
+    message += '\n\u00A1Gracias! Quedo a la espera. \u{1F64F}';
 
     // Registrar el pedido en la base de datos (segundo plano, sin bloquear WhatsApp)
     const pedidoPayload = {
@@ -1644,7 +1643,7 @@ export default function StorefrontView({
                           <div>
                             <div className="font-bold">Transferencia Bancaria (SIPAP)</div>
                             <div className="text-[10px] opacity-80">
-                              Transferencia directa a Continental, ueno bank o Itaú
+                              Transferencia directa a los bancos habilitados. 
                             </div>
                           </div>
                         </div>
@@ -1742,9 +1741,9 @@ export default function StorefrontView({
                         <div className="flex items-center gap-2.5">
                           <QrCode className="w-4 h-4 flex-shrink-0" />
                           <div>
-                            <div className="font-bold">Pago con QR Bancario</div>
+                            <div className="font-bold">Pago con QR</div>
                             <div className="text-[10px] opacity-80">
-                              Te enviamos el código QR con el monto exacto de tu pedido para escanearlo y pagar desde tu app bancaria
+                              Te enviaremos el código QR con el monto exacto de tu pedido para escanearlo y pagar desde tu app bancaria
                             </div>
                           </div>
                         </div>
