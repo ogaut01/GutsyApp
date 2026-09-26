@@ -159,7 +159,7 @@ export default function StorefrontView({
   const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Formulario de Envío y Checkout
-  const [shippingType, setShippingType] = useState('villarrica'); // 'villarrica', 'pickup', 'interior'
+  const [shippingType, setShippingType] = useState('villarrica'); // 'villarrica', 'interior'
   const [paymentMethod, setPaymentMethod] = useState('contimovil'); // 'contimovil', 'transferencia', 'qr', 'contraentrega'
   const [selectedBankId, setSelectedBankId] = useState('continental'); // 'continental', 'ueno', 'itau'
   
@@ -451,21 +451,20 @@ export default function StorefrontView({
     if (paymentMethod === 'contimovil') {
       paymentLabel = '💳 Link de Pago ContiMóvil (Tarjeta Crédito/Débito)';
     } else if (paymentMethod === 'transferencia') {
-      paymentLabel = `🏦 Transferencia SIPAP (${selectedBank.shortName} - Alias: ${selectedBank.alias})`;
+      paymentLabel = `🏦 Transferencia (${selectedBank.shortName} - Alias: ${selectedBank.alias})`;
     } else if (paymentMethod === 'qr') {
       paymentLabel = '📲 Pago con QR Bancario';
     } else if (paymentMethod === 'contraentrega') {
-      paymentLabel = '💵 Pago Contra Entrega en Villarrica (Efectivo / POS Bancard)';
+      paymentLabel = '💵 Pago Contra Entrega en Villarrica (Efectivo)';
     }
 
     // Mapeo de Tipo de Envío
     let shippingLabel = '';
     if (shippingType === 'villarrica') shippingLabel = '🛵 Delivery en Villarrica y alrededores (Gs. 15.000)';
-    else if (shippingType === 'pickup') shippingLabel = '🏪 Retiro Local en Villarrica (Sin costo de envío)';
     else if (shippingType === 'interior') shippingLabel = '📦 Envío al Interior del País (Transportadora / AEX - A convenir)';
 
     // Construcción del mensaje
-    let message = `✨ *¡HOLA GUTSY! QUIERO REALIZAR ESTE PEDIDO* ✨\n\n`;
+    let message = `*¡HOLA GUTSY! QUIERO REALIZAR ESTE PEDIDO*\n\n`;
     message += `👤 *CLIENTE:* ${customerName.trim()}\n`;
     if (customerDoc.trim()) message += `🆔 *C.I. / RUC:* ${customerDoc.trim()}\n`;
     message += `📱 *TELÉFONO:* ${customerPhone.trim()}\n`;
@@ -679,7 +678,7 @@ export default function StorefrontView({
           </h1>
 
           <p className="mt-4 text-xs sm:text-sm md:text-base text-zinc-400 max-w-2xl mx-auto font-light leading-relaxed">
-            Joyas y accesorios diseñados para destacar tu personalidad. Piezas duraderas, hipoalergénicas y resistentes al agua que no pierden su brillo con el tiempo.
+            Joyas y accesorios diseñados para destacar tu personalidad. Piezas duraderas y resistentes diseñadas para redefinir tu estilo.
           </p>
 
           {/* Grid de 4 Pilares de Confianza (CAMBIO 3) */}
@@ -699,13 +698,13 @@ export default function StorefrontView({
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <Truck className="w-4 h-4 text-white mb-2" />
               <h4 className="text-xs font-bold uppercase tracking-wider text-white">ENVÍOS A TODO EL PAÍS</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Enviamos a través de AEX.</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Trabajamos con varias empresas de logística.</p>
             </div>
 
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
               <CreditCard className="w-4 h-4 text-white mb-2" />
               <h4 className="text-xs font-bold uppercase tracking-wider text-white">PAGOS SEGUROS</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Transferencia · SIPAP · QR · POS</p>
+              <p className="text-[11px] text-zinc-400 mt-0.5">Transferencias · QR · POS</p>
             </div>
           </div>
         </div>
@@ -1210,7 +1209,6 @@ export default function StorefrontView({
                         <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                         <span>Personalización / Grabado Láser</span>
                       </label>
-                      <span className="text-[10px] text-zinc-400 font-medium">Láser de precisión</span>
                     </div>
                     <textarea
                       rows={2}
@@ -1445,26 +1443,6 @@ export default function StorefrontView({
                           </div>
                         </div>
                         <span className="font-black text-xs">+ Gs. 15.000</span>
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setShippingType('pickup');
-                        }}
-                        className={`p-3 rounded-2xl text-left border text-xs transition flex items-center justify-between ${
-                          shippingType === 'pickup'
-                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
-                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
-                          <div>
-                            <div className="font-bold">Retiro en Villarrica</div>
-                            <div className="text-[10px] opacity-80">Punto céntrico a coordinar</div>
-                          </div>
-                        </div>
-                        <span className="font-black text-xs">Gratis</span>
                       </button>
 
                       <button
