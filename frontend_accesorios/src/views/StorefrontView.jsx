@@ -439,9 +439,15 @@ export default function StorefrontView({
       return;
     }
 
-    if (shippingType !== 'pickup' && !customerAddress.trim()) {
-      alert('Por favor, ingresa tu dirección de entrega o ciudad de destino.');
-      return;
+    if (shippingType === 'interior') {
+      if (!customerCity.trim()) {
+        alert('Por favor, ingresa la Ciudad y Departamento de destino.');
+        return;
+      }
+      if (!customerAddress.trim()) {
+        alert('Por favor, ingresa tu dirección de entrega o la sucursal de transportadora.');
+        return;
+      }
     }
 
     setIsSubmittingOrder(true);
@@ -469,7 +475,8 @@ export default function StorefrontView({
     if (customerDoc.trim()) message += `🆔 *C.I. / RUC:* ${customerDoc.trim()}\n`;
     message += `📱 *TELÉFONO:* ${customerPhone.trim()}\n`;
     if (customerCity.trim()) message += `📍 *CIUDAD:* ${customerCity.trim()}\n`;
-    if (customerAddress.trim()) message += `🏠 *DIRECCIÓN:* ${customerAddress.trim()}\n`;
+    if (customerAddress.trim()) message += `🏠 *DIRECCIÓN/SUCURSAL:* ${customerAddress.trim()}\n`;
+    if (shippingType === 'villarrica') message += `📍 *ENTREGA:* Les enviaré mi ubicación GPS y referencias por aquí tras confirmar el pago.\n`;
     if (customerNotes.trim()) message += `📝 *NOTAS:* ${customerNotes.trim()}\n\n`;
 
     message += `🛒 *DETALLE DEL PEDIDO:*\n`;
@@ -1468,58 +1475,87 @@ export default function StorefrontView({
                     </div>
                   </div>
 
-                  {/* ─── PASO 2: Datos de Envío / Rótulo ────────────────── */}
+                  {/* ─── PASO 2: Datos de Envío / Contacto ────────────────── */}
                   <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
-                      2. Datos para el Envío:
+                      {shippingType === 'villarrica' ? '2. Datos de Contacto:' : '2. Datos para el Envío y Rótulo:'}
                     </span>
                     <div className="space-y-2 text-xs">
-                      <div>
-                        <input
-                          type="text"
-                          value={customerName}
-                          onChange={e => setCustomerName(e.target.value)}
-                          placeholder="Nombre y Apellido completo *"
-                          className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2">
-                        <input
-                          type="text"
-                          value={customerDoc}
-                          onChange={e => setCustomerDoc(e.target.value)}
-                          placeholder="Nro. Cédula (C.I.)"
-                          className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
-                        />
-                        <input
-                          type="text"
-                          value={customerPhone}
-                          onChange={e => setCustomerPhone(e.target.value)}
-                          placeholder="Celular / WhatsApp *"
-                          className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
-                        />
-                      </div>
-
-                      {shippingType !== 'pickup' && (
+                      {shippingType === 'villarrica' ? (
                         <>
+                          <div>
+                            <input
+                              type="text"
+                              value={customerName}
+                              onChange={e => setCustomerName(e.target.value)}
+                              placeholder="Nombre y Apellido *"
+                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                            />
+                          </div>
+                          <div>
+                            <input
+                              type="text"
+                              value={customerPhone}
+                              onChange={e => setCustomerPhone(e.target.value)}
+                              placeholder="Celular / WhatsApp *"
+                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                            />
+                          </div>
+                          <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1">
+                            <div className="font-bold text-black dark:text-white flex items-center gap-1.5">
+                              <span>📍</span>
+                              <span>Coordinación de Entrega en Villarrica</span>
+                            </div>
+                            <p className="leading-snug">
+                              Al confirmar tu pedido y pago por WhatsApp, te pediremos tu ubicación en tiempo real o referencias exactas para despachar el delivery.
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div>
+                            <input
+                              type="text"
+                              value={customerName}
+                              onChange={e => setCustomerName(e.target.value)}
+                              placeholder="Nombre y Apellido completo *"
+                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                            />
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              value={customerDoc}
+                              onChange={e => setCustomerDoc(e.target.value)}
+                              placeholder="Nro. Cédula (C.I.) *"
+                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                            />
+                            <input
+                              type="text"
+                              value={customerPhone}
+                              onChange={e => setCustomerPhone(e.target.value)}
+                              placeholder="Celular / WhatsApp *"
+                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                            />
+                          </div>
+
                           <input
                             type="text"
                             value={customerCity}
                             onChange={e => setCustomerCity(e.target.value)}
-                            placeholder={shippingType === 'villarrica' ? 'Barrio / Zona en Villarrica' : 'Ciudad y Departamento de destino *'}
+                            placeholder="Ciudad y Departamento de destino *"
                             className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
                           />
                           <textarea
                             rows={2}
                             value={customerAddress}
                             onChange={e => setCustomerAddress(e.target.value)}
-                            placeholder="Dirección exacta y referencias (ej: Casa blanca frente al colegio) *"
+                            placeholder="Dirección exacta o Sucursal de Transportadora *"
                             className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white resize-none"
                           />
                         </>
                       )}
-
                     </div>
                   </div>
 
