@@ -434,12 +434,11 @@ export default function StorefrontView({
       return;
     }
 
-    if (!customerPhone.trim()) {
-      alert('Por favor, ingresa tu número de Celular o WhatsApp de contacto.');
-      return;
-    }
-
     if (shippingType === 'interior') {
+      if (!customerPhone.trim()) {
+        alert('Por favor, ingresa un número de Celular o WhatsApp para el rótulo de la transportadora.');
+        return;
+      }
       if (!customerCity.trim()) {
         alert('Por favor, ingresa la Ciudad y Departamento de destino.');
         return;
@@ -473,7 +472,7 @@ export default function StorefrontView({
     let message = `*¡HOLA GUTSY! QUIERO REALIZAR ESTE PEDIDO*\n\n`;
     message += `👤 *CLIENTE:* ${customerName.trim()}\n`;
     if (customerDoc.trim()) message += `🆔 *C.I. / RUC:* ${customerDoc.trim()}\n`;
-    message += `📱 *TELÉFONO:* ${customerPhone.trim()}\n`;
+    if (customerPhone.trim()) message += `📱 *TELÉFONO:* ${customerPhone.trim()}\n`;
     if (customerCity.trim()) message += `📍 *CIUDAD:* ${customerCity.trim()}\n`;
     if (customerAddress.trim()) message += `🏠 *DIRECCIÓN/SUCURSAL:* ${customerAddress.trim()}\n`;
     if (shippingType === 'villarrica') message += `📍 *ENTREGA:* Les enviaré mi ubicación GPS y referencias por aquí tras confirmar el pago.\n`;
@@ -1446,7 +1445,7 @@ export default function StorefrontView({
                           <Truck className="w-4 h-4 flex-shrink-0" />
                           <div>
                             <div className="font-bold">Delivery Villarrica y/o alrededores</div>
-                            <div className="text-[10px] opacity-80">Entrega rápida en puerta</div>
+                            <div className="text-[10px] opacity-80">Entrega en puerta</div>
                           </div>
                         </div>
                         <span className="font-black text-xs whitespace-nowrap">+ Gs. 15.000</span>
@@ -1492,22 +1491,13 @@ export default function StorefrontView({
                               className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
                             />
                           </div>
-                          <div>
-                            <input
-                              type="text"
-                              value={customerPhone}
-                              onChange={e => setCustomerPhone(e.target.value)}
-                              placeholder="Celular / WhatsApp *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
-                            />
-                          </div>
                           <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1">
                             <div className="font-bold text-black dark:text-white flex items-center gap-1.5">
                               <span>📍</span>
                               <span>Coordinación de Entrega en Villarrica</span>
                             </div>
                             <p className="leading-snug">
-                              Al confirmar tu pedido y pago por WhatsApp, te pediremos tu ubicación en tiempo real o referencias exactas para despachar el delivery.
+                              Al confirmar tu pedido y pago por WhatsApp, te pediremos tu ubicación o referencias exactas para entregar tu pedido.
                             </p>
                           </div>
                         </>
