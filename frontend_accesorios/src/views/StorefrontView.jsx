@@ -460,8 +460,8 @@ export default function StorefrontView({
 
     // Mapeo de Tipo de Envío
     let shippingLabel = '';
-    if (shippingType === 'villarrica') shippingLabel = '🛵 Delivery en Villarrica y alrededores (Gs. 15.000)';
-    else if (shippingType === 'interior') shippingLabel = '📦 Envío al Interior del País (Transportadora / AEX - A convenir)';
+    if (shippingType === 'villarrica') shippingLabel = '🛵 Delivery en Villarrica y/o alrededores (Gs. 15.000)';
+    else if (shippingType === 'interior') shippingLabel = '📦 Envío Nacional (Vía AEX / Transportadora - Flete a pagar al recibir en destino, prom. Gs. 35.000 según ciudad)';
 
     // Construcción del mensaje
     let message = `*¡HOLA GUTSY! QUIERO REALIZAR ESTE PEDIDO*\n\n`;
@@ -1438,11 +1438,11 @@ export default function StorefrontView({
                         <div className="flex items-center gap-2.5">
                           <Truck className="w-4 h-4 flex-shrink-0" />
                           <div>
-                            <div className="font-bold">Delivery Villarrica y alrededores</div>
+                            <div className="font-bold">Delivery Villarrica y/o alrededores</div>
                             <div className="text-[10px] opacity-80">Entrega rápida en tu puerta</div>
                           </div>
                         </div>
-                        <span className="font-black text-xs">+ Gs. 15.000</span>
+                        <span className="font-black text-xs whitespace-nowrap">+ Gs. 15.000</span>
                       </button>
 
                       <button
@@ -1459,11 +1459,11 @@ export default function StorefrontView({
                         <div className="flex items-center gap-2.5">
                           <Truck className="w-4 h-4 flex-shrink-0" />
                           <div>
-                            <div className="font-bold">Interior del País (Envíos a todo Paraguay)</div>
-                            <div className="text-[10px] opacity-80">Vía AEX o Transportadora / Encomienda</div>
+                            <div className="font-bold">Envíos a todo el país (Interior / Asunción / Chaco)</div>
+                            <div className="text-[10px] opacity-80">Vía AEX o Transportadora · Flete a pagar al recibir (Promedio Gs. 35.000)</div>
                           </div>
                         </div>
-                        <span className="font-black text-xs">Pago previo</span>
+                        <span className="font-black text-[11px] whitespace-nowrap">Pago al recibir</span>
                       </button>
                     </div>
                   </div>
