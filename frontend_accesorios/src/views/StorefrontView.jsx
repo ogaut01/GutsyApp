@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { formatGsInput } from '../currency';
 import { fetchMateriales } from '../services/api';
-import CampaignBanner from '../components/CampaignBanner';
 
 // ============================================================================
 // 🏦 CONFIGURACIÓN DE CUENTAS BANCARIAS & ALIAS (EDITABLE)
@@ -681,21 +680,6 @@ export default function StorefrontView({
           </div>
         </div>
       </section>
-
-      {/* ─── BANNER DE CAMPAÑA FULL-BLEED (CAMBIO 4) ─────────────────────── */}
-      {/* Props configurables para cambiar el contenido sin tocar código */}
-      <CampaignBanner
-        eyebrow="Nueva Colección"
-        title="Tu Próximo Favorito"
-        ctaLabel="Ver Colección"
-        ctaTarget="#catalogo"
-        stats={[
-          { value: '500+', label: 'Clientas Satisfechas' },
-          { value: '4.9★', label: 'Satisfacción' },
-          { value: '24h', label: 'Delivery Villarrica' },
-        ]}
-        // imageUrl="" // Descomentar y pasar URL de imagen cuando esté disponible
-      />
 
       {/* ─── FILTROS Y CATEGORÍAS ────────────────────────────────────────── */}
       <section
