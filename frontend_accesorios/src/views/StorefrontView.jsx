@@ -723,9 +723,9 @@ export default function StorefrontView({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3">
-            {/* Scroll Horizontal de Categorías */}
+            {/* Scroll Horizontal de Categorías (Centrado en Desktop) */}
             <div className="relative w-full">
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-8">
+              <div className="flex items-center md:justify-center gap-1.5 overflow-x-auto no-scrollbar py-1 pr-8 md:pr-0">
                 {activeCategories.map(cat => {
                    const isActive = selectedCategory === cat.id;
                    return (
@@ -750,88 +750,70 @@ export default function StorefrontView({
                    );
                  })}
               </div>
-              {/* Fade visual en el borde derecho para indicar scroll */}
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent z-10" />
+              {/* Fade visual en el borde derecho solo en móvil */}
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent z-10 md:hidden" />
             </div>
 
-            {/* Filtros Secundarios: Desktop */}
-            <div className="hidden md:flex items-center justify-between gap-3 flex-wrap text-xs">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                {/* Género */}
-                <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-full border border-zinc-200 dark:border-zinc-800">
-                  {[
-                    { id: 'ALL', label: 'Todos' },
-                    { id: 'F', label: 'Dama' },
-                    { id: 'M', label: 'Hombre' },
-                    { id: 'U', label: 'Unisex' }
-                  ].map(g => (
-                    <button
-                      key={g.id}
-                      onClick={() => setSelectedGender(g.id)}
-                      className={`relative px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition-colors text-[11px] ${
-                        selectedGender === g.id
-                          ? 'text-black dark:text-white'
-                          : 'text-zinc-500 hover:text-black dark:hover:text-white'
-                      }`}
-                    >
-                      {selectedGender === g.id && (
-                        <motion.div
-                          layoutId="genderActivePill"
-                          className="absolute inset-0 bg-white dark:bg-black rounded-full shadow-xs"
-                          transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                        />
-                      )}
-                      <span className="relative z-10">{g.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Selector Material (Dinámico por ID) */}
-                <select
-                  value={selectedMaterial}
-                  onChange={e => setSelectedMaterial(e.target.value)}
-                  className={`border rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none transition ${
-                    selectedMaterial !== 'ALL'
-                      ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
-                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
-                  }`}
-                >
-                  {materialFilterOptions.map(m => (
-                    <option key={m.id} value={m.id}>{m.label}</option>
-                  ))}
-                </select>
-
-                {/* Selector Color (Estructurado en variantes) */}
-                <select
-                  value={selectedColor}
-                  onChange={e => setSelectedColor(e.target.value)}
-                  className={`border rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none transition ${
-                    selectedColor !== 'ALL'
-                      ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
-                      : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
-                  }`}
-                >
-                  {COLOR_FILTER_OPTIONS.map(c => (
-                    <option key={c.id} value={c.id}>{c.label}</option>
-                  ))}
-                </select>
-
-                {/* Botón limpiar si hay filtros activos */}
-                {(activeFilterCount > 0 || selectedCategory !== 'ALL' || searchTerm) && (
+            {/* Filtros Secundarios: Desktop (Centrado - Recomendación B) */}
+            <div className="hidden md:flex items-center justify-center gap-2.5 flex-wrap text-xs">
+              {/* Género */}
+              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-full border border-zinc-200 dark:border-zinc-800">
+                {[
+                  { id: 'ALL', label: 'Todos' },
+                  { id: 'F', label: 'Dama' },
+                  { id: 'M', label: 'Hombre' },
+                  { id: 'U', label: 'Unisex' }
+                ].map(g => (
                   <button
-                    onClick={() => {
-                      setSelectedCategory('ALL');
-                      setSelectedGender('ALL');
-                      setSelectedMaterial('ALL');
-                      setSelectedColor('ALL');
-                      setSearchTerm('');
-                    }}
-                    className="text-[11px] font-bold text-zinc-500 hover:text-black dark:hover:text-white underline ml-1"
+                    key={g.id}
+                    onClick={() => setSelectedGender(g.id)}
+                    className={`relative px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition-colors text-[11px] ${
+                      selectedGender === g.id
+                        ? 'text-black dark:text-white'
+                        : 'text-zinc-500 hover:text-black dark:hover:text-white'
+                    }`}
                   >
-                    Limpiar filtros
+                    {selectedGender === g.id && (
+                      <motion.div
+                        layoutId="genderActivePill"
+                        className="absolute inset-0 bg-white dark:bg-black rounded-full shadow-xs"
+                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-10">{g.label}</span>
                   </button>
-                )}
+                ))}
               </div>
+
+              {/* Selector Material (Dinámico por ID) */}
+              <select
+                value={selectedMaterial}
+                onChange={e => setSelectedMaterial(e.target.value)}
+                className={`border rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none transition ${
+                  selectedMaterial !== 'ALL'
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
+                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
+                }`}
+              >
+                {materialFilterOptions.map(m => (
+                  <option key={m.id} value={m.id}>{m.label}</option>
+                ))}
+              </select>
+
+              {/* Selector Color (Estructurado en variantes) */}
+              <select
+                value={selectedColor}
+                onChange={e => setSelectedColor(e.target.value)}
+                className={`border rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none transition ${
+                  selectedColor !== 'ALL'
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
+                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
+                }`}
+              >
+                {COLOR_FILTER_OPTIONS.map(c => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </select>
 
               {/* Ordenar por */}
               <select
@@ -844,6 +826,22 @@ export default function StorefrontView({
                 <option value="price-desc">Mayor Precio</option>
                 <option value="name">Nombre A-Z</option>
               </select>
+
+              {/* Botón limpiar si hay filtros activos */}
+              {(activeFilterCount > 0 || selectedCategory !== 'ALL' || searchTerm) && (
+                <button
+                  onClick={() => {
+                    setSelectedCategory('ALL');
+                    setSelectedGender('ALL');
+                    setSelectedMaterial('ALL');
+                    setSelectedColor('ALL');
+                    setSearchTerm('');
+                  }}
+                  className="text-[11px] font-bold text-zinc-500 hover:text-black dark:hover:text-white underline ml-1"
+                >
+                  Limpiar filtros
+                </button>
+              )}
             </div>
 
             {/* Filtros Secundarios: Mobile (Botón FILTRAR + Ordenar) */}
@@ -1661,7 +1659,7 @@ export default function StorefrontView({
                           {/* Botón secundario para copiar todos los datos */}
                           <div className="flex items-center justify-between pt-1">
                             <span className="text-[10px] text-zinc-500 italic">
-                              * Adjuntarás tu comprobante por WhatsApp.
+                              * Adjunta tu comprobante por WhatsApp.
                             </span>
                             <button
                               type="button"
@@ -1710,7 +1708,7 @@ export default function StorefrontView({
                             <div>
                               <div className="font-bold">Pago Contra Entrega (Villarrica)</div>
                               <div className="text-[10px] opacity-80">
-                                Pagas al recibir en efectivo o con tu tarjeta en nuestro POS Bancard
+                                Pagas al recibir en efectivo
                               </div>
                             </div>
                           </div>
