@@ -8,6 +8,7 @@ import {
   Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw
 } from 'lucide-react';
 import { formatGsInput } from '../currency';
+import CampaignBanner from '../components/CampaignBanner';
 
 // ============================================================================
 // 🏦 CONFIGURACIÓN DE CUENTAS BANCARIAS & ALIAS (EDITABLE)
@@ -593,8 +594,26 @@ export default function StorefrontView({
         </div>
       </section>
 
+      {/* ─── BANNER DE CAMPAÑA FULL-BLEED (Inspirado en Apodemia & Outribe) ─ */}
+      {/* Props configurables para cambiar el contenido sin tocar código */}
+      <CampaignBanner
+        eyebrow="Nueva Colección"
+        title="Colección Acero 316L"
+        ctaLabel="Ver Colección"
+        ctaTarget="#catalogo"
+        stats={[
+          { value: '500+', label: 'Clientas Satisfechas' },
+          { value: '4.9★', label: 'Satisfacción' },
+          { value: '24h', label: 'Delivery Villarrica' },
+        ]}
+        // imageUrl="" // Descomentar y pasar URL de imagen cuando esté disponible
+      />
+
       {/* ─── FILTROS Y CATEGORÍAS ────────────────────────────────────────── */}
-      <section className="sticky top-20 z-20 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 py-3">
+      <section
+        id="catalogo"
+        className="sticky top-20 z-20 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 py-3 scroll-mt-20"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3">
             {/* Scroll Horizontal de Categorías */}
