@@ -5,7 +5,7 @@ from import_export.admin import ImportExportModelAdmin
 from .models import (
     Plataforma,
     ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
-    Producto, VarianteProducto, Venta, DetalleVenta,
+    Producto, ProductoImagen, VarianteProducto, Venta, DetalleVenta,
     Gasto, Configuracion, ItemLote, Cliente,
     PedidoWeb, DetallePedidoWeb
 )
@@ -143,6 +143,12 @@ class VarianteProductoInline(admin.TabularInline):
     extra = 1
 
 
+class ProductoImagenInline(admin.TabularInline):
+    model = ProductoImagen
+    fields = ('imagen_archivo', 'imagen_url', 'orden')
+    extra = 1
+
+
 @admin.register(Producto)
 class ProductoAdmin(ImportExportModelAdmin):
     resource_class = ProductoResource
@@ -154,7 +160,7 @@ class ProductoAdmin(ImportExportModelAdmin):
     list_filter = ('categoria', 'genero', 'materiales', 'activo', 'fecha_creacion')
     search_fields = ('nombre', 'variantes__sku', 'variantes__codigo_barras')
     filter_horizontal = ('materiales',)
-    inlines = [VarianteProductoInline, ProductoInline]
+    inlines = [VarianteProductoInline, ProductoImagenInline, ProductoInline]
 
     def get_proveedor(self, obj):
         if obj.proveedor_real:

@@ -13,13 +13,13 @@ import datetime
 
 from .models import (
     Plataforma, ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
-    Producto, VarianteProducto, Venta, DetalleVenta,
+    Producto, ProductoImagen, VarianteProducto, Venta, DetalleVenta,
     Gasto, Configuracion, ItemLote, Cliente,
     PedidoWeb, DetallePedidoWeb
 )
 from .serializers import (
     PlataformaSerializer, ProveedorSerializer, CourierSerializer, MaterialSerializer,
-    LoteImportacionSerializer, ProductoSerializer, VarianteProductoSerializer,
+    LoteImportacionSerializer, ProductoSerializer, ProductoImagenSerializer, VarianteProductoSerializer,
     VentaCreateSerializer, GastoSerializer, ConfiguracionSerializer,
     ItemLoteSerializer, ClienteSerializer, ClienteDetalleSerializer,
     PedidoWebSerializer, PedidoWebCreateSerializer
@@ -180,6 +180,59 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 {'error': f'Error al subir la imagen a la nube: {str(e)}'},
                 status=status.HTTP_400_BAD_REQUEST
             )
+
+    @action(detail=True, methods=['post'], url_path='upload-foto-galeria', permission_classes=[IsAuthenticated])
+    def upload_foto_galeria(self, request, pk=None):
+        """Sube una o múltiples fotos adicionales para la galería del producto."""
+        producto = self.get_object()
+        fotos = request.FILES.getlist('fotos')
+        if not fotos and 'foto' in request.FILES:
+            fotos = [request.FILES['foto']]
+
+        if not fotos:
+            return Response({'error': 'No se recibieron fotos.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        tipos_permitidos = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+        creadas = []
+
+        try:
+            for foto in fotos:
+                if foto.content_type not in tipos_permitidos:
+                    continue
+                foto_optimizada = optimizar_foto_producto(foto)
+                img = ProductoImagen.objects.create(
+                    producto=producto,
+                    imagen_archivo=foto_optimizada,
+                    orden=producto.imagenes_galeria.count()
+                )
+                creadas.append(ProductoImagenSerializer(img).data)
+
+            return Response({
+                'status': 'ok',
+                'creadas': creadas,
+                'imagenes_galeria': ProductoImagenSerializer(producto.imagenes_galeria.all(), many=True).data
+            })
+        except Exception as e:
+            return Response({'error': f'Error al procesar fotos: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='add-foto-url-galeria', permission_classes=[IsAuthenticated])
+    def add_foto_url_galeria(self, request, pk=None):
+        """Agrega una foto por URL a la galería del producto."""
+        producto = self.get_object()
+        url = request.data.get('url', '').strip()
+        if not url:
+            return Response({'error': 'La URL es requerida.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        img = ProductoImagen.objects.create(
+            producto=producto,
+            imagen_url=url,
+            orden=producto.imagenes_galeria.count()
+        )
+        return Response({
+            'status': 'ok',
+            'imagen': ProductoImagenSerializer(img).data,
+            'imagenes_galeria': ProductoImagenSerializer(producto.imagenes_galeria.all(), many=True).data
+        })
 
     @action(detail=False, methods=['get'], url_path='catalogo-unificado', permission_classes=[AllowAny])
     def catalogo_unificado(self, request):
@@ -1005,5 +1058,13 @@ class PedidoWebViewSet(viewsets.ModelViewSet):
             })
         except Exception as e:
             return Response({'ok': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ProductoImagenViewSet(viewsets.ModelViewSet):
+    """ViewSet para gestionar (eliminar/reordenar) fotos individuales de la galería."""
+    queryset = ProductoImagen.objects.all()
+    serializer_class = ProductoImagenSerializer
+    permission_classes = [IsAuthenticated]
+
 
 

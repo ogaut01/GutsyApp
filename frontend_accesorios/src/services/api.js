@@ -206,6 +206,45 @@ export async function uploadFotoVariante(id, file) {
   return res.json();
 }
 
+export async function uploadFotoGaleria(productoId, files) {
+  const form = new FormData();
+  if (Array.isArray(files) || files instanceof FileList) {
+    Array.from(files).forEach(f => form.append('fotos', f));
+  } else {
+    form.append('fotos', files);
+  }
+  const res = await apiRequest(`/productos/${productoId}/upload-foto-galeria/`, {
+    method: 'POST',
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || 'Error al subir fotos a la galería');
+  }
+  return res.json();
+}
+
+export async function addFotoUrlGaleria(productoId, url) {
+  const res = await apiRequest(`/productos/${productoId}/add-foto-url-galeria/`, {
+    method: 'POST',
+    body: JSON.stringify({ url }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || 'Error al agregar URL a la galería');
+  }
+  return res.json();
+}
+
+export async function deleteFotoGaleria(imagenId) {
+  const res = await apiRequest(`/producto-imagenes/${imagenId}/`, {
+    method: 'DELETE',
+  });
+  if (res.status === 404) return true;
+  if (!res.ok) throw new Error('Error al eliminar foto de la galería');
+  return true;
+}
+
 // ─── Importaciones & Lotes ─────────────────────────────────────────────────
 
 export async function fetchLotes() {

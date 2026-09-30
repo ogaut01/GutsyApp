@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, Search, Sparkles, ShieldCheck, Droplets, Truck,
   Heart, X, Plus, Minus, Trash2, ArrowRight, CheckCircle2,
-  Copy, Check, MessageCircle, ChevronRight, Phone, Instagram,
+  Copy, Check, MessageCircle, ChevronRight, ChevronLeft, Phone, Instagram,
   MapPin, CreditCard, QrCode, Building2, Banknote, Filter,
   Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw
 } from 'lucide-react';
@@ -348,6 +348,36 @@ export default function StorefrontView({
   }, [shippingType]);
 
   const cartTotal = cartSubtotal + deliveryCost;
+
+  // ─── Galería de Fotos para el Modal ──────────────────────────────────────
+  const modalImages = useMemo(() => {
+    if (!activeModalProduct) return [];
+    const list = [];
+    // 1. Foto principal del producto
+    const mainImg = activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url;
+    if (mainImg) list.push({ url: mainImg, label: 'Principal' });
+
+    // 2. Fotos de la galería adicional
+    if (activeModalProduct.imagenes_galeria && activeModalProduct.imagenes_galeria.length > 0) {
+      activeModalProduct.imagenes_galeria.forEach((g) => {
+        const gUrl = g.url || g.imagen_url;
+        if (gUrl && !list.some(item => item.url === gUrl)) {
+          list.push({ url: gUrl, label: `Galería` });
+        }
+      });
+    }
+
+    // 3. Fotos específicas de cada variante si tienen
+    if (activeModalProduct.variantes && activeModalProduct.variantes.length > 0) {
+      activeModalProduct.variantes.forEach(v => {
+        if (v.imagen_url && !list.some(item => item.url === v.imagen_url)) {
+          list.push({ url: v.imagen_url, label: v.color || 'Color', variantId: v.id });
+        }
+      });
+    }
+
+    return list;
+  }, [activeModalProduct]);
 
   // ─── Manejo de Selección de Producto & Modal ──────────────────────────────
   const handleOpenProductModal = (product) => {
@@ -1177,18 +1207,84 @@ export default function StorefrontView({
             </button>
 
             {/* Columna Imagen */}
-            <div className="md:w-1/2 bg-zinc-100 dark:bg-zinc-900 relative flex flex-col items-center justify-center p-6 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800">
-              <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white dark:bg-black flex items-center justify-center shadow-inner">
-                {selectedVariant?.imagen_url || activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url ? (
-                  <img
-                    src={selectedVariant?.imagen_url || activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url}
-                    alt={activeModalProduct.nombre}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center justify-center text-zinc-400">
-                    <Gem className="w-12 h-12 stroke-[1.5] mb-2" />
-                    <span className="text-xs font-bold tracking-widest uppercase">GUTSY</span>
+            <div className="md:w-1/2 bg-zinc-100 dark:bg-zinc-900 relative flex flex-col items-center justify-between p-6 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800">
+              <div className="w-full flex-1 flex flex-col items-center justify-center">
+                {/* Contenedor de la foto activa */}
+                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white dark:bg-black flex items-center justify-center shadow-inner relative group">
+                  {modalImages.length > 0 && modalImages[activeImageIndex]?.url ? (
+                    <img
+                      key={modalImages[activeImageIndex].url}
+                      src={modalImages[activeImageIndex].url}
+                      alt={activeModalProduct.nombre}
+                      className="w-full h-full object-cover transition-opacity duration-200"
+                    />
+                  ) : activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url ? (
+                    <img
+                      src={activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url}
+                      alt={activeModalProduct.nombre}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-zinc-400">
+                      <Gem className="w-12 h-12 stroke-[1.5] mb-2" />
+                      <span className="text-xs font-bold tracking-widest uppercase">GUTSY</span>
+                    </div>
+                  )}
+
+                  {/* Flechas de navegación si hay más de 1 foto */}
+                  {modalImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveImageIndex(prev => (prev > 0 ? prev - 1 : modalImages.length - 1));
+                        }}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm opacity-90 hover:opacity-100 transition shadow-md"
+                        aria-label="Foto anterior"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveImageIndex(prev => (prev < modalImages.length - 1 ? prev + 1 : 0));
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm opacity-90 hover:opacity-100 transition shadow-md"
+                        aria-label="Foto siguiente"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+
+                      {/* Contador de fotos (ej: 1 / 3) */}
+                      <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-mono font-bold backdrop-blur-sm">
+                        {activeImageIndex + 1} / {modalImages.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Tira de Miniaturas (Thumbnails) si hay 2 o más fotos */}
+                {modalImages.length > 1 && (
+                  <div className="w-full flex items-center gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar justify-center">
+                    {modalImages.map((img, idx) => {
+                      const isActive = activeImageIndex === idx;
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setActiveImageIndex(idx)}
+                          className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${
+                            isActive
+                              ? 'border-black dark:border-white scale-105 shadow-md'
+                              : 'border-transparent opacity-50 hover:opacity-90'
+                          }`}
+                        >
+                          <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -1267,7 +1363,13 @@ export default function StorefrontView({
                                 <button
                                   key={v.id}
                                   disabled={!hasVarStock}
-                                  onClick={() => setSelectedVariant(v)}
+                                  onClick={() => {
+                                    setSelectedVariant(v);
+                                    if (v.imagen_url) {
+                                      const idx = modalImages.findIndex(img => img.url === v.imagen_url);
+                                      if (idx !== -1) setActiveImageIndex(idx);
+                                    }
+                                  }}
                                   title={!hasVarStock ? 'Agotado' : undefined}
                                   className={`relative px-3 py-1.5 rounded-lg border text-xs font-bold transition ${
                                     isSelected
@@ -1433,7 +1535,7 @@ export default function StorefrontView({
                   </div>
                   <h4 className="text-sm font-bold uppercase tracking-wider font-serif">Tu carrito está vacío</h4>
                   <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto">
-                    Explora nuestras joyas y añade tus favoritas para armar tu pedido.
+                    Explora nuestros accesorios y añade tus favoritas para armar tu pedido.
                   </p>
                   <button
                     onClick={() => setIsCartOpen(false)}

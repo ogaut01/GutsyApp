@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.db import transaction
 from .models import (
     Plataforma, ProveedorReal as Proveedor, Courier, Material, LoteImportacion,
-    Producto, VarianteProducto, Venta, DetalleVenta,
+    Producto, ProductoImagen, VarianteProducto, Venta, DetalleVenta,
     Gasto, Configuracion, ItemLote, Cliente,
     PedidoWeb, DetallePedidoWeb
 )
@@ -115,9 +115,18 @@ class ItemLoteSerializer(serializers.ModelSerializer):
         return 'Sin asignar'
 
 
+class ProductoImagenSerializer(serializers.ModelSerializer):
+    url = serializers.CharField(source='url_completa', read_only=True)
+
+    class Meta:
+        model = ProductoImagen
+        fields = ('id', 'producto', 'imagen_url', 'imagen_archivo', 'url', 'orden')
+
+
 class ProductoSerializer(serializers.ModelSerializer):
     variantes = VarianteProductoSerializer(many=True, read_only=True)
     materiales = MaterialSerializer(many=True, read_only=True)
+    imagenes_galeria = ProductoImagenSerializer(many=True, read_only=True)
     materiales_ids = serializers.PrimaryKeyRelatedField(
         queryset=Material.objects.all(), many=True, write_only=True, source='materiales', required=False
     )

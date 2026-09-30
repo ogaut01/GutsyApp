@@ -787,6 +787,40 @@ class Producto(models.Model):
         super().save(*args, **kwargs)
 
 
+class ProductoImagen(models.Model):
+    """Fotos adicionales para la galería de un producto."""
+    producto = models.ForeignKey(
+        Producto,
+        related_name='imagenes_galeria',
+        on_delete=models.CASCADE,
+        verbose_name="Producto"
+    )
+    imagen_url = models.TextField(blank=True, null=True, verbose_name="URL de Imagen Externa")
+    imagen_archivo = models.ImageField(upload_to='productos/galeria/', blank=True, null=True, verbose_name="Subir Foto")
+    orden = models.PositiveIntegerField(default=0, verbose_name="Orden")
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Foto de Galería"
+        verbose_name_plural = "Fotos de Galería"
+        ordering = ['orden', 'id']
+
+    @property
+    def url_completa(self):
+        if self.imagen_archivo:
+            try:
+                url = self.imagen_archivo.url
+                if url.startswith('http://') or url.startswith('https://'):
+                    return url
+                return url
+            except Exception:
+                pass
+        return self.imagen_url or None
+
+    def __str__(self):
+        return f"Foto #{self.id} de {self.producto.nombre}"
+
+
 class VarianteProducto(models.Model):
     """Variante específica por Color, Talle o Medida"""
     PREFIXES_CATEGORIA = {

@@ -9,6 +9,7 @@ import {
   createVariante, updateVariante, deleteVariante,
   uploadFotoProducto, fetchProveedores, fetchMateriales, createMaterial,
   bulkUploadProductos, uploadFotoVariante,
+  uploadFotoGaleria, addFotoUrlGaleria, deleteFotoGaleria,
 } from '../services/api';
 import { formatGsInput, parseGsInput } from '../currency';
 
@@ -70,6 +71,11 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const [uploadingVariantPhotoId, setUploadingVariantPhotoId] = useState(null);
   const variantPhotoInputRef = useRef(null);
   const [pendingVariantPhotoId, setPendingVariantPhotoId] = useState(null);
+
+  // Subida de fotos de galería adicional
+  const [uploadingGalleryProdId, setUploadingGalleryProdId] = useState(null);
+  const galleryInputRef = useRef(null);
+  const [pendingGalleryProdId, setPendingGalleryProdId] = useState(null);
 
   // Materiales y Proveedores
   const [materialesList, setMaterialesList] = useState([]);
@@ -151,6 +157,52 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     } finally {
       setUploadingVariantPhotoId(null);
       setPendingVariantPhotoId(null);
+    }
+  };
+
+  const handleGalleryFotoClick = (prodId, e) => {
+    e.stopPropagation();
+    setPendingGalleryProdId(prodId);
+    galleryInputRef.current?.click();
+  };
+
+  const handleGalleryFotoChange = async (e) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !pendingGalleryProdId) return;
+    const prodId = pendingGalleryProdId;
+    e.target.value = '';
+    setUploadingGalleryProdId(prodId);
+    try {
+      await uploadFotoGaleria(prodId, files);
+      if (onReload) onReload();
+    } catch (err) {
+      alert('Error al subir fotos a la galería: ' + err.message);
+    } finally {
+      setUploadingGalleryProdId(null);
+      setPendingGalleryProdId(null);
+    }
+  };
+
+  const handleDeleteGalleryFoto = async (imgId, e) => {
+    e.stopPropagation();
+    if (!window.confirm('¿Deseas eliminar esta foto de la galería?')) return;
+    try {
+      await deleteFotoGaleria(imgId);
+      if (onReload) onReload();
+    } catch (err) {
+      alert('Error al eliminar foto: ' + err.message);
+    }
+  };
+
+  const handleAddGalleryUrlPrompt = async (prodId, e) => {
+    e.stopPropagation();
+    const url = window.prompt('Pega el enlace / URL de la foto adicional:');
+    if (!url || !url.trim()) return;
+    try {
+      await addFotoUrlGaleria(prodId, url.trim());
+      if (onReload) onReload();
+    } catch (err) {
+      alert('Error al agregar foto por URL: ' + err.message);
     }
   };
 
@@ -699,6 +751,14 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
         className="hidden"
         onChange={handleNuevoProductoFotoChange}
       />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={handleGalleryFotoChange}
+      />
 
       {/* ── Lista de Productos ── */}
       <div className="space-y-3">
@@ -943,8 +1003,73 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                     )}
                   </div>
 
-                  {/* Variantes (Talles y Colores) */}
-                  <div>
+                  {/* ── Galería de Fotos Adicionales (Carrusel de la Tienda) ── */}
+                  <div className="p-3 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500 dark:text-zinc-400 flex items-center gap-1.5">
+                            <Camera className="w-3.5 h-3.5 text-black dark:text-white" />
+                            Galería de Fotos Adicionales ({prod.imagenes_galeria?.length || 0})
+                          </span>
+                          <p className="text-[10px] text-stone-400 dark:text-zinc-500">
+                            Fotos extras que el cliente podrá deslizar en la tienda (puesto, zoom, empaque).
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={(e) => handleGalleryFotoClick(prod.id, e)}
+                            disabled={uploadingGalleryProdId === prod.id}
+                            className="px-2.5 py-1 rounded-lg bg-black text-white dark:bg-white dark:text-black text-[10px] font-bold flex items-center gap-1 hover:opacity-90 transition disabled:opacity-50 active:scale-95 shadow-sm"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>{uploadingGalleryProdId === prod.id ? 'Subiendo...' : 'Subir Fotos'}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleAddGalleryUrlPrompt(prod.id, e)}
+                            className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 text-[10px] font-bold flex items-center gap-1 hover:bg-neutral-200 dark:hover:bg-zinc-700 transition"
+                            title="Agregar foto pegando un enlace externo"
+                          >
+                            <span>+ Enlace URL</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Miniaturas de fotos adicionales */}
+                      {prod.imagenes_galeria && prod.imagenes_galeria.length > 0 ? (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {prod.imagenes_galeria.map((img) => (
+                            <div
+                              key={img.id}
+                              className="relative group/gal w-14 h-14 rounded-xl overflow-hidden border border-neutral-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm flex-shrink-0"
+                            >
+                              <img
+                                src={img.url || img.imagen_url}
+                                alt="Foto adicional"
+                                className="w-full h-full object-cover"
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => handleDeleteGalleryFoto(img.id, e)}
+                                className="absolute inset-0 bg-black/70 opacity-0 group-hover/gal:opacity-100 flex items-center justify-center text-rose-400 transition"
+                                title="Eliminar esta foto"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-stone-400 dark:text-zinc-500 italic">
+                          Este accesorio solo tiene su foto principal. Hacé clic en "Subir Fotos" o "+ Enlace URL" para agregar fotos al carrusel.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Variantes (Talles y Colores) */}
+                    <div>
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-[11px] font-bold text-stone-500 dark:text-zinc-400 uppercase tracking-wider">
                         {alertType ? 'Variantes relevantes' : 'Variantes & Stock Físico'} ({displayedVariants.length})
