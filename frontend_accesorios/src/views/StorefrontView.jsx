@@ -1082,20 +1082,20 @@ export default function StorefrontView({
                         </div>
                       )}
 
-                      {/* Badges Flotantes */}
-                      <div className="absolute top-2.5 left-2.5 flex flex-col gap-1 z-10">
+                      {/* Badges Flotantes (Auto-ajustables al tamaño de cada palabra) */}
+                      <div className="absolute top-2.5 left-2.5 flex flex-col items-start gap-1 z-10 pointer-events-none">
                         {isLastUnit && (
-                          <span className="px-2 py-0.5 rounded-md bg-black text-white dark:bg-white dark:text-black text-[9px] font-black tracking-wider uppercase shadow-sm">
+                          <span className="w-fit px-2 py-0.5 rounded-md bg-black text-white dark:bg-white dark:text-black text-[9px] font-black tracking-wider uppercase shadow-sm">
                             ¡Última unidad!
                           </span>
                         )}
                         {!hasStock && (
-                          <span className="px-2.5 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-zinc-300 border border-white/10 text-[9px] font-bold tracking-widest uppercase shadow-sm">
+                          <span className="w-fit px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-md text-zinc-300 border border-white/10 text-[9px] font-bold tracking-widest uppercase shadow-sm">
                             Agotado
                           </span>
                         )}
                         {(product.genero_display || product.genero) && (
-                          <span className="px-2 py-0.5 rounded-md bg-white/90 dark:bg-black/90 backdrop-blur-sm text-black dark:text-white text-[9px] font-bold tracking-wider uppercase border border-zinc-200 dark:border-zinc-800">
+                          <span className="w-fit px-2 py-0.5 rounded-md bg-white/90 dark:bg-black/90 backdrop-blur-sm text-black dark:text-white text-[9px] font-bold tracking-wider uppercase border border-zinc-200 dark:border-zinc-800">
                             {formatGenero(product.genero_display || product.genero)}
                           </span>
                         )}
