@@ -506,7 +506,7 @@ export default function StorefrontView({
     // -- Entrega --
     if (shippingType === 'villarrica') {
       message += '\u{1F6F5} *ENTREGA:* Delivery Villarrica / Alrededores \u2014 Gs.\u00A015.000\n';
-      message += '   Les enviar\u00E9 mi ubicaci\u00F3n GPS por aqu\u00ED al confirmar el pago.\n';
+      message += '   Les enviar\u00E9 mi ubicaci\u00F3n por aqu\u00ED al confirmar el pago.\n';
     } else {
       message += '\u{1F4E6} *ENTREGA:* Env\u00EDo por Transportadora \u2014 flete en destino (prom. Gs.\u00A035.000)\n';
     }
@@ -1227,39 +1227,66 @@ export default function StorefrontView({
                   </span>
                 </div>
 
-                {/* Selector de Variantes (Color / Talle) */}
-                {activeModalProduct.variantes && activeModalProduct.variantes.length > 0 && (
-                  <div className="mt-5 space-y-3">
-                    <label className="text-xs font-bold uppercase tracking-wider block text-zinc-700 dark:text-zinc-300">
-                      Selecciona una opción:
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {activeModalProduct.variantes.map(v => {
-                        const isSelected = selectedVariant?.id === v.id;
-                        const hasVarStock = v.stock > 0;
-                        return (
-                          <button
-                            key={v.id}
-                            disabled={!hasVarStock}
-                            onClick={() => setSelectedVariant(v)}
-                            className={`p-2.5 rounded-xl text-left border text-xs transition relative ${
-                              isSelected
-                                ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold shadow-sm'
-                                : hasVarStock
-                                  ? 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900 text-black dark:text-white hover:border-zinc-400'
-                                  : 'border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900/50 text-zinc-400 opacity-50 cursor-not-allowed'
-                            }`}
-                          >
-                            <div className="font-bold truncate">{v.color || v.sku || 'Estándar'}</div>
-                            <div className="text-[10px] opacity-80">
-                              {v.talle_medida ? `Talle: ${v.talle_medida}` : ''} • Stock: {v.stock}
-                            </div>
-                          </button>
-                        );
-                      })}
+                {/* Selector de Variantes — agrupado por color, ordenado por talle */}
+                {activeModalProduct.variantes && activeModalProduct.variantes.length > 0 && (() => {
+                  const talleNum = (v) => {
+                    const n = parseFloat((v.talle_medida || '').toString().replace(/[^0-9.]/g, ''));
+                    return isNaN(n) ? 9999 : n;
+                  };
+
+                  // Agrupar por color
+                  const grupos = {};
+                  activeModalProduct.variantes.forEach(v => {
+                    const key = v.color || v.sku || 'Estándar';
+                    if (!grupos[key]) grupos[key] = [];
+                    grupos[key].push(v);
+                  });
+
+                  // Disponibles ordenadas por talle → agotadas ordenadas por talle
+                  Object.keys(grupos).forEach(key => {
+                    const disp  = grupos[key].filter(v => v.stock > 0).sort((a, b) => talleNum(a) - talleNum(b));
+                    const agot  = grupos[key].filter(v => v.stock <= 0).sort((a, b) => talleNum(a) - talleNum(b));
+                    grupos[key] = [...disp, ...agot];
+                  });
+
+                  return (
+                    <div className="mt-5 space-y-4">
+                      <label className="text-xs font-bold uppercase tracking-wider block text-zinc-700 dark:text-zinc-300">
+                        Selecciona una opción:
+                      </label>
+                      {Object.entries(grupos).map(([colorKey, variantes]) => (
+                        <div key={colorKey}>
+                          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block mb-1.5">
+                            {colorKey}
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {variantes.map(v => {
+                              const isSelected  = selectedVariant?.id === v.id;
+                              const hasVarStock = v.stock > 0;
+                              return (
+                                <button
+                                  key={v.id}
+                                  disabled={!hasVarStock}
+                                  onClick={() => setSelectedVariant(v)}
+                                  title={!hasVarStock ? 'Agotado' : undefined}
+                                  className={`relative px-3 py-1.5 rounded-lg border text-xs font-bold transition ${
+                                    isSelected
+                                      ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                                      : hasVarStock
+                                        ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-white hover:border-black dark:hover:border-white'
+                                        : 'border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-400 opacity-40 cursor-not-allowed line-through'
+                                  }`}
+                                >
+                                  {v.talle_medida || 'Único'}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Personalización / Grabado Láser */}
                 {isCustomizableProduct(activeModalProduct) && (
@@ -2008,7 +2035,7 @@ export default function StorefrontView({
               <span className="text-xl font-black uppercase tracking-widest font-serif">GUTSY</span>
             </div>
             <p className="text-xs text-zinc-400 font-light leading-relaxed">
-              Tu propio estilo, tu propia esencia. Joyas y accesorios de acero inoxidable diseñados para durar.
+              Tu propio estilo, tu propia esencia. Accesorios diseñados para acompañarte en cada momento.
             </p>
             <p className="text-[11px] text-zinc-500">
               📍 Villarrica, Guairá, Paraguay.
