@@ -76,6 +76,9 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const [uploadingGalleryProdId, setUploadingGalleryProdId] = useState(null);
   const galleryInputRef = useRef(null);
   const [pendingGalleryProdId, setPendingGalleryProdId] = useState(null);
+  const [addGalleryUrlModal, setAddGalleryUrlModal] = useState(null); // prod object
+  const [galleryUrlInput, setGalleryUrlInput] = useState('');
+  const [savingGalleryUrl, setSavingGalleryUrl] = useState(false);
 
   // Materiales y Proveedores
   const [materialesList, setMaterialesList] = useState([]);
@@ -194,15 +197,25 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     }
   };
 
-  const handleAddGalleryUrlPrompt = async (prodId, e) => {
+  const handleOpenAddGalleryUrlModal = (prod, e) => {
     e.stopPropagation();
-    const url = window.prompt('Pega el enlace / URL de la foto adicional:');
-    if (!url || !url.trim()) return;
+    setAddGalleryUrlModal(prod);
+    setGalleryUrlInput('');
+  };
+
+  const handleSaveGalleryUrl = async (e) => {
+    e.preventDefault();
+    if (!addGalleryUrlModal || !galleryUrlInput.trim()) return;
+    setSavingGalleryUrl(true);
     try {
-      await addFotoUrlGaleria(prodId, url.trim());
+      await addFotoUrlGaleria(addGalleryUrlModal.id, galleryUrlInput.trim());
+      setAddGalleryUrlModal(null);
+      setGalleryUrlInput('');
       if (onReload) onReload();
     } catch (err) {
       alert('Error al agregar foto por URL: ' + err.message);
+    } finally {
+      setSavingGalleryUrl(false);
     }
   };
 
@@ -1028,8 +1041,8 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                           </button>
                           <button
                             type="button"
-                            onClick={(e) => handleAddGalleryUrlPrompt(prod.id, e)}
-                            className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 text-[10px] font-bold flex items-center gap-1 hover:bg-neutral-200 dark:hover:bg-zinc-700 transition"
+                            onClick={(e) => handleOpenAddGalleryUrlModal(prod, e)}
+                            className="px-2.5 py-1 rounded-lg bg-neutral-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 text-[10px] font-bold flex items-center gap-1 hover:bg-neutral-200 dark:hover:bg-zinc-700 transition active:scale-95"
                             title="Agregar foto pegando un enlace externo"
                           >
                             <span>+ Enlace URL</span>
@@ -1775,6 +1788,76 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                 {deleting ? 'Eliminando...' : 'Sí, eliminar'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* ══════════════════════════════════════════════════════
+          MODAL — Agregar Foto por URL a la Galería
+      ══════════════════════════════════════════════════════ */}
+      {addGalleryUrlModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-3xl w-full max-w-md p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-zinc-800">
+              <h3 className="font-bold text-base text-stone-900 dark:text-white flex items-center gap-2">
+                <Camera className="w-4 h-4 text-black dark:text-white" />
+                Agregar Foto por Enlace
+              </h3>
+              <button
+                onClick={() => setAddGalleryUrlModal(null)}
+                className="p-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-stone-500 dark:text-zinc-400 hover:text-stone-900 dark:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGalleryUrl} className="space-y-4">
+              <div>
+                <p className="text-xs text-stone-500 dark:text-zinc-400 mb-2">
+                  Accesorio: <b className="text-stone-900 dark:text-white">{addGalleryUrlModal.nombre}</b>
+                </p>
+                <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                  Enlace directo de la imagen (HTTPS)
+                </label>
+                <input
+                  type="url"
+                  required
+                  autoFocus
+                  placeholder="https://img.shein.com/.../foto.jpg"
+                  value={galleryUrlInput}
+                  onChange={e => setGalleryUrlInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-xs text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                />
+              </div>
+
+              {/* Vista previa de la foto */}
+              {galleryUrlInput.trim().startsWith('http') && (
+                <div className="w-full h-36 rounded-xl overflow-hidden bg-neutral-100 dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 flex items-center justify-center relative">
+                  <img
+                    src={galleryUrlInput.trim()}
+                    alt="Vista previa"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAddGalleryUrlModal(null)}
+                  className="flex-1 py-2.5 bg-neutral-100 dark:bg-zinc-800 text-stone-700 dark:text-zinc-300 font-bold rounded-xl text-xs hover:bg-neutral-200 dark:hover:bg-zinc-700 transition"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingGalleryUrl || !galleryUrlInput.trim()}
+                  className="flex-1 py-2.5 bg-black text-white dark:bg-white dark:text-black font-bold rounded-xl text-xs hover:opacity-90 transition disabled:opacity-50 active:scale-95"
+                >
+                  {savingGalleryUrl ? 'Guardando...' : 'Agregar a Galería'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
