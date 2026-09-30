@@ -29,7 +29,7 @@ const CATEGORIAS = [
 ];
 
 const GENEROS = [
-  { id: 'M', label: 'Hombre' },
+  { id: 'M', label: 'Caballero' },
   { id: 'F', label: 'Dama' },
   { id: 'U', label: 'Unisex' },
 ];

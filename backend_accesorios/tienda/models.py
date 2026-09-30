@@ -559,8 +559,8 @@ class Producto(models.Model):
     ]
 
     GENEROS = [
-        ('M', 'Hombre / Masculino'),
-        ('F', 'Dama / Femenino'),
+        ('M', 'Caballero'),
+        ('F', 'Dama'),
         ('U', 'Unisex'),
     ]
 

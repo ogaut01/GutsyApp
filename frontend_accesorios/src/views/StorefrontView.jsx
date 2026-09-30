@@ -199,6 +199,16 @@ export default function StorefrontView({
     );
   };
 
+  // Helper para mostrar género limpio (Dama, Caballero, Unisex)
+  const formatGenero = (g) => {
+    if (!g) return '';
+    const lower = String(g).toLowerCase().trim();
+    if (lower.includes('dama') || lower.includes('femenino') || lower === 'f') return 'Dama';
+    if (lower.includes('caballero') || lower.includes('hombre') || lower.includes('masculino') || lower === 'm') return 'Caballero';
+    if (lower.includes('unisex') || lower === 'u') return 'Unisex';
+    return g;
+  };
+
   // Helper para identificar accesorios personalizables / grabados láser
   const isCustomizableProduct = (p) => {
     if (!p || !p.nombre) return false;
@@ -846,7 +856,7 @@ export default function StorefrontView({
                 {[
                   { id: 'ALL', label: 'Todos' },
                   { id: 'F', label: 'Dama' },
-                  { id: 'M', label: 'Hombre' },
+                  { id: 'M', label: 'Caballero' },
                   { id: 'U', label: 'Unisex' }
                 ].map(g => (
                   <button
@@ -1084,9 +1094,9 @@ export default function StorefrontView({
                             Agotado
                           </span>
                         )}
-                        {product.genero_display && (
+                        {(product.genero_display || product.genero) && (
                           <span className="px-2 py-0.5 rounded-md bg-white/90 dark:bg-black/90 backdrop-blur-sm text-black dark:text-white text-[9px] font-bold tracking-wider uppercase border border-zinc-200 dark:border-zinc-800">
-                            {product.genero_display}
+                            {formatGenero(product.genero_display || product.genero)}
                           </span>
                         )}
                       </div>
@@ -1310,7 +1320,7 @@ export default function StorefrontView({
             <div className="md:w-1/2 p-6 overflow-y-auto flex flex-col justify-between">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 block">
-                  {activeModalProduct.categoria_display} • {activeModalProduct.genero_display}
+                  {activeModalProduct.categoria_display} • {formatGenero(activeModalProduct.genero_display || activeModalProduct.genero)}
                 </span>
 
                 <h2 className="text-lg font-black tracking-wide uppercase font-serif mt-1">
@@ -1986,7 +1996,7 @@ export default function StorefrontView({
                     {[
                       { id: 'ALL', label: 'Todos' },
                       { id: 'F', label: 'Dama' },
-                      { id: 'M', label: 'Hombre' },
+                      { id: 'M', label: 'Caballero' },
                       { id: 'U', label: 'Unisex' }
                     ].map(g => (
                       <button
