@@ -1628,15 +1628,15 @@ export default function StorefrontView({
 
                   return (
                     <div className="mt-5 space-y-4">
-                      {/* PASO 1: Selector de Color (Círculos de colores / Swatches) */}
+                      {/* PASO 1: Selector de Color (Círculos puros / Swatches) */}
                       {colorList.length > 0 && (
                         <div>
-                          <div className="flex items-center justify-between mb-2.5">
+                          <div className="flex items-center justify-between mb-2">
                             <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
                               Color: <span className="font-extrabold text-black dark:text-white capitalize">{currentColor || 'Estándar'}</span>
                             </label>
                           </div>
-                          <div className="flex flex-wrap items-center gap-2.5">
+                          <div className="flex items-center gap-3">
                             {colorList.map((colName) => {
                               const isColorActive = currentColor.toLowerCase() === colName.toLowerCase();
                               const swatch = getColorSwatchStyle(colName);
@@ -1666,31 +1666,18 @@ export default function StorefrontView({
                                       setActiveImageIndex(0);
                                     }
                                   }}
-                                  className={`group relative flex items-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                  className={`relative w-8 h-8 rounded-full border transition-all flex items-center justify-center ${swatch.borderClass} ${swatch.bgClass} ${
                                     isColorActive
-                                      ? 'border-black dark:border-white bg-black/5 dark:bg-white/10 ring-2 ring-black dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-zinc-950 font-bold shadow-sm'
-                                      : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-white/60 dark:bg-zinc-900/60'
+                                      ? 'ring-2 ring-black dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-zinc-950 scale-110 shadow-md'
+                                      : 'opacity-85 hover:opacity-100 hover:scale-105'
                                   }`}
                                   title={`${colName}${!hasStockInColor ? ' (Agotado)' : ''}`}
                                 >
-                                  {/* Círculo Swatch */}
-                                  <span
-                                    className={`w-5 h-5 rounded-full border ${swatch.borderClass} ${swatch.bgClass} flex items-center justify-center relative flex-shrink-0 transition-transform group-hover:scale-110`}
-                                  >
-                                    {isColorActive && (
-                                      <Check className={`w-3 h-3 stroke-[3] ${swatch.isLight ? 'text-black' : 'text-white'}`} />
-                                    )}
-                                  </span>
-
-                                  {/* Nombre de color */}
-                                  <span className="text-xs capitalize text-zinc-900 dark:text-zinc-100">
-                                    {colName}
-                                  </span>
-
+                                  {isColorActive && (
+                                    <Check className={`w-3.5 h-3.5 stroke-[3] ${swatch.isLight ? 'text-black' : 'text-white'}`} />
+                                  )}
                                   {!hasStockInColor && (
-                                    <span className="text-[9px] font-bold text-rose-500 uppercase ml-0.5">
-                                      Agotado
-                                    </span>
+                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white dark:border-zinc-900" />
                                   )}
                                 </button>
                               );
@@ -1699,7 +1686,7 @@ export default function StorefrontView({
                         </div>
                       )}
 
-                      {/* PASO 2: Selector de Talle / Medida (únicamente para el color activo) */}
+                      {/* PASO 2: Selector de Talle / Medida (solo números para caber en una línea) */}
                       {hasSizes && (
                         <div>
                           <div className="flex items-center justify-between mb-2">
@@ -1711,18 +1698,20 @@ export default function StorefrontView({
                               ) : null}
                             </label>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5">
                             {currentVariants.map(v => {
                               const isSelected = selectedVariant?.id === v.id;
                               const hasVarStock = (v.stock || 0) > 0;
+                              const displayNum = (v.talle_medida || '').replace(/^talle\s*/i, '').trim() || 'Único';
+
                               return (
                                 <button
                                   key={v.id}
                                   type="button"
                                   disabled={!hasVarStock}
                                   onClick={() => setSelectedVariant(v)}
-                                  title={!hasVarStock ? 'Agotado' : `Stock: ${v.stock} un.`}
-                                  className={`min-w-[48px] h-9 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center ${
+                                  title={!hasVarStock ? 'Agotado' : `Talle ${displayNum} (Stock: ${v.stock} un.)`}
+                                  className={`min-w-[38px] h-9 px-2 rounded-xl border text-xs font-bold transition flex items-center justify-center ${
                                     isSelected
                                       ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black shadow-sm scale-105'
                                       : hasVarStock
@@ -1730,7 +1719,7 @@ export default function StorefrontView({
                                         : 'border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-400 opacity-40 cursor-not-allowed line-through'
                                   }`}
                                 >
-                                  {v.talle_medida || 'Único'}
+                                  {displayNum}
                                 </button>
                               );
                             })}
