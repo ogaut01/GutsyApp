@@ -1,21 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import Header from './components/Header';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
-import POSView from './views/POSView';
-import InventoryView from './views/InventoryView';
-import ClientsView from './views/ClientsView';
-import ImportsView from './views/ImportsView';
-import DashboardView from './views/DashboardView';
-import SettingsView from './views/SettingsView';
-import BulkUploadView from './views/BulkUploadView';
-import StorefrontView from './views/StorefrontView';
-import PedidosWebView from './views/PedidosWebView';
-import LoginView from './views/LoginView';
 import {
   fetchProductos, fetchLotes, syncCotizaciones,
   getStoredToken, getStoredUser, fetchMe, logoutApi
 } from './services/api';
+
+// ─── Code Splitting / Lazy Loading de Vistas ──────────────────────────────
+const StorefrontView = lazy(() => import('./views/StorefrontView'));
+const LoginView = lazy(() => import('./views/LoginView'));
+const DashboardView = lazy(() => import('./views/DashboardView'));
+const InventoryView = lazy(() => import('./views/InventoryView'));
+const POSView = lazy(() => import('./views/POSView'));
+const PedidosWebView = lazy(() => import('./views/PedidosWebView'));
+const ClientsView = lazy(() => import('./views/ClientsView'));
+const ImportsView = lazy(() => import('./views/ImportsView'));
+const SettingsView = lazy(() => import('./views/SettingsView'));
+const BulkUploadView = lazy(() => import('./views/BulkUploadView'));
+
+function ViewLoadingFallback() {
+  return (
+    <div className="flex flex-col items-center justify-center py-32 text-zinc-500 text-xs">
+      <div className="w-8 h-8 border-2 border-black dark:border-white border-t-transparent rounded-full animate-spin mb-3" />
+      <span className="uppercase tracking-widest font-mono text-[10px]">Cargando vista...</span>
+    </div>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState(() => getStoredUser());
@@ -182,34 +193,40 @@ export default function App() {
   if (!user) {
     if (showAdminLogin) {
       return (
-        <LoginView
-          onLoginSuccess={handleLoginSuccess}
-          onBackToStore={() => setShowAdminLogin(false)}
-        />
+        <Suspense fallback={<ViewLoadingFallback />}>
+          <LoginView
+            onLoginSuccess={handleLoginSuccess}
+            onBackToStore={() => setShowAdminLogin(false)}
+          />
+        </Suspense>
       );
     }
 
     return (
-      <StorefrontView
-        productos={productos}
-        onOpenAdminLogin={() => setShowAdminLogin(true)}
-        user={null}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <StorefrontView
+          productos={productos}
+          onOpenAdminLogin={() => setShowAdminLogin(true)}
+          user={null}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      </Suspense>
     );
   }
 
   // Si el usuario autenticado decide navegar a la tienda pública
   if (activeTab === 'storefront') {
     return (
-      <StorefrontView
-        productos={productos}
-        user={user}
-        onGoToAdmin={() => setActiveTab('dashboard')}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-      />
+      <Suspense fallback={<ViewLoadingFallback />}>
+        <StorefrontView
+          productos={productos}
+          user={user}
+          onGoToAdmin={() => setActiveTab('dashboard')}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
+      </Suspense>
     );
   }
 
@@ -251,7 +268,7 @@ export default function App() {
               <span className="uppercase tracking-widest font-mono text-[10px]">Cargando catálogo de accesorios...</span>
             </div>
           ) : (
-            <>
+            <Suspense fallback={<ViewLoadingFallback />}>
               {activeTab === 'pos' && (
                 <POSView
                   productos={productos}
@@ -307,7 +324,7 @@ export default function App() {
               {activeTab === 'settings' && (
                 <SettingsView onSyncSuccess={loadData} />
               )}
-            </>
+            </Suspense>
           )}
         </main>
       </div>
