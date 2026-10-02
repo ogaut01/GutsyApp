@@ -395,17 +395,17 @@ export default function StorefrontView({
 
     const activeColor = (selectedVariant?.color || '').trim().toLowerCase();
 
-    // 1. Si hay variantes y un color seleccionado, obtener las fotos de ESE color específico (deduplicadas)
+    // 1. Para el color seleccionado, tomar la foto representativa de ese color (1 sola foto de variante por color)
     if (activeColor && activeModalProduct.variantes && activeModalProduct.variantes.length > 0) {
       const colorVariants = activeModalProduct.variantes.filter(
         v => (v.color || '').trim().toLowerCase() === activeColor
       );
 
-      colorVariants.forEach(v => {
-        if (v.imagen_url) {
-          addImg(v.imagen_url, v.color || 'Color', v.id);
-        }
-      });
+      // Tomar la primera variante de ese color que tenga imagen
+      const varWithImg = colorVariants.find(v => v.imagen_url);
+      if (varWithImg && varWithImg.imagen_url) {
+        addImg(varWithImg.imagen_url, varWithImg.color || 'Color', varWithImg.id);
+      }
     }
 
     // 2. Fotos de la galería adicional del producto (ej: fotos en mano, packaging)
