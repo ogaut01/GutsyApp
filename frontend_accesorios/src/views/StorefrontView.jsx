@@ -1158,6 +1158,9 @@ export default function StorefrontView({
                           <span className="text-xs sm:text-sm font-black text-black dark:text-white tracking-wider">
                             Gs. {formatGsInput(product.precio_venta || 0)}
                           </span>
+                          {product.categoria === 'AR' && (
+                            <span className="text-[9px] text-zinc-400 font-semibold uppercase tracking-wide">c/u</span>
+                          )}
                         </div>
 
                         <button
@@ -1327,10 +1330,15 @@ export default function StorefrontView({
                   {activeModalProduct.nombre}
                 </h2>
 
-                <div className="mt-3 flex items-baseline gap-2">
+                <div className="mt-3 flex items-baseline gap-2 flex-wrap">
                   <span className="text-2xl font-black text-black dark:text-white">
                     Gs. {formatGsInput(selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0)}
                   </span>
+                  {activeModalProduct.categoria === 'AR' && (
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 self-center">
+                      Precio por unidad
+                    </span>
+                  )}
                 </div>
 
                 {/* Selector de Variantes — agrupado por color, ordenado por talle */}
