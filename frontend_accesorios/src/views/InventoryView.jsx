@@ -62,6 +62,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   // Edición rápida de precio inline
   const [editingPriceId, setEditingPriceId] = useState(null);
   const [editingPriceVal, setEditingPriceVal] = useState('');
+  const [editingPriceUnidadVal, setEditingPriceUnidadVal] = useState('');
   const [savingQuickPrice, setSavingQuickPrice] = useState(false);
 
   // Subida de foto
@@ -384,18 +385,29 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     e.stopPropagation();
     setEditingPriceId(prod.id);
     setEditingPriceVal(formatGsInput(prod.precio_venta));
+    setEditingPriceUnidadVal(
+      prod.precio_unidad ? formatGsInput(prod.precio_unidad) : (prod.precio_unidad_calculado ? formatGsInput(prod.precio_unidad_calculado) : '')
+    );
   };
 
-  const handleQuickPriceSave = async (prodId, e) => {
+  const handleQuickPriceSave = async (prod, e) => {
     if (e) e.stopPropagation();
     const newPrice = parseGsInput(editingPriceVal);
     if (editingPriceVal === '' || newPrice < 0) {
       alert('Ingresá un precio válido en Guaraníes');
       return;
     }
+    const isEarring = prod.categoria === 'AR';
+    const payload = { precio_venta: newPrice };
+    if (isEarring) {
+      payload.precio_unidad = editingPriceUnidadVal && editingPriceUnidadVal.trim() !== ''
+        ? parseGsInput(editingPriceUnidadVal)
+        : null;
+    }
+
     setSavingQuickPrice(true);
     try {
-      await updateProducto(prodId, { precio_venta: newPrice });
+      await updateProducto(prod.id, payload);
       setEditingPriceId(null);
       if (onReload) onReload();
     } catch (err) {
@@ -861,23 +873,60 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                       {editingPriceId === prod.id ? (
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="flex items-center gap-1.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-300 dark:border-zinc-700 px-2 py-1 rounded-xl shadow-md"
+                          className="flex items-center gap-1.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-300 dark:border-zinc-700 px-2 py-1 rounded-xl shadow-md flex-wrap"
                         >
-                          <span className="text-xs font-bold text-stone-500 dark:text-zinc-400">Gs.</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            autoFocus
-                            value={editingPriceVal}
-                            onChange={(e) => setEditingPriceVal(formatGsInput(e.target.value))}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleQuickPriceSave(prod.id, e);
-                              if (e.key === 'Escape') setEditingPriceId(null);
-                            }}
-                            className="w-24 px-1.5 py-0.5 bg-white dark:bg-zinc-900 text-stone-900 dark:text-white font-black text-xs border border-neutral-300 dark:border-zinc-700 rounded-lg outline-none text-right"
-                          />
+                          {prod.categoria === 'AR' ? (
+                            <>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Par:</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  autoFocus
+                                  value={editingPriceVal}
+                                  onChange={(e) => setEditingPriceVal(formatGsInput(e.target.value))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleQuickPriceSave(prod, e);
+                                    if (e.key === 'Escape') setEditingPriceId(null);
+                                  }}
+                                  className="w-20 px-1.5 py-0.5 bg-white dark:bg-zinc-900 text-stone-900 dark:text-white font-black text-xs border border-neutral-300 dark:border-zinc-700 rounded-lg outline-none text-right"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400">Un.:</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  placeholder="Auto"
+                                  value={editingPriceUnidadVal}
+                                  onChange={(e) => setEditingPriceUnidadVal(formatGsInput(e.target.value))}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleQuickPriceSave(prod, e);
+                                    if (e.key === 'Escape') setEditingPriceId(null);
+                                  }}
+                                  className="w-20 px-1.5 py-0.5 bg-white dark:bg-zinc-900 text-stone-900 dark:text-white font-black text-xs border border-neutral-300 dark:border-zinc-700 rounded-lg outline-none text-right"
+                                />
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xs font-bold text-stone-500 dark:text-zinc-400">Gs.</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoFocus
+                                value={editingPriceVal}
+                                onChange={(e) => setEditingPriceVal(formatGsInput(e.target.value))}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleQuickPriceSave(prod, e);
+                                  if (e.key === 'Escape') setEditingPriceId(null);
+                                }}
+                                className="w-24 px-1.5 py-0.5 bg-white dark:bg-zinc-900 text-stone-900 dark:text-white font-black text-xs border border-neutral-300 dark:border-zinc-700 rounded-lg outline-none text-right"
+                              />
+                            </>
+                          )}
                           <button
-                            onClick={(e) => handleQuickPriceSave(prod.id, e)}
+                            onClick={(e) => handleQuickPriceSave(prod, e)}
                             disabled={savingQuickPrice}
                             className="p-1 rounded-lg bg-black text-white dark:bg-white dark:text-black hover:opacity-80 transition"
                             title="Guardar precio (Enter)"
@@ -898,9 +947,21 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                           className="group/price flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-neutral-100 dark:bg-zinc-800/80 hover:bg-neutral-200 dark:hover:bg-zinc-700 border border-neutral-200/80 dark:border-zinc-700/80 transition"
                           title="Clic para cambiar precio rápido"
                         >
-                          <span className="text-xs font-black text-stone-900 dark:text-white">
-                            Gs. {prod.precio_venta?.toLocaleString('es-PY')}
-                          </span>
+                          {prod.categoria === 'AR' ? (
+                            <div className="flex items-center gap-1.5 text-xs font-black">
+                              <span className="text-stone-900 dark:text-white">
+                                Gs. {prod.precio_venta?.toLocaleString('es-PY')} <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 font-sans">(Par)</span>
+                              </span>
+                              <span className="text-stone-300 dark:text-zinc-600 font-normal">•</span>
+                              <span className="text-stone-700 dark:text-zinc-300">
+                                Gs. {(prod.precio_unidad || prod.precio_unidad_calculado)?.toLocaleString('es-PY')} <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 font-sans">(Unidad)</span>
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs font-black text-stone-900 dark:text-white">
+                              Gs. {prod.precio_venta?.toLocaleString('es-PY')}
+                            </span>
+                          )}
                           <Pencil className="w-2.5 h-2.5 text-stone-400 dark:text-zinc-500 group-hover/price:text-stone-900 dark:group-hover/price:text-white transition" />
                         </button>
                       )}
