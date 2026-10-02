@@ -263,6 +263,91 @@ export default function StorefrontView({
     return product.variantes.find(v => v.activo !== false && isColorMatch(v.color, filterColor)) || null;
   };
 
+  // Helper para renderizar los círculos de colores de variantes con acabados premium y legibilidad en dark/light
+  const getColorSwatchStyle = (colorName) => {
+    if (!colorName) return { 
+      bgClass: 'bg-zinc-400', 
+      borderClass: 'border-zinc-300 dark:border-zinc-600',
+      isLight: true 
+    };
+    const c = colorName.toLowerCase().trim();
+    if (c.includes('negro') || c.includes('black')) {
+      return { 
+        bgClass: 'bg-zinc-950', 
+        borderClass: 'border-zinc-400 dark:border-zinc-500 shadow-sm',
+        isLight: false 
+      };
+    }
+    if (c.includes('dorado') || c.includes('oro') || c.includes('gold')) {
+      return { 
+        bgClass: 'bg-gradient-to-br from-amber-200 via-amber-400 to-amber-600', 
+        borderClass: 'border-amber-300 dark:border-amber-500 shadow-sm',
+        isLight: true 
+      };
+    }
+    if (c.includes('plateado') || c.includes('plata') || c.includes('silver') || c.includes('acero')) {
+      return { 
+        bgClass: 'bg-gradient-to-br from-slate-100 via-slate-300 to-zinc-400', 
+        borderClass: 'border-slate-300 dark:border-slate-500 shadow-sm',
+        isLight: true 
+      };
+    }
+    if (c.includes('rose') || c.includes('rosad') || c.includes('rosa') || c.includes('cobre')) {
+      return { 
+        bgClass: 'bg-gradient-to-br from-rose-200 via-rose-300 to-pink-400', 
+        borderClass: 'border-rose-300 dark:border-rose-400 shadow-sm',
+        isLight: true 
+      };
+    }
+    if (c.includes('azul') || c.includes('blue')) {
+      return { 
+        bgClass: 'bg-gradient-to-br from-blue-500 to-indigo-700', 
+        borderClass: 'border-blue-400 dark:border-blue-500 shadow-sm',
+        isLight: false 
+      };
+    }
+    if (c.includes('rojo') || c.includes('red')) {
+      return { 
+        bgClass: 'bg-gradient-to-br from-red-500 to-rose-700', 
+        borderClass: 'border-red-400 dark:border-red-500 shadow-sm',
+        isLight: false 
+      };
+    }
+    if (c.includes('verde') || c.includes('green')) {
+      return { 
+        bgClass: 'bg-gradient-to-br from-emerald-400 to-green-700', 
+        borderClass: 'border-emerald-400 dark:border-emerald-500 shadow-sm',
+        isLight: false 
+      };
+    }
+    if (c.includes('blanco') || c.includes('white')) {
+      return { 
+        bgClass: 'bg-white', 
+        borderClass: 'border-zinc-300 dark:border-zinc-600 shadow-sm',
+        isLight: true 
+      };
+    }
+    if (c.includes('morad') || c.includes('violet') || c.includes('purp')) {
+      return { 
+        bgClass: 'bg-gradient-to-br from-purple-500 to-violet-700', 
+        borderClass: 'border-purple-400 dark:border-purple-500 shadow-sm',
+        isLight: false 
+      };
+    }
+    if (c.includes('tornasol') || c.includes('arcoiris') || c.includes('multicolor') || c.includes('iridiscente')) {
+      return { 
+        bgClass: 'bg-gradient-to-tr from-cyan-400 via-fuchsia-500 to-yellow-400', 
+        borderClass: 'border-cyan-300 shadow-sm',
+        isLight: true 
+      };
+    }
+    return { 
+      bgClass: 'bg-zinc-400 dark:bg-zinc-600', 
+      borderClass: 'border-zinc-300 dark:border-zinc-500 shadow-sm',
+      isLight: true 
+    };
+  };
+
   // Helper para precios de Aros (Par vs Unidad)
   const getAroPrecios = (product) => {
     if (!product) return { precioPar: 0, precioUnidad: 0 };
@@ -1507,60 +1592,141 @@ export default function StorefrontView({
                   );
                 })()}
 
-                {/* Selector de Variantes — agrupado por color, ordenado por talle */}
+                {/* Selector de Variantes (Paso 1: Color -> Paso 2: Talle) */}
                 {activeModalProduct.variantes && activeModalProduct.variantes.length > 0 && (() => {
                   const talleNum = (v) => {
                     const n = parseFloat((v.talle_medida || '').toString().replace(/[^0-9.]/g, ''));
                     return isNaN(n) ? 9999 : n;
                   };
 
-                  // Agrupar por color
-                  const grupos = {};
+                  // 1. Extraer colores únicos disponibles en las variantes
+                  const colorList = [];
+                  const seenColors = new Set();
                   activeModalProduct.variantes.forEach(v => {
-                    const key = v.color || v.sku || 'Estándar';
-                    if (!grupos[key]) grupos[key] = [];
-                    grupos[key].push(v);
+                    const c = (v.color || '').trim();
+                    if (c && !seenColors.has(c.toLowerCase())) {
+                      seenColors.add(c.toLowerCase());
+                      colorList.push(c);
+                    }
                   });
 
-                  // Disponibles ordenadas por talle → agotadas ordenadas por talle
-                  Object.keys(grupos).forEach(key => {
-                    const disp  = grupos[key].filter(v => v.stock > 0).sort((a, b) => talleNum(a) - talleNum(b));
-                    const agot  = grupos[key].filter(v => v.stock <= 0).sort((a, b) => talleNum(a) - talleNum(b));
-                    grupos[key] = [...disp, ...agot];
-                  });
+                  // Color actualmente activo (o del selectedVariant, o el primero de la lista)
+                  const currentColor = (selectedVariant?.color || '').trim() || (colorList.length > 0 ? colorList[0] : '');
+
+                  // 2. Variantes del color seleccionado (o todas si el producto no tiene variantes con color)
+                  const filteredVariants = colorList.length > 0
+                    ? activeModalProduct.variantes.filter(v => (v.color || '').trim().toLowerCase() === currentColor.toLowerCase())
+                    : activeModalProduct.variantes;
+
+                  // Ordenar variantes de este color: disponibles primero por talle, luego agotadas
+                  const disp = filteredVariants.filter(v => (v.stock || 0) > 0).sort((a, b) => talleNum(a) - talleNum(b));
+                  const agot = filteredVariants.filter(v => (v.stock || 0) <= 0).sort((a, b) => talleNum(a) - talleNum(b));
+                  const currentVariants = [...disp, ...agot];
+
+                  // Comprobar si hay talles diferenciados (ej: Talle 8, 9, 10...)
+                  const hasSizes = currentVariants.some(v => v.talle_medida && v.talle_medida.trim() !== '' && v.talle_medida.toLowerCase() !== 'único');
 
                   return (
                     <div className="mt-5 space-y-4">
-                      <label className="text-xs font-bold uppercase tracking-wider block text-zinc-700 dark:text-zinc-300">
-                        Selecciona una opción:
-                      </label>
-                      {Object.entries(grupos).map(([colorKey, variantes]) => (
-                        <div key={colorKey}>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block mb-1.5">
-                            {colorKey}
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
-                            {variantes.map(v => {
-                              const isSelected  = selectedVariant?.id === v.id;
-                              const hasVarStock = v.stock > 0;
+                      {/* PASO 1: Selector de Color (Círculos de colores / Swatches) */}
+                      {colorList.length > 0 && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                              Color: <span className="font-extrabold text-black dark:text-white capitalize">{currentColor || 'Estándar'}</span>
+                            </label>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2.5">
+                            {colorList.map((colName) => {
+                              const isColorActive = currentColor.toLowerCase() === colName.toLowerCase();
+                              const swatch = getColorSwatchStyle(colName);
+                              
+                              // Comprobar si hay stock en este color
+                              const hasStockInColor = activeModalProduct.variantes.some(
+                                v => (v.color || '').trim().toLowerCase() === colName.toLowerCase() && (v.stock || 0) > 0
+                              );
+
                               return (
                                 <button
-                                  key={v.id}
-                                  disabled={!hasVarStock}
+                                  key={colName}
+                                  type="button"
                                   onClick={() => {
-                                    const prevColor = (selectedVariant?.color || '').trim().toLowerCase();
-                                    const nextColor = (v.color || '').trim().toLowerCase();
-                                    setSelectedVariant(v);
-                                    if (prevColor !== nextColor) {
+                                    const nextVariants = activeModalProduct.variantes.filter(
+                                      v => (v.color || '').trim().toLowerCase() === colName.toLowerCase()
+                                    );
+                                    const currentTalle = selectedVariant?.talle_medida;
+                                    
+                                    // Intentar preservar el mismo talle si existe con stock en el nuevo color
+                                    let matchVar = nextVariants.find(v => v.talle_medida === currentTalle && (v.stock || 0) > 0);
+                                    if (!matchVar) {
+                                      matchVar = nextVariants.find(v => (v.stock || 0) > 0) || nextVariants[0];
+                                    }
+                                    if (matchVar) {
+                                      setSelectedVariant(matchVar);
                                       setActiveImageIndex(0);
                                     }
                                   }}
-                                  title={!hasVarStock ? 'Agotado' : undefined}
-                                  className={`relative px-3 py-1.5 rounded-lg border text-xs font-bold transition ${
+                                  className={`group relative flex items-center gap-2 px-3 py-2 rounded-2xl border transition-all ${
+                                    isColorActive
+                                      ? 'border-black dark:border-white bg-black/5 dark:bg-white/10 ring-2 ring-black dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-zinc-950 font-bold shadow-sm'
+                                      : 'border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600 bg-white/60 dark:bg-zinc-900/60'
+                                  }`}
+                                  title={`${colName}${!hasStockInColor ? ' (Agotado)' : ''}`}
+                                >
+                                  {/* Círculo Swatch */}
+                                  <span
+                                    className={`w-5 h-5 rounded-full border ${swatch.borderClass} ${swatch.bgClass} flex items-center justify-center relative flex-shrink-0 transition-transform group-hover:scale-110`}
+                                  >
+                                    {isColorActive && (
+                                      <Check className={`w-3 h-3 stroke-[3] ${swatch.isLight ? 'text-black' : 'text-white'}`} />
+                                    )}
+                                  </span>
+
+                                  {/* Nombre de color */}
+                                  <span className="text-xs capitalize text-zinc-900 dark:text-zinc-100">
+                                    {colName}
+                                  </span>
+
+                                  {!hasStockInColor && (
+                                    <span className="text-[9px] font-bold text-rose-500 uppercase ml-0.5">
+                                      Agotado
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* PASO 2: Selector de Talle / Medida (únicamente para el color activo) */}
+                      {hasSizes && (
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                              Seleccionar Talle: {selectedVariant?.talle_medida ? (
+                                <span className="font-extrabold text-black dark:text-white ml-1">
+                                  {selectedVariant.talle_medida}
+                                </span>
+                              ) : null}
+                            </label>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {currentVariants.map(v => {
+                              const isSelected = selectedVariant?.id === v.id;
+                              const hasVarStock = (v.stock || 0) > 0;
+                              return (
+                                <button
+                                  key={v.id}
+                                  type="button"
+                                  disabled={!hasVarStock}
+                                  onClick={() => setSelectedVariant(v)}
+                                  title={!hasVarStock ? 'Agotado' : `Stock: ${v.stock} un.`}
+                                  className={`min-w-[48px] h-9 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center ${
                                     isSelected
-                                      ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black shadow-sm'
+                                      ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black shadow-sm scale-105'
                                       : hasVarStock
-                                        ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-black dark:text-white hover:border-black dark:hover:border-white'
+                                        ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 hover:border-black dark:hover:border-white'
                                         : 'border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-400 opacity-40 cursor-not-allowed line-through'
                                   }`}
                                 >
@@ -1570,7 +1736,7 @@ export default function StorefrontView({
                             })}
                           </div>
                         </div>
-                      ))}
+                      )}
                     </div>
                   );
                 })()}
