@@ -380,35 +380,50 @@ export default function StorefrontView({
 
   const cartTotal = cartSubtotal + deliveryCost;
 
-  // ─── Galería de Fotos para el Modal ──────────────────────────────────────
+  // ─── Galería Dinámica de Fotos para el Modal (Filtrada por Color) ──────────
   const modalImages = useMemo(() => {
     if (!activeModalProduct) return [];
     const list = [];
-    // 1. Foto principal del producto
-    const mainImg = activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url;
-    if (mainImg) list.push({ url: mainImg, label: 'Principal' });
+    const addedUrls = new Set();
 
-    // 2. Fotos de la galería adicional
+    const addImg = (url, label, variantId = null) => {
+      if (url && !addedUrls.has(url)) {
+        addedUrls.add(url);
+        list.push({ url, label, variantId });
+      }
+    };
+
+    const activeColor = (selectedVariant?.color || '').trim().toLowerCase();
+
+    // 1. Si hay variantes y un color seleccionado, obtener las fotos de ESE color específico (deduplicadas)
+    if (activeColor && activeModalProduct.variantes && activeModalProduct.variantes.length > 0) {
+      const colorVariants = activeModalProduct.variantes.filter(
+        v => (v.color || '').trim().toLowerCase() === activeColor
+      );
+
+      colorVariants.forEach(v => {
+        if (v.imagen_url) {
+          addImg(v.imagen_url, v.color || 'Color', v.id);
+        }
+      });
+    }
+
+    // 2. Fotos de la galería adicional del producto (ej: fotos en mano, packaging)
     if (activeModalProduct.imagenes_galeria && activeModalProduct.imagenes_galeria.length > 0) {
       activeModalProduct.imagenes_galeria.forEach((g) => {
         const gUrl = g.url || g.imagen_url;
-        if (gUrl && !list.some(item => item.url === gUrl)) {
-          list.push({ url: gUrl, label: `Galería` });
-        }
+        if (gUrl) addImg(gUrl, 'Galería');
       });
     }
 
-    // 3. Fotos específicas de cada variante si tienen
-    if (activeModalProduct.variantes && activeModalProduct.variantes.length > 0) {
-      activeModalProduct.variantes.forEach(v => {
-        if (v.imagen_url && !list.some(item => item.url === v.imagen_url)) {
-          list.push({ url: v.imagen_url, label: v.color || 'Color', variantId: v.id });
-        }
-      });
+    // 3. Si no hay fotos para ese color específico (o el producto no tiene variantes), usar la foto principal
+    const mainImg = activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url;
+    if (list.length === 0 && mainImg) {
+      addImg(mainImg, 'Principal');
     }
 
     return list;
-  }, [activeModalProduct]);
+  }, [activeModalProduct, selectedVariant?.color]);
 
   // ─── Manejo de Selección de Producto & Modal ──────────────────────────────
   const handleOpenProductModal = (product) => {
@@ -1296,10 +1311,10 @@ export default function StorefrontView({
               <div className="w-full flex-1 flex flex-col items-center justify-center">
                 {/* Contenedor de la foto activa */}
                 <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white dark:bg-black flex items-center justify-center shadow-inner relative group">
-                  {modalImages.length > 0 && modalImages[activeImageIndex]?.url ? (
+                  {modalImages.length > 0 && (modalImages[activeImageIndex] || modalImages[0])?.url ? (
                     <img
-                      key={modalImages[activeImageIndex].url}
-                      src={modalImages[activeImageIndex].url}
+                      key={(modalImages[activeImageIndex] || modalImages[0]).url}
+                      src={(modalImages[activeImageIndex] || modalImages[0]).url}
                       alt={activeModalProduct.nombre}
                       className="w-full h-full object-cover transition-opacity duration-200"
                       decoding="async"
@@ -1533,10 +1548,11 @@ export default function StorefrontView({
                                   key={v.id}
                                   disabled={!hasVarStock}
                                   onClick={() => {
+                                    const prevColor = (selectedVariant?.color || '').trim().toLowerCase();
+                                    const nextColor = (v.color || '').trim().toLowerCase();
                                     setSelectedVariant(v);
-                                    if (v.imagen_url) {
-                                      const idx = modalImages.findIndex(img => img.url === v.imagen_url);
-                                      if (idx !== -1) setActiveImageIndex(idx);
+                                    if (prevColor !== nextColor) {
+                                      setActiveImageIndex(0);
                                     }
                                   }}
                                   title={!hasVarStock ? 'Agotado' : undefined}
