@@ -1524,7 +1524,7 @@ export default function StorefrontView({
                   </span>
                   {activeModalProduct.categoria === 'AR' && (
                     <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 self-center">
-                      {earringOption === 'par' ? 'El Par (2 unidades)' : '1 Unidad individual'}
+                      {earringOption === 'par' ? 'Par' : 'Unidad'}
                     </span>
                   )}
                 </div>
@@ -1554,7 +1554,7 @@ export default function StorefrontView({
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-black uppercase text-black dark:text-white">1 Par</span>
+                            <span className="text-xs font-black uppercase text-black dark:text-white">Par</span>
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
                               2 un.
                             </span>
@@ -1578,7 +1578,7 @@ export default function StorefrontView({
                           }`}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-black uppercase text-black dark:text-white">1 Unidad</span>
+                            <span className="text-xs font-black uppercase text-black dark:text-white">Unidad</span>
                             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
                               1 un.
                             </span>
@@ -1624,7 +1624,9 @@ export default function StorefrontView({
                   const currentVariants = [...disp, ...agot];
 
                   // Comprobar si hay talles diferenciados (ej: Talle 8, 9, 10...)
-                  const hasSizes = currentVariants.some(v => v.talle_medida && v.talle_medida.trim() !== '' && v.talle_medida.toLowerCase() !== 'único');
+                  // NOTA: Para Aros/Aretes (categoria === 'AR') no aplica selector de talles
+                  const isEarringProduct = activeModalProduct.categoria === 'AR';
+                  const hasSizes = !isEarringProduct && currentVariants.some(v => v.talle_medida && v.talle_medida.trim() !== '' && v.talle_medida.toLowerCase() !== 'único');
 
                   return (
                     <div className="mt-5 space-y-4">
