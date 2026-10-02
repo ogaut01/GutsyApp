@@ -1097,13 +1097,14 @@ export default function StorefrontView({
               }}
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
             >
-              {filteredProducts.map((product) => {
+              {filteredProducts.map((product, productIndex) => {
                 const activeVariantForCard = getMatchingColorVariant(product, selectedColor);
                 const imageSrc = activeVariantForCard?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
                 const hasStock = product.activo !== false && (product.stock_total || 0) > 0;
                 const isLastUnit = hasStock && (product.stock_total || 0) === 1;
                 const variants = product.variantes || [];
                 const hasMultipleVariants = variants.length > 1;
+                const isAboveFold = productIndex < 4;
 
                 return (
                   <motion.div
@@ -1131,7 +1132,11 @@ export default function StorefrontView({
                           className={`w-full h-full object-cover transition-all duration-500 ${
                             hasStock ? 'group-hover:scale-105' : 'opacity-75 grayscale-[20%] group-hover:opacity-100'
                           }`}
-                          loading="lazy"
+                          loading={isAboveFold ? 'eager' : 'lazy'}
+                          fetchPriority={isAboveFold ? 'high' : 'auto'}
+                          decoding="async"
+                          width="300"
+                          height="300"
                         />
                       ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 p-4 text-center">
@@ -1297,12 +1302,14 @@ export default function StorefrontView({
                       src={modalImages[activeImageIndex].url}
                       alt={activeModalProduct.nombre}
                       className="w-full h-full object-cover transition-opacity duration-200"
+                      decoding="async"
                     />
                   ) : activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url ? (
                     <img
                       src={activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url}
                       alt={activeModalProduct.nombre}
                       className="w-full h-full object-cover"
+                      decoding="async"
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center text-zinc-400">
@@ -1361,7 +1368,15 @@ export default function StorefrontView({
                               : 'border-transparent opacity-50 hover:opacity-90'
                           }`}
                         >
-                          <img src={img.url} alt={img.label} className="w-full h-full object-cover" />
+                          <img
+                            src={img.url}
+                            alt={img.label}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                            decoding="async"
+                            width="48"
+                            height="48"
+                          />
                         </button>
                       );
                     })}
@@ -1723,7 +1738,15 @@ export default function StorefrontView({
                       >
                         <div className="w-14 h-14 rounded-xl bg-white dark:bg-black overflow-hidden flex-shrink-0 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center">
                           {item.image ? (
-                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                              width="56"
+                              height="56"
+                            />
                           ) : (
                             <Gem className="w-5 h-5 text-zinc-400" />
                           )}
