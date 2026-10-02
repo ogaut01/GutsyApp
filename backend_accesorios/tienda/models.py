@@ -648,7 +648,13 @@ class Producto(models.Model):
     precio_venta = models.IntegerField(
         default=0,
         verbose_name="Precio de Venta al Público (PYG Gs.)",
-        help_text="Precio sugerido de venta en Guaraníes"
+        help_text="Precio sugerido de venta en Guaraníes (Para aros: precio del par)"
+    )
+    precio_unidad = models.IntegerField(
+        blank=True,
+        null=True,
+        verbose_name="Precio por Unidad (Opcional - Aros/Individual)",
+        help_text="Si se deja vacío para Aros, se calcula automáticamente según la escala estándar."
     )
     activo = models.BooleanField(default=True, verbose_name="Activo en Catálogo")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
@@ -664,6 +670,27 @@ class Producto(models.Model):
     @property
     def stock_total(self):
         return sum(v.stock for v in self.variantes.all())
+
+    @property
+    def precio_unidad_calculado(self):
+        """Devuelve el precio unitario exacto o calculado según la escala si es categoría Aros (AR)"""
+        if self.precio_unidad and self.precio_unidad > 0:
+            return self.precio_unidad
+        if self.categoria == 'AR' and self.precio_venta:
+            pv = self.precio_venta
+            if pv <= 20000:
+                return 15000
+            elif pv <= 30000:
+                return 20000
+            elif pv <= 40000:
+                return 25000
+            elif pv <= 50000:
+                return 30000
+            elif pv <= 60000:
+                return 35000
+            else:
+                return int(round((pv / 2.0 + 5000) / 5000.0) * 5000)
+        return self.precio_venta
 
     @property
     def ganancia_estimada_unitaria(self):

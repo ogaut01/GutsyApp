@@ -157,6 +157,7 @@ export default function StorefrontView({
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [earringOption, setEarringOption] = useState('par'); // 'par' | 'unidad'
 
   // Formulario de Envío y Checkout
   const [shippingType, setShippingType] = useState('villarrica'); // 'villarrica', 'interior'
@@ -260,6 +261,26 @@ export default function StorefrontView({
     if (withStock) return withStock;
     // Sino, cualquier variante activa que coincida con el color
     return product.variantes.find(v => v.activo !== false && isColorMatch(v.color, filterColor)) || null;
+  };
+
+  // Helper para precios de Aros (Par vs Unidad)
+  const getAroPrecios = (product) => {
+    if (!product) return { precioPar: 0, precioUnidad: 0 };
+    const precioPar = product.precio_venta || 0;
+    let precioUnidad = product.precio_unidad;
+    if (!precioUnidad || precioUnidad <= 0) {
+      if (product.precio_unidad_calculado) {
+        precioUnidad = product.precio_unidad_calculado;
+      } else {
+        if (precioPar <= 20000) precioUnidad = 15000;
+        else if (precioPar <= 30000) precioUnidad = 20000;
+        else if (precioPar <= 40000) precioUnidad = 25000;
+        else if (precioPar <= 50000) precioUnidad = 30000;
+        else if (precioPar <= 60000) precioUnidad = 35000;
+        else precioUnidad = Math.round((precioPar / 2 + 5000) / 5000) * 5000;
+      }
+    }
+    return { precioPar, precioUnidad };
   };
 
   // ─── Filtrado de Productos ────────────────────────────────────────────────
@@ -396,29 +417,61 @@ export default function StorefrontView({
     setModalQuantity(1);
     setCustomEngravingText('');
 
+    let chosenVar = null;
     // Seleccionar por defecto la variante del color filtrado, o la primera con stock
     if (product.variantes && product.variantes.length > 0) {
       const colorMatchVar = getMatchingColorVariant(product, selectedColor);
       if (colorMatchVar) {
-        setSelectedVariant(colorMatchVar);
+        chosenVar = colorMatchVar;
       } else {
         const firstWithStock = product.variantes.find(v => v.stock > 0) || product.variantes[0];
-        setSelectedVariant(firstWithStock);
+        chosenVar = firstWithStock;
       }
+      setSelectedVariant(chosenVar);
     } else {
       setSelectedVariant(null);
     }
+
+    if (product.categoria === 'AR') {
+      const stock = chosenVar ? (chosenVar.stock || 0) : (product.stock_total || 0);
+      setEarringOption(stock >= 2 ? 'par' : 'unidad');
+    } else {
+      setEarringOption('par');
+    }
   };
 
-  const handleAddToCart = (product, variant, qty = 1, customText = '') => {
+  const handleAddToCart = (product, variant, qty = 1, customText = '', presentation = null) => {
+    const isEarring = product.categoria === 'AR';
+    const chosenPres = isEarring ? (presentation || earringOption) : null;
+    const { precioPar, precioUnidad } = isEarring ? getAroPrecios(product) : { precioPar: 0, precioUnidad: 0 };
+
+    // Si compra Par, cada 1 qty requiere 2 unidades de stock físico
+    const stockUnitsPerQty = isEarring && chosenPres === 'par' ? 2 : 1;
+    const totalRequiredStock = qty * stockUnitsPerQty;
+
     const availableStock = variant ? (variant.stock || 0) : (product.stock_total || 0);
-    if (product.activo === false || availableStock <= 0) {
+    if (product.activo === false || availableStock < totalRequiredStock) {
+      alert(`No hay suficiente stock disponible. (Disponibles: ${availableStock} un.)`);
       return;
     }
 
-    const customKeySuffix = customText && customText.trim() ? `-${customText.trim().substring(0, 15)}` : '';
-    const itemKey = variant ? `${product.id}-${variant.id}${customKeySuffix}` : `${product.id}-default${customKeySuffix}`;
-    const itemPrice = variant?.precio_venta_pyg || product.precio_venta || 0;
+    const itemPrice = isEarring
+      ? (chosenPres === 'par' ? precioPar : precioUnidad)
+      : (variant?.precio_venta_pyg || product.precio_venta || 0);
+
+    const presentationLabel = isEarring
+      ? (chosenPres === 'par' ? 'Par (2 un.)' : 'Individual (1 un.)')
+      : null;
+
+    const customKeySuffix = [
+      chosenPres ? `-${chosenPres}` : '',
+      customText && customText.trim() ? `-${customText.trim().substring(0, 15)}` : ''
+    ].filter(Boolean).join('');
+
+    const itemKey = variant
+      ? `${product.id}-${variant.id}${customKeySuffix}`
+      : `${product.id}-default${customKeySuffix}`;
+
     const itemImage = variant?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
 
     setCart(prevCart => {
@@ -440,6 +493,8 @@ export default function StorefrontView({
           sku: variant?.sku || null,
           price: itemPrice,
           image: itemImage,
+          presentation: presentationLabel,
+          stockUnitsPerItem: stockUnitsPerQty,
           maxStock: variant ? variant.stock : product.stock_total || 99,
           quantity: qty,
           customText: customText.trim() || null,
@@ -534,12 +589,12 @@ export default function StorefrontView({
     // -- Productos --
     message += '\u{1F6D2} *PEDIDO*\n';
     cart.forEach((item, index) => {
-      const variantDesc = [item.color, item.size].filter(Boolean).join(' / ');
+      const variantDesc = [item.presentation, item.color, item.size ? `Talle: ${item.size}` : ''].filter(Boolean).join(' \u2022 ');
       message += `${index + 1}. *${item.name}*${variantDesc ? ' \u2014 ' + variantDesc : ''}\n`;
       if (item.customText) {
         message += `   \u270F\uFE0F _Grabado: "${item.customText}"_\n`;
       }
-      message += `   ${item.quantity} un. \u00D7 Gs.\u00A0${formatGsInput(item.price)} = *Gs.\u00A0${formatGsInput(item.price * item.quantity)}*\n`;
+      message += `   ${item.quantity} ${item.presentation ? 'opción' : 'un.'} \u00D7 Gs.\u00A0${formatGsInput(item.price)} = *Gs.\u00A0${formatGsInput(item.price * item.quantity)}*\n`;
     });
     message += '\n';
 
@@ -586,13 +641,16 @@ export default function StorefrontView({
       costo_envio: deliveryCost,
       total_pedido: cartTotal,
       notas: customerNotes.trim(),
-      items: cart.map(item => ({
-        variante_id: item.variantId,
-        cantidad: item.quantity,
-        precio_unitario: item.price,
-        nombre_producto: item.name,
-        grabado_texto: item.customText || '',
-      })),
+      items: cart.map(item => {
+        const unitsPerItem = item.stockUnitsPerItem || 1;
+        return {
+          variante_id: item.variantId,
+          cantidad: (item.quantity || 1) * unitsPerItem,
+          precio_unitario: Math.round((item.price || 0) / unitsPerItem),
+          nombre_producto: item.name + (item.presentation ? ` [${item.presentation}]` : ''),
+          grabado_texto: item.customText || '',
+        };
+      }),
     };
 
     createPedidoWeb(pedidoPayload).catch(err => {
@@ -1155,11 +1213,20 @@ export default function StorefrontView({
                       <div className="mt-3 pt-3 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between gap-2">
                         <div>
                           <span className="text-[10px] text-zinc-400 uppercase font-medium block leading-none">Precio</span>
-                          <span className="text-xs sm:text-sm font-black text-black dark:text-white tracking-wider">
-                            Gs. {formatGsInput(product.precio_venta || 0)}
-                          </span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-xs sm:text-sm font-black text-black dark:text-white tracking-wider">
+                              Gs. {formatGsInput(product.precio_venta || 0)}
+                            </span>
+                            {product.categoria === 'AR' && (
+                              <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400">
+                                / par
+                              </span>
+                            )}
+                          </div>
                           {product.categoria === 'AR' && (
-                            <span className="text-[9px] text-zinc-400 font-semibold uppercase tracking-wide">c/u</span>
+                            <span className="text-[9px] text-zinc-400 dark:text-zinc-500 block leading-tight font-medium">
+                              o Gs. {formatGsInput(getAroPrecios(product).precioUnidad)} c/u
+                            </span>
                           )}
                         </div>
 
@@ -1332,14 +1399,83 @@ export default function StorefrontView({
 
                 <div className="mt-3 flex items-baseline gap-2 flex-wrap">
                   <span className="text-2xl font-black text-black dark:text-white">
-                    Gs. {formatGsInput(selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0)}
+                    Gs. {formatGsInput(
+                      activeModalProduct.categoria === 'AR'
+                        ? (earringOption === 'par'
+                            ? getAroPrecios(activeModalProduct).precioPar
+                            : getAroPrecios(activeModalProduct).precioUnidad)
+                        : (selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0)
+                    )}
                   </span>
                   {activeModalProduct.categoria === 'AR' && (
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 border border-zinc-300 dark:border-zinc-700 rounded px-1.5 py-0.5 self-center">
-                      Precio por unidad
+                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 self-center">
+                      {earringOption === 'par' ? 'El Par (2 unidades)' : '1 Unidad individual'}
                     </span>
                   )}
                 </div>
+
+                {/* Selector de Presentación (Par vs Individual) para Aros & Aretes */}
+                {activeModalProduct.categoria === 'AR' && (() => {
+                  const currentStock = selectedVariant != null ? (selectedVariant.stock ?? 0) : (activeModalProduct.stock_total ?? 0);
+                  const canBuyPair = currentStock >= 2;
+                  const { precioPar, precioUnidad } = getAroPrecios(activeModalProduct);
+
+                  return (
+                    <div className="mt-4 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                      <label className="text-[11px] font-bold uppercase tracking-wider block text-zinc-700 dark:text-zinc-300">
+                        Presentación:
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          disabled={!canBuyPair}
+                          onClick={() => setEarringOption('par')}
+                          className={`p-2.5 rounded-xl border text-left transition relative ${
+                            earringOption === 'par' && canBuyPair
+                              ? 'border-black dark:border-white bg-white dark:bg-zinc-800 shadow-sm ring-1 ring-black dark:ring-white'
+                              : canBuyPair
+                                ? 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 bg-white/50 dark:bg-zinc-950/50'
+                                : 'border-zinc-200 dark:border-zinc-800 opacity-40 cursor-not-allowed bg-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase text-black dark:text-white">1 Par</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                              2 un.
+                            </span>
+                          </div>
+                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mt-1">
+                            Gs. {formatGsInput(precioPar)}
+                          </span>
+                          {!canBuyPair && (
+                            <span className="text-[9px] text-rose-500 font-semibold block mt-0.5">Stock insuf. para par</span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={currentStock <= 0}
+                          onClick={() => setEarringOption('unidad')}
+                          className={`p-2.5 rounded-xl border text-left transition relative ${
+                            earringOption === 'unidad' || !canBuyPair
+                              ? 'border-black dark:border-white bg-white dark:bg-zinc-800 shadow-sm ring-1 ring-black dark:ring-white'
+                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 bg-white/50 dark:bg-zinc-950/50'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black uppercase text-black dark:text-white">1 Unidad</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
+                              1 un.
+                            </span>
+                          </div>
+                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mt-1">
+                            Gs. {formatGsInput(precioUnidad)}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Selector de Variantes — agrupado por color, ordenado por talle */}
                 {activeModalProduct.variantes && activeModalProduct.variantes.length > 0 && (() => {
@@ -1435,7 +1571,19 @@ export default function StorefrontView({
                   const currentStock = selectedVariant != null
                     ? (selectedVariant.stock ?? 0)
                     : (activeModalProduct.stock_total ?? 0);
-                  const isAvailable = activeModalProduct.activo !== false && currentStock > 0;
+                  
+                  const isEarring = activeModalProduct.categoria === 'AR';
+                  const maxAllowedQty = isEarring
+                    ? (earringOption === 'par' ? Math.floor(currentStock / 2) : currentStock)
+                    : currentStock;
+
+                  const isAvailable = activeModalProduct.activo !== false && (
+                    isEarring ? (earringOption === 'par' ? currentStock >= 2 : currentStock >= 1) : currentStock > 0
+                  );
+
+                  const currentUnitEffectivePrice = isEarring
+                    ? (earringOption === 'par' ? getAroPrecios(activeModalProduct).precioPar : getAroPrecios(activeModalProduct).precioUnidad)
+                    : (selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0);
 
                   return (
                     <>
@@ -1443,7 +1591,7 @@ export default function StorefrontView({
                       {isAvailable && (
                         <div className="mt-5 flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
                           <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                            Cantidad
+                            Cantidad {isEarring && (earringOption === 'par' ? '(Pares)' : '(Unidades)')}
                           </span>
                           <div className="flex items-center gap-3">
                             <button
@@ -1455,11 +1603,10 @@ export default function StorefrontView({
                             <span className="text-sm font-black w-6 text-center">{modalQuantity}</span>
                             <button
                               onClick={() => {
-                                const max = selectedVariant ? selectedVariant.stock : (activeModalProduct.stock_total || 99);
-                                if (modalQuantity < max) {
+                                if (modalQuantity < maxAllowedQty) {
                                   setModalQuantity(modalQuantity + 1);
                                 } else {
-                                  alert(`Solo hay ${max} unidades disponibles.`);
+                                  alert(`Solo hay disponible para ${maxAllowedQty} ${isEarring && earringOption === 'par' ? 'par(es)' : 'unidad(es)'}.`);
                                 }
                               }}
                               className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
@@ -1473,7 +1620,7 @@ export default function StorefrontView({
                       {/* Botón Agregar al Carrito o Agotado */}
                       <div className="mt-6">
                         <button
-                          onClick={() => isAvailable && handleAddToCart(activeModalProduct, selectedVariant, modalQuantity, customEngravingText)}
+                          onClick={() => isAvailable && handleAddToCart(activeModalProduct, selectedVariant, modalQuantity, customEngravingText, isEarring ? earringOption : null)}
                           disabled={!isAvailable}
                           className={`w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition ${
                             isAvailable
@@ -1485,7 +1632,7 @@ export default function StorefrontView({
                             <>
                               <ShoppingBag className="w-4 h-4" />
                               <span>
-                                Agregar al Carrito • Gs. {formatGsInput((selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0) * modalQuantity)}
+                                Agregar al Carrito • Gs. {formatGsInput(currentUnitEffectivePrice * modalQuantity)}
                               </span>
                             </>
                           ) : (
@@ -1584,9 +1731,9 @@ export default function StorefrontView({
 
                         <div className="flex-1 min-w-0">
                           <h5 className="text-xs font-bold uppercase tracking-wide truncate">{item.name}</h5>
-                          {(item.color || item.size) && (
+                          {(item.presentation || item.color || item.size) && (
                             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block truncate">
-                              {[item.color, item.size ? `Talle: ${item.size}` : ''].filter(Boolean).join(' • ')}
+                              {[item.presentation, item.color, item.size ? `Talle: ${item.size}` : ''].filter(Boolean).join(' • ')}
                             </span>
                           )}
                           {item.customText && (

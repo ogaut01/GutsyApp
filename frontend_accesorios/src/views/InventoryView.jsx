@@ -419,6 +419,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
       moneda_compra: prod.moneda_compra || 'USD',
       peso_gramos: prod.peso_gramos || 15,
       precio_venta: formatGsInput(prod.precio_venta),
+      precio_unidad: prod.precio_unidad ? formatGsInput(prod.precio_unidad) : '',
       url_producto: prod.url_producto || '',
     });
     if (materialesList.length === 0) {
@@ -438,6 +439,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
         moneda_compra: editForm.moneda_compra,
         peso_gramos: parseInt(editForm.peso_gramos) || 15,
         precio_venta: parseGsInput(editForm.precio_venta),
+        precio_unidad: editForm.precio_unidad ? parseGsInput(editForm.precio_unidad) : null,
         url_producto: editForm.url_producto || '',
         materiales_ids: editForm.material_id ? [parseInt(editForm.material_id)] : [],
       };
@@ -1535,7 +1537,9 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Precio Venta (Gs.)</label>
+                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                    {editForm.categoria === 'AR' ? 'Precio Par (Gs.)' : 'Precio Venta (Gs.)'}
+                  </label>
                   <input
                     type="text"
                     inputMode="numeric"
@@ -1545,15 +1549,31 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                     className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Peso (gramos)</label>
-                  <input
-                    type="number"
-                    value={editForm.peso_gramos || 15}
-                    onChange={e => setEditForm(f => ({ ...f, peso_gramos: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
-                  />
-                </div>
+                {editForm.categoria === 'AR' ? (
+                  <div>
+                    <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                      Precio Unidad (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Autocalculado si vacío"
+                      value={editForm.precio_unidad || ''}
+                      onChange={e => setEditForm(f => ({ ...f, precio_unidad: formatGsInput(e.target.value) }))}
+                      className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Peso (gramos)</label>
+                    <input
+                      type="number"
+                      value={editForm.peso_gramos || 15}
+                      onChange={e => setEditForm(f => ({ ...f, peso_gramos: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -137,6 +137,7 @@ class ProductoSerializer(serializers.ModelSerializer):
     stock_total = serializers.IntegerField(read_only=True)
     ganancia_estimada_unitaria = serializers.IntegerField(read_only=True)
     margen_porcentaje = serializers.FloatField(read_only=True)
+    precio_unidad_calculado = serializers.IntegerField(read_only=True)
     imagen_url_completa = serializers.SerializerMethodField()
 
     class Meta:
