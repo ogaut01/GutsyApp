@@ -1204,7 +1204,27 @@ export default function StorefrontView({
                 const hasStock = product.activo !== false && (product.stock_total || 0) > 0;
                 const isLastUnit = hasStock && (product.stock_total || 0) === 1;
                 const variants = product.variantes || [];
-                const hasMultipleVariants = variants.length > 1;
+                const uniqueColors = Array.from(
+                  new Set(
+                    variants
+                      .map(v => (v.color || '').trim())
+                      .filter(Boolean)
+                  )
+                );
+                const uniqueSizes = Array.from(
+                  new Set(
+                    variants
+                      .map(v => (v.talle_medida || '').replace(/^talle\s*/i, '').trim())
+                      .filter(Boolean)
+                  )
+                );
+                const previewBadges = uniqueColors.length > 0
+                  ? uniqueColors
+                  : uniqueSizes.length > 0
+                    ? uniqueSizes
+                    : variants.map((v, i) => v.sku || `Opción ${i + 1}`);
+
+                const hasPreviewBadges = previewBadges.length > 0 && (variants.length > 1 || previewBadges.length > 1);
                 const isAboveFold = productIndex < 4;
 
                 return (
@@ -1300,15 +1320,15 @@ export default function StorefrontView({
                           {product.nombre}
                         </h3>
 
-                        {/* Variantes mini preview */}
-                        {hasMultipleVariants && (
+                        {/* Variantes mini preview (sin colores repetidos) */}
+                        {hasPreviewBadges && (
                           <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-                            {variants.map((v, i) => (
+                            {previewBadges.map((badge, i) => (
                               <span
-                                key={v.id || i}
-                                className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold"
+                                key={i}
+                                className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold whitespace-nowrap"
                               >
-                                {v.color || v.talle_medida || `Var ${i+1}`}
+                                {badge}
                               </span>
                             ))}
                           </div>
