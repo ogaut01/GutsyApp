@@ -246,6 +246,15 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     e.preventDefault();
     setSavingNuevoProducto(true);
     try {
+      const isPYG = nuevoProductoForm.moneda_compra === 'PYG';
+      const costoParsed = isPYG
+        ? parseGsInput(nuevoProductoForm.costo_moneda_origen)
+        : (parseFloat(String(nuevoProductoForm.costo_moneda_origen).replace(',', '.')) || 0);
+
+      const pesoParsed = (nuevoProductoForm.peso_gramos !== '' && !isNaN(nuevoProductoForm.peso_gramos))
+        ? Math.max(0, parseInt(nuevoProductoForm.peso_gramos, 10))
+        : 0;
+
       const res = await bulkUploadProductos([
         {
           nombre: nuevoProductoForm.nombre.trim(),
@@ -253,9 +262,9 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
           genero: nuevoProductoForm.genero,
           proveedor: nuevoProductoForm.proveedor || 'Shein',
           materiales: nuevoProductoForm.materiales || 'Acero Quirurgico',
-          costo_moneda_origen: parseFloat(nuevoProductoForm.costo_moneda_origen) || 0,
+          costo_moneda_origen: costoParsed,
           moneda_compra: nuevoProductoForm.moneda_compra,
-          peso_gramos: parseInt(nuevoProductoForm.peso_gramos) || 15,
+          peso_gramos: pesoParsed,
           precio_venta: parseGsInput(nuevoProductoForm.precio_venta),
           url_origen: nuevoProductoForm.url_origen || '',
           variantes: [
@@ -419,18 +428,24 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   };
 
   // ── Editar Producto ──────────────────────────────────────────
+  // ── Editar Producto ──────────────────────────────────────────
   const openEditProduct = (prod, e) => {
     e.stopPropagation();
     setEditingProduct(prod);
     const currentMatId = (prod.materiales && prod.materiales.length > 0) ? prod.materiales[0].id : '';
+    const isPYG = prod.moneda_compra === 'PYG';
+    const costoFormatted = prod.costo_moneda_origen
+      ? (isPYG ? formatGsInput(Math.round(parseFloat(prod.costo_moneda_origen))) : prod.costo_moneda_origen)
+      : '';
+
     setEditForm({
       nombre: prod.nombre,
       categoria: prod.categoria,
       genero: prod.genero,
       material_id: currentMatId,
-      costo_moneda_origen: prod.costo_moneda_origen || '',
+      costo_moneda_origen: costoFormatted,
       moneda_compra: prod.moneda_compra || 'USD',
-      peso_gramos: prod.peso_gramos || 15,
+      peso_gramos: prod.peso_gramos !== null && prod.peso_gramos !== undefined ? prod.peso_gramos : 0,
       precio_venta: formatGsInput(prod.precio_venta),
       precio_unidad: prod.precio_unidad ? formatGsInput(prod.precio_unidad) : '',
       url_producto: prod.url_producto || '',
@@ -444,13 +459,22 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     e.preventDefault();
     setSavingEdit(true);
     try {
+      const isPYG = editForm.moneda_compra === 'PYG';
+      const costoParsed = isPYG
+        ? parseGsInput(editForm.costo_moneda_origen)
+        : (parseFloat(String(editForm.costo_moneda_origen).replace(',', '.')) || null);
+
+      const pesoParsed = (editForm.peso_gramos !== '' && !isNaN(editForm.peso_gramos))
+        ? Math.max(0, parseInt(editForm.peso_gramos, 10))
+        : 0;
+
       const payload = {
         nombre: editForm.nombre,
         categoria: editForm.categoria,
         genero: editForm.genero,
-        costo_moneda_origen: parseFloat(editForm.costo_moneda_origen) || null,
+        costo_moneda_origen: costoParsed,
         moneda_compra: editForm.moneda_compra,
-        peso_gramos: parseInt(editForm.peso_gramos) || 15,
+        peso_gramos: pesoParsed,
         precio_venta: parseGsInput(editForm.precio_venta),
         precio_unidad: editForm.precio_unidad ? parseGsInput(editForm.precio_unidad) : null,
         url_producto: editForm.url_producto || '',
@@ -1015,7 +1039,11 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                     <div>
                       <span className="text-stone-400 dark:text-zinc-500 block">Costo FOB</span>
                       <span className="font-semibold text-zinc-200">
-                        {prod.costo_moneda_origen ? `${prod.costo_moneda_origen} ${prod.moneda_compra}` : 'No definido'}
+                        {prod.costo_moneda_origen
+                          ? (prod.moneda_compra === 'PYG'
+                              ? `Gs. ${Math.round(parseFloat(prod.costo_moneda_origen)).toLocaleString('es-PY')}`
+                              : `${prod.costo_moneda_origen} ${prod.moneda_compra}`)
+                          : 'No definido'}
                       </span>
                     </div>
                     <div>
@@ -1383,22 +1411,36 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Costo Origen</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    placeholder="Ej: 1.90"
-                    value={nuevoProductoForm.costo_moneda_origen}
-                    onChange={e => setNuevoProductoForm(f => ({ ...f, costo_moneda_origen: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
-                  />
+                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                    Costo Origen {nuevoProductoForm.moneda_compra === 'PYG' ? '(Gs.)' : ''}
+                  </label>
+                  {nuevoProductoForm.moneda_compra === 'PYG' ? (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      required
+                      placeholder="Ej: 20.000"
+                      value={nuevoProductoForm.costo_moneda_origen}
+                      onChange={e => setNuevoProductoForm(f => ({ ...f, costo_moneda_origen: formatGsInput(e.target.value) }))}
+                      className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      placeholder="Ej: 1.90"
+                      value={nuevoProductoForm.costo_moneda_origen}
+                      onChange={e => setNuevoProductoForm(f => ({ ...f, costo_moneda_origen: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Moneda Compra</label>
                   <select
                     value={nuevoProductoForm.moneda_compra}
-                    onChange={e => setNuevoProductoForm(f => ({ ...f, moneda_compra: e.target.value }))}
+                    onChange={e => setNuevoProductoForm(f => ({ ...f, moneda_compra: e.target.value, costo_moneda_origen: '' }))}
                     className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                   >
                     <option value="USD">USD — Dólares</option>
@@ -1572,20 +1614,33 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Costo en Origen (FOB)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={editForm.costo_moneda_origen || ''}
-                    onChange={e => setEditForm(f => ({ ...f, costo_moneda_origen: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
-                  />
+                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                    Costo en Origen (FOB) {editForm.moneda_compra === 'PYG' ? '(Gs.)' : ''}
+                  </label>
+                  {editForm.moneda_compra === 'PYG' ? (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Ej: 20.000"
+                      value={editForm.costo_moneda_origen || ''}
+                      onChange={e => setEditForm(f => ({ ...f, costo_moneda_origen: formatGsInput(e.target.value) }))}
+                      className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                    />
+                  ) : (
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={editForm.costo_moneda_origen || ''}
+                      onChange={e => setEditForm(f => ({ ...f, costo_moneda_origen: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Moneda Compra</label>
                   <select
                     value={editForm.moneda_compra || 'USD'}
-                    onChange={e => setEditForm(f => ({ ...f, moneda_compra: e.target.value }))}
+                    onChange={e => setEditForm(f => ({ ...f, moneda_compra: e.target.value, costo_moneda_origen: '' }))}
                     className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border-neutral-200 dark:border-neutral-200 dark:border-zinc-800 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                   >
                     <option value="USD">USD ($)</option>
