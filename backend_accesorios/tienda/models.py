@@ -555,6 +555,7 @@ class Producto(models.Model):
         ('LE', 'Lentes / Gafas'),
         ('TO', 'Tobilleras'),
         ('DI', 'Dijes / Colgantes'),
+        ('PQ', 'Paquetería / Packaging'),
         ('OT', 'Otros Accesorios'),
     ]
 

@@ -65,6 +65,7 @@ export default function BulkUploadView({ onBack, onSuccess }) {
     TO: 'Tobilleras',
     DI: 'Dijes',
     DJ: 'Dijes',
+    PQ: 'Paquetería / Packaging',
     RE: 'Relojes',
     PI: 'Piercings',
     OT: 'Otros',

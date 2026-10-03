@@ -5,7 +5,7 @@ import {
   Heart, X, Plus, Minus, Trash2, ArrowRight, CheckCircle2,
   Copy, Check, MessageCircle, ChevronRight, ChevronLeft, Phone, Instagram,
   MapPin, CreditCard, QrCode, Building2, Banknote, Filter,
-  Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw
+  Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw, Package
 } from 'lucide-react';
 import { formatGsInput } from '../currency';
 import { fetchMateriales, createPedidoWeb } from '../services/api';
@@ -66,6 +66,7 @@ const ALL_STORE_CATEGORIES = [
   { id: 'LE', label: 'Lentes', icon: Tag },
   { id: 'TO', label: 'Tobilleras', icon: Tag },
   { id: 'DI', label: 'Dijes & Colgantes', icon: Tag },
+  { id: 'PQ', label: 'Paquetería & Packaging', icon: Package },
   { id: 'OT', label: 'Otros', icon: Tag },
 ];
 
@@ -1624,9 +1625,9 @@ export default function StorefrontView({
                   const currentVariants = [...disp, ...agot];
 
                   // Comprobar si hay talles diferenciados (ej: Talle 8, 9, 10...)
-                  // NOTA: Para Aros/Aretes (categoria === 'AR') no aplica selector de talles
-                  const isEarringProduct = activeModalProduct.categoria === 'AR';
-                  const hasSizes = !isEarringProduct && currentVariants.some(v => v.talle_medida && v.talle_medida.trim() !== '' && v.talle_medida.toLowerCase() !== 'único');
+                  // NOTA: Para Aros/Aretes (AR) y Paquetería/Packaging (PQ) no aplica selector de talles
+                  const isNoSizeProduct = activeModalProduct.categoria === 'AR' || activeModalProduct.categoria === 'PQ';
+                  const hasSizes = !isNoSizeProduct && currentVariants.some(v => v.talle_medida && v.talle_medida.trim() !== '' && v.talle_medida.toLowerCase() !== 'único');
 
                   return (
                     <div className="mt-5 space-y-4">

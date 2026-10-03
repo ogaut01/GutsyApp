@@ -23,6 +23,7 @@ const CATEGORIAS = [
   { id: 'AR', label: 'Aros' },
   { id: 'TO', label: 'Tobilleras' },
   { id: 'DI', label: 'Dijes' },
+  { id: 'PQ', label: 'Paquetería / Packaging' },
   { id: 'RE', label: 'Relojes' },
   { id: 'PI', label: 'Piercings' },
   { id: 'OT', label: 'Otros' },
