@@ -546,7 +546,7 @@ class ItemLote(models.Model):
 
 class Producto(models.Model):
     CATEGORIAS = [
-        ('AR', 'Aros / Aretes'),
+        ('AR', 'Aros'),
         ('CO', 'Collares'),
         ('CA', 'Cadenas'),
         ('PU', 'Pulseras y Brazaletes'),
@@ -555,7 +555,7 @@ class Producto(models.Model):
         ('LE', 'Lentes / Gafas'),
         ('TO', 'Tobilleras'),
         ('DI', 'Dijes / Colgantes'),
-        ('PQ', 'Paquetería / Packaging'),
+        ('PQ', 'Packaging'),
         ('OT', 'Otros Accesorios'),
     ]
 

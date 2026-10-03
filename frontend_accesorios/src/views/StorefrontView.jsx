@@ -60,13 +60,13 @@ const ALL_STORE_CATEGORIES = [
   { id: 'CA', label: 'Cadenas', icon: Tag },
   { id: 'CO', label: 'Collares', icon: Tag },
   { id: 'PU', label: 'Pulseras & Brazaletes', icon: Tag },
-  { id: 'AR', label: 'Aros & Aretes', icon: Tag },
+  { id: 'AR', label: 'Aros', icon: Tag },
   { id: 'ST', label: 'Sets & Combos', icon: Tag },
   { id: 'PA', label: 'Parejas', icon: Tag },
   { id: 'LE', label: 'Lentes', icon: Tag },
   { id: 'TO', label: 'Tobilleras', icon: Tag },
   { id: 'DI', label: 'Dijes & Colgantes', icon: Tag },
-  { id: 'PQ', label: 'Paquetería & Packaging', icon: Package },
+  { id: 'PQ', label: 'Packaging', icon: Package },
   { id: 'OT', label: 'Otros', icon: Tag },
 ];
 
