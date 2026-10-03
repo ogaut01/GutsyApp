@@ -186,6 +186,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
         """Sube una o múltiples fotos adicionales para la galería del producto."""
         producto = self.get_object()
         fotos = request.FILES.getlist('fotos')
+        color = request.data.get('color', '').strip()
         if not fotos and 'foto' in request.FILES:
             fotos = [request.FILES['foto']]
 
@@ -203,6 +204,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
                 img = ProductoImagen.objects.create(
                     producto=producto,
                     imagen_archivo=foto_optimizada,
+                    color=color if color and color.lower() != 'general' else '',
                     orden=producto.imagenes_galeria.count()
                 )
                 creadas.append(ProductoImagenSerializer(img).data)
@@ -220,12 +222,14 @@ class ProductoViewSet(viewsets.ModelViewSet):
         """Agrega una foto por URL a la galería del producto."""
         producto = self.get_object()
         url = request.data.get('url', '').strip()
+        color = request.data.get('color', '').strip()
         if not url:
             return Response({'error': 'La URL es requerida.'}, status=status.HTTP_400_BAD_REQUEST)
 
         img = ProductoImagen.objects.create(
             producto=producto,
             imagen_url=url,
+            color=color if color and color.lower() != 'general' else '',
             orden=producto.imagenes_galeria.count()
         )
         return Response({

@@ -120,7 +120,7 @@ class ProductoImagenSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductoImagen
-        fields = ('id', 'producto', 'imagen_url', 'imagen_archivo', 'url', 'orden')
+        fields = ('id', 'producto', 'imagen_url', 'imagen_archivo', 'url', 'color', 'orden')
 
 
 class ProductoSerializer(serializers.ModelSerializer):

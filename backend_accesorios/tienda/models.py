@@ -825,6 +825,13 @@ class ProductoImagen(models.Model):
     )
     imagen_url = models.TextField(blank=True, null=True, verbose_name="URL de Imagen Externa")
     imagen_archivo = models.ImageField(upload_to='productos/galeria/', blank=True, null=True, verbose_name="Subir Foto")
+    color = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name="Color Asociado (Opcional)",
+        help_text="Color de la variante con la que se mostrará esta foto en la tienda (ej: Dorado, Plateado). Vacío = General."
+    )
     orden = models.PositiveIntegerField(default=0, verbose_name="Orden")
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 

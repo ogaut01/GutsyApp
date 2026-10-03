@@ -481,24 +481,33 @@ export default function StorefrontView({
 
     const activeColor = (selectedVariant?.color || '').trim().toLowerCase();
 
-    // 1. Para el color seleccionado, tomar la foto representativa de ese color (1 sola foto de variante por color)
+    // 1. Fotos de variante del color seleccionado
     if (activeColor && activeModalProduct.variantes && activeModalProduct.variantes.length > 0) {
       const colorVariants = activeModalProduct.variantes.filter(
         v => (v.color || '').trim().toLowerCase() === activeColor
       );
 
-      // Tomar la primera variante de ese color que tenga imagen
-      const varWithImg = colorVariants.find(v => v.imagen_url);
-      if (varWithImg && varWithImg.imagen_url) {
-        addImg(varWithImg.imagen_url, varWithImg.color || 'Color', varWithImg.id);
-      }
+      // Agregar todas las fotos de las variantes de este color (ej: variante sola, variante puesta)
+      colorVariants.forEach(v => {
+        if (v.imagen_url) {
+          addImg(v.imagen_url, v.color || 'Color', v.id);
+        }
+      });
     }
 
-    // 2. Fotos de la galería adicional del producto (ej: fotos en mano, packaging)
+    // 2. Fotos de la galería adicional del producto (filtradas por color o generales)
     if (activeModalProduct.imagenes_galeria && activeModalProduct.imagenes_galeria.length > 0) {
       activeModalProduct.imagenes_galeria.forEach((g) => {
         const gUrl = g.url || g.imagen_url;
-        if (gUrl) addImg(gUrl, 'Galería');
+        const gColor = (g.color || '').trim().toLowerCase();
+        
+        // Si no hay color activo (producto sin variantes), mostramos todo
+        // Si hay color activo: mostrar si coincide el color O si es foto general (sin color / 'general' / 'todos')
+        const matchesColor = !activeColor || !gColor || gColor === 'general' || gColor === 'todos' || gColor === activeColor;
+        
+        if (gUrl && matchesColor) {
+          addImg(gUrl, g.color ? `${g.color}` : 'Galería');
+        }
       });
     }
 

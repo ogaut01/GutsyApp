@@ -206,12 +206,15 @@ export async function uploadFotoVariante(id, file) {
   return res.json();
 }
 
-export async function uploadFotoGaleria(productoId, files) {
+export async function uploadFotoGaleria(productoId, files, color = '') {
   const form = new FormData();
   if (Array.isArray(files) || files instanceof FileList) {
     Array.from(files).forEach(f => form.append('fotos', f));
   } else {
     form.append('fotos', files);
+  }
+  if (color) {
+    form.append('color', color);
   }
   const res = await apiRequest(`/productos/${productoId}/upload-foto-galeria/`, {
     method: 'POST',
@@ -224,10 +227,10 @@ export async function uploadFotoGaleria(productoId, files) {
   return res.json();
 }
 
-export async function addFotoUrlGaleria(productoId, url) {
+export async function addFotoUrlGaleria(productoId, url, color = '') {
   const res = await apiRequest(`/productos/${productoId}/add-foto-url-galeria/`, {
     method: 'POST',
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, color }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

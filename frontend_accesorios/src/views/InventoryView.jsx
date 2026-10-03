@@ -80,6 +80,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const [pendingGalleryProdId, setPendingGalleryProdId] = useState(null);
   const [addGalleryUrlModal, setAddGalleryUrlModal] = useState(null); // prod object
   const [galleryUrlInput, setGalleryUrlInput] = useState('');
+  const [galleryColorInput, setGalleryColorInput] = useState('');
   const [savingGalleryUrl, setSavingGalleryUrl] = useState(false);
 
   // Materiales y Proveedores
@@ -203,6 +204,7 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     e.stopPropagation();
     setAddGalleryUrlModal(prod);
     setGalleryUrlInput('');
+    setGalleryColorInput('');
   };
 
   const handleSaveGalleryUrl = async (e) => {
@@ -210,9 +212,10 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
     if (!addGalleryUrlModal || !galleryUrlInput.trim()) return;
     setSavingGalleryUrl(true);
     try {
-      await addFotoUrlGaleria(addGalleryUrlModal.id, galleryUrlInput.trim());
+      await addFotoUrlGaleria(addGalleryUrlModal.id, galleryUrlInput.trim(), galleryColorInput);
       setAddGalleryUrlModal(null);
       setGalleryUrlInput('');
+      setGalleryColorInput('');
       if (onReload) onReload();
     } catch (err) {
       alert('Error al agregar foto por URL: ' + err.message);
@@ -1155,10 +1158,19 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                                 alt="Foto adicional"
                                 className="w-full h-full object-cover"
                               />
+                              {img.color ? (
+                                <span className="absolute bottom-0 inset-x-0 bg-black/85 backdrop-blur-xs text-[7.5px] font-bold text-center text-white py-0.5 truncate px-0.5 pointer-events-none uppercase">
+                                  {img.color}
+                                </span>
+                              ) : (
+                                <span className="absolute bottom-0 inset-x-0 bg-zinc-800/80 backdrop-blur-xs text-[7px] font-medium text-center text-zinc-300 py-0.5 truncate px-0.5 pointer-events-none">
+                                  General
+                                </span>
+                              )}
                               <button
                                 type="button"
                                 onClick={(e) => handleDeleteGalleryFoto(img.id, e)}
-                                className="absolute inset-0 bg-black/70 opacity-0 group-hover/gal:opacity-100 flex items-center justify-center text-rose-400 transition"
+                                className="absolute inset-0 bg-black/75 opacity-0 group-hover/gal:opacity-100 flex items-center justify-center text-rose-400 transition"
                                 title="Eliminar esta foto"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -1964,6 +1976,34 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                   onChange={e => setGalleryUrlInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-xs text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
                 />
+              </div>
+
+              {/* Selector de Color Asociado (Opcional) */}
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                  Color Asociado (Opcional)
+                </label>
+                <select
+                  value={galleryColorInput}
+                  onChange={e => setGalleryColorInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-xs text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                >
+                  <option value="">Todos los colores (General / Packaging / Puesto general)</option>
+                  {Array.from(
+                    new Set(
+                      (addGalleryUrlModal.variantes || [])
+                        .map(v => (v.color || '').trim())
+                        .filter(c => c && c.toLowerCase() !== 'único' && c.toLowerCase() !== 'estándar')
+                    )
+                  ).map(color => (
+                    <option key={color} value={color}>
+                      Solo para color: {color}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-stone-400 dark:text-zinc-500 mt-1">
+                  Si elegís un color (ej: Dorado), esta foto solo se mostrará cuando el cliente seleccione ese color en la tienda.
+                </p>
               </div>
 
               {/* Vista previa de la foto */}
