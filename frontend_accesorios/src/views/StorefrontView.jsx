@@ -3612,11 +3612,6 @@ export default function StorefrontView({
             </div>
           </div>
 
-          {/* Pie de página inferior */}
-          <div className="mt-12 pt-6 border-t border-zinc-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 gap-2">
-            <span>© {new Date().getFullYear()} GUTSY.</span>
-            <span className="text-zinc-400">Villarrica • Paraguay</span>
-          </div>
         </div>
       </footer>
     </div>
