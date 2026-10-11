@@ -61,7 +61,7 @@ export const BANK_ACCOUNTS = [
 
 // Categorías amigables para el cliente
 const ALL_STORE_CATEGORIES = [
-  { id: 'ALL', label: 'Todos los Accesorios', icon: Gem },
+  { id: 'ALL', label: 'Todos', icon: Tag },
   { id: 'AN', label: 'Anillos', icon: Tag },
   { id: 'CA', label: 'Cadenas', icon: Tag },
   { id: 'CO', label: 'Collares', icon: Tag },
@@ -3517,8 +3517,8 @@ export default function StorefrontView({
       {/* ─── FOOTER MINIMALISTA & HUMANIZADO ───────────────────────────────── */}
       <footer className="bg-zinc-950 text-white border-t border-zinc-900 pt-14 pb-10 px-4 sm:px-6 lg:px-8 mt-auto">
         <div className="max-w-7xl mx-auto">
-          {/* Main Footer Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
+          {/* Main Footer Grid (2 columnas en móvil, 4 en desktop) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8 lg:gap-12">
             {/* Columna 1: Marca */}
             <div className="space-y-3.5">
               <div className="flex items-center gap-2.5">
