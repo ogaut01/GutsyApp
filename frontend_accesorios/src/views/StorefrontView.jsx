@@ -1,14 +1,20 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ShoppingBag, Search, Sparkles, ShieldCheck, Droplets, Truck,
   Heart, X, Plus, Minus, Trash2, ArrowRight, CheckCircle2,
   Copy, Check, MessageCircle, ChevronRight, ChevronLeft, Phone, Instagram,
   MapPin, CreditCard, QrCode, Building2, Banknote, Filter,
-  Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw, Package
+  Lock, ArrowLeft, Gem, Tag, Eye, RefreshCw, Package,
+  Ruler, ZoomIn, ChevronDown, ChevronUp, Gift, RotateCcw, Info, Share2, Award,
+  Star, Maximize2, Clock, Sun, Moon, PenTool, Layers
 } from 'lucide-react';
 import { formatGsInput } from '../currency';
 import { fetchMateriales, createPedidoWeb } from '../services/api';
+import SizeGuideModal from '../components/SizeGuideModal';
+import ProductLightbox from '../components/ProductLightbox';
+import GutsyLogo from '../components/GutsyLogo';
+import { getOptimizedImageUrl } from '../utils/formatters';
 
 // ============================================================================
 // 🏦 CONFIGURACIÓN DE CUENTAS BANCARIAS & ALIAS (EDITABLE)
@@ -66,15 +72,14 @@ const ALL_STORE_CATEGORIES = [
   { id: 'LE', label: 'Lentes', icon: Tag },
   { id: 'TO', label: 'Tobilleras', icon: Tag },
   { id: 'DI', label: 'Dijes & Colgantes', icon: Tag },
-  { id: 'PQ', label: 'Packaging', icon: Package },
   { id: 'OT', label: 'Otros', icon: Tag },
 ];
 
 // Mensajes para la marquesina infinita superior (CAMBIO 1)
 const ANNOUNCEMENT_ITEMS = [
-  { text: 'MATERIALES SELECCIONADOS', icon: Sparkles },
-  { text: 'GARANTÍA DE CALIDAD', icon: ShieldCheck },
-  { text: '+80 MODELOS', icon: Gem },
+  { text: 'MATERIALES SELECCIONADOS', icon: ShieldCheck },
+  { text: 'GARANTÍA DE CALIDAD', icon: Award },
+  { text: '+100 MODELOS', icon: Layers },
   { text: 'ENVÍOS A TODO EL PAÍS', icon: Truck },
 ];
 
@@ -88,16 +93,47 @@ const COLOR_FILTER_OPTIONS = [
   { id: 'blanco', label: 'Blanco' },
 ];
 
+// ─── SKELETON WIREFRAME DE CARGA (PRODUCTOS) ─────────────────────────────
+function ProductGridSkeleton({ count = 8 }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+      {Array.from({ length: count }).map((_, i) => (
+        <div
+          key={i}
+          className="bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800/80 overflow-hidden flex flex-col p-3 space-y-3"
+        >
+          {/* Contenedor de Imagen Skeleton */}
+          <div className="aspect-square w-full rounded-xl bg-zinc-200/80 dark:bg-zinc-900 animate-pulse" />
+          
+          {/* Subtítulo Marca / Categoría */}
+          <div className="h-2.5 w-1/3 bg-zinc-200 dark:bg-zinc-900 rounded animate-pulse" />
+          
+          {/* Título de Producto */}
+          <div className="h-4 w-4/5 bg-zinc-200 dark:bg-zinc-900 rounded animate-pulse" />
+          
+          {/* Precio y Botón */}
+          <div className="pt-2 flex items-center justify-between">
+            <div className="h-5 w-2/5 bg-zinc-200 dark:bg-zinc-900 rounded animate-pulse" />
+            <div className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-900 animate-pulse" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function StorefrontView({
   productos = [],
   onOpenAdminLogin,
   user,
   onGoToAdmin,
   theme,
-  onToggleTheme
+  onToggleTheme,
+  isLoading = false
 }) {
   // Filtros y Búsqueda
   const [searchTerm, setSearchTerm] = useState('');
+  const [isShimmering, setIsShimmering] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [selectedGender, setSelectedGender] = useState('ALL');
   const [selectedMaterial, setSelectedMaterial] = useState('ALL');
@@ -105,7 +141,18 @@ export default function StorefrontView({
   const [sortBy, setSortBy] = useState('featured'); // 'featured', 'price-asc', 'price-desc', 'name'
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [customEngravingText, setCustomEngravingText] = useState('');
+  const [engravingFace1, setEngravingFace1] = useState('');
+  const [engravingFace2, setEngravingFace2] = useState('');
+  const [activeEngravingFace, setActiveEngravingFace] = useState('face1'); // 'face1' | 'face2'
   const [dbMaterials, setDbMaterials] = useState([]);
+
+  // Sincronizar grabado de múltiples caras en customEngravingText
+  useEffect(() => {
+    const parts = [];
+    if (engravingFace1.trim()) parts.push(`Cara 1: ${engravingFace1.trim()}`);
+    if (engravingFace2.trim()) parts.push(`Cara 2: ${engravingFace2.trim()}`);
+    setCustomEngravingText(parts.join(' · '));
+  }, [engravingFace1, engravingFace2]);
 
   // Carga dinámica de materiales de la BD (CAMBIO 5)
   useEffect(() => {
@@ -153,12 +200,30 @@ export default function StorefrontView({
     }
   }, [cart]);
 
-  // Modal de Detalle de Producto
+  // Modal de Detalle de Producto & UI Extras
   const [activeModalProduct, setActiveModalProduct] = useState(null);
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [earringOption, setEarringOption] = useState('par'); // 'par' | 'unidad'
+  const [activeReviewModal, setActiveReviewModal] = useState(null);
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+  const [sizeGuideInitialTab, setSizeGuideInitialTab] = useState('anillos');
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
+  const [openAccordion, setOpenAccordion] = useState(null); // Accordions closed by default for optimal initial visual balance
+  const [engravingFont, setEngravingFont] = useState('cursiva'); // 'cursiva' | 'clasica' | 'romana'
+  const [selectedPackaging, setSelectedPackaging] = useState('standard'); // 'standard' | 'giftbox'
+  const [isGiftOption, setIsGiftOption] = useState(false); // boolean (Añadir moño de regalo gratis)
+  const crossSellScrollRef = useRef(null);
+
+  const handleOpenSizeGuide = (categoria) => {
+    if (categoria === 'AN') setSizeGuideInitialTab('anillos');
+    else if (categoria === 'CA' || categoria === 'CO' || categoria === 'DI') setSizeGuideInitialTab('cadenas');
+    else if (categoria === 'PU' || categoria === 'TO') setSizeGuideInitialTab('pulseras');
+    else setSizeGuideInitialTab('anillos');
+    setIsSizeGuideOpen(true);
+  };
 
   // Formulario de Envío y Checkout
   const [shippingType, setShippingType] = useState('villarrica'); // 'villarrica', 'interior'
@@ -169,10 +234,12 @@ export default function StorefrontView({
     return BANK_ACCOUNTS.find(b => b.id === selectedBankId) || BANK_ACCOUNTS[0];
   }, [selectedBankId]);
 
-  const [customerName, setCustomerName] = useState('');
+  const [customerFirstName, setCustomerFirstName] = useState('');
+  const [customerLastName, setCustomerLastName] = useState('');
   const [customerDoc, setCustomerDoc] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerCity, setCustomerCity] = useState('');
+  const [customerDept, setCustomerDept] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
 
@@ -372,6 +439,11 @@ export default function StorefrontView({
   // ─── Filtrado de Productos ────────────────────────────────────────────────
   const filteredProducts = useMemo(() => {
     return productos.filter(product => {
+      // Ocultar productos de categoría Packaging (PQ) de la lista general del catálogo
+      if (selectedCategory !== 'PQ' && product.categoria === 'PQ') {
+        return false;
+      }
+
       // Filtro por búsqueda
       const term = searchTerm.toLowerCase().trim();
       const matchSearch = !term ||
@@ -435,10 +507,19 @@ export default function StorefrontView({
       if (sortBy === 'price-asc') return (a.precio_venta || 0) - (b.precio_venta || 0);
       if (sortBy === 'price-desc') return (b.precio_venta || 0) - (a.precio_venta || 0);
       if (sortBy === 'name') return (a.nombre || '').localeCompare(b.nombre || '');
-      // featured: mayor stock disponible primero
+      // featured: priorizar productos con imagen cargada y mayor stock
+      const aHasImg = (a.imagen_url_completa || a.imagen_url) ? 1 : 0;
+      const bHasImg = (b.imagen_url_completa || b.imagen_url) ? 1 : 0;
+      if (aHasImg !== bHasImg) return bHasImg - aHasImg;
       return (b.stock_total || 0) - (a.stock_total || 0);
     });
   }, [productos, searchTerm, selectedCategory, selectedGender, selectedMaterial, selectedColor, sortBy]);
+
+  const INITIAL_PRODUCT_LIMIT = 8;
+  const [showAllProducts, setShowAllProducts] = useState(false);
+  const hasActiveFilters = searchTerm || selectedCategory !== 'ALL' || selectedGender !== 'ALL' || selectedMaterial !== 'ALL' || selectedColor !== 'ALL';
+  const displayedProducts = (showAllProducts || hasActiveFilters) ? filteredProducts : filteredProducts.slice(0, INITIAL_PRODUCT_LIMIT);
+  const hasMoreProducts = !hasActiveFilters && !showAllProducts && filteredProducts.length > INITIAL_PRODUCT_LIMIT;
 
   const activeFilterCount = useMemo(() => {
     let c = 0;
@@ -472,27 +553,51 @@ export default function StorefrontView({
     const list = [];
     const addedUrls = new Set();
 
+    // Normalizar URLs para evitar duplicados por diferencias de dominio/puerto (ej: http://localhost vs /media/)
+    const normalizeUrl = (u) => {
+      if (!u) return '';
+      try {
+        if (u.startsWith('http://') || u.startsWith('https://')) {
+          const parsed = new URL(u);
+          return parsed.pathname;
+        }
+      } catch (e) {}
+      return u.trim();
+    };
+
     const addImg = (url, label, variantId = null) => {
-      if (url && !addedUrls.has(url)) {
-        addedUrls.add(url);
+      if (!url) return;
+      const norm = normalizeUrl(url);
+      if (norm && !addedUrls.has(norm)) {
+        addedUrls.add(norm);
         list.push({ url, label, variantId });
       }
     };
 
     const activeColor = (selectedVariant?.color || '').trim().toLowerCase();
 
-    // 1. Fotos de variante del color seleccionado
-    if (activeColor && activeModalProduct.variantes && activeModalProduct.variantes.length > 0) {
-      const colorVariants = activeModalProduct.variantes.filter(
-        v => (v.color || '').trim().toLowerCase() === activeColor
-      );
-
-      // Agregar todas las fotos de las variantes de este color (ej: variante sola, variante puesta)
-      colorVariants.forEach(v => {
-        if (v.imagen_url) {
-          addImg(v.imagen_url, v.color || 'Color', v.id);
+    // 1. Fotos representativas de las variantes
+    if (activeModalProduct.variantes && activeModalProduct.variantes.length > 0) {
+      if (activeColor) {
+        const colorVariants = activeModalProduct.variantes.filter(
+          v => (v.color || '').trim().toLowerCase() === activeColor
+        );
+        // Tomar exactamente 1 foto representativa por color (evita duplicar por cada talle/medida como Talle 7, 8, 9, 10)
+        const varWithImg = colorVariants.find(v => v.imagen_url);
+        if (varWithImg && varWithImg.imagen_url) {
+          addImg(varWithImg.imagen_url, varWithImg.color || 'Color', varWithImg.id);
         }
-      });
+      } else {
+        // Si no hay color seleccionado aún, tomar 1 foto por color único
+        const seenColors = new Set();
+        activeModalProduct.variantes.forEach(v => {
+          const c = (v.color || '').trim().toLowerCase();
+          if (c && !seenColors.has(c) && v.imagen_url) {
+            seenColors.add(c);
+            addImg(v.imagen_url, v.color || 'Color', v.id);
+          }
+        });
+      }
     }
 
     // 2. Fotos de la galería adicional del producto (filtradas por color o generales)
@@ -501,7 +606,7 @@ export default function StorefrontView({
         const gUrl = g.url || g.imagen_url;
         const gColor = (g.color || '').trim().toLowerCase();
         
-        // Si no hay color activo (producto sin variantes), mostramos todo
+        // Si no hay color activo: mostrar todo
         // Si hay color activo: mostrar si coincide el color O si es foto general (sin color / 'general' / 'todos')
         const matchesColor = !activeColor || !gColor || gColor === 'general' || gColor === 'todos' || gColor === activeColor;
         
@@ -520,22 +625,188 @@ export default function StorefrontView({
     return list;
   }, [activeModalProduct, selectedVariant?.color]);
 
+  // Helper para identificar el grupo de color principal de un producto o variante
+  const getColorGroup = (product, activeVariant) => {
+    if (!product) return null;
+    const variantColor = (activeVariant?.color || '').toLowerCase();
+    const productName = (product.nombre || '').toLowerCase();
+    const desc = (product.descripcion || '').toLowerCase();
+    const variantColors = (product.variantes || []).map(v => v.color || '').join(' ').toLowerCase();
+
+    const fullText = `${variantColor} ${productName} ${desc} ${variantColors}`;
+
+    if (fullText.includes('dorad') || fullText.includes('gold') || fullText.includes('oro')) return 'dorado';
+    if (fullText.includes('platead') || fullText.includes('silver') || fullText.includes('plata')) return 'plateado';
+    if (fullText.includes('negr') || fullText.includes('black')) return 'negro';
+    if (fullText.includes('rose') || fullText.includes('rosad') || fullText.includes('rosa')) return 'rose';
+    if (fullText.includes('cuero') || fullText.includes('marr') || fullText.includes('brown')) return 'cuero';
+
+    return null;
+  };
+
+  // ─── Cross-Selling Inteligente "Completa tu Look" (Priorizando Color & Género) ──────
+  const crossSellProducts = useMemo(() => {
+    if (!activeModalProduct || !productos || productos.length === 0) return [];
+    
+    const cat = activeModalProduct.categoria;
+    const currentGender = formatGenero(activeModalProduct.genero_display || activeModalProduct.genero); // 'Caballero', 'Dama', 'Unisex'
+    const currentColorGroup = getColorGroup(activeModalProduct, selectedVariant);
+
+    // Definir categorías complementarias prioritarias
+    let targetCats = [];
+    if (cat === 'AN') targetCats = ['PU', 'CA', 'CO', 'DI', 'AR'];
+    else if (cat === 'CA' || cat === 'CO') targetCats = ['PU', 'AN', 'DI', 'AR'];
+    else if (cat === 'DI') targetCats = ['CA', 'CO', 'PU', 'AN'];
+    else if (cat === 'PU' || cat === 'TO') targetCats = ['AN', 'CA', 'CO', 'DI', 'AR'];
+    else if (cat === 'AR') targetCats = ['CO', 'CA', 'PU', 'AN'];
+    else targetCats = ['PU', 'CA', 'CO', 'AN', 'AR'];
+
+    // Filtrar productos activos con stock que NO sean el producto actual ni Packaging
+    const inStock = productos.filter(
+      p => p.id !== activeModalProduct.id && p.activo !== false && (p.stock_total || 0) > 0 && p.categoria !== 'PQ'
+    );
+
+    // 1. Coincidencia estricta de género (Caballero con Caballero/Unisex, Dama con Dama/Unisex)
+    const matchesGender = (p) => {
+      if (!currentGender || currentGender === 'Unisex') return true;
+      const pGender = formatGenero(p.genero_display || p.genero);
+      if (pGender === currentGender) return true;
+      if (pGender === 'Unisex') return true;
+      return false;
+    };
+
+    const sameGenderProducts = inStock.filter(matchesGender);
+    const pool = sameGenderProducts.length >= 2 ? sameGenderProducts : inStock;
+
+    // 2. Puntuar cada producto priorizando:
+    //    a) Coincidencia de Color (Mismo color: Dorado -> Dorado, Plateado -> Plateado, Negro -> Negro)
+    //    b) Categoría complementaria (Collar -> Pulsera/Anillo)
+    //    c) Diversidad consistente basada en ID de producto
+    const productIdSeed = Number(activeModalProduct.id) || 1;
+
+    const scoredProducts = pool.map(p => {
+      const pColorGroup = getColorGroup(p, null);
+      const isSameColor = currentColorGroup && pColorGroup && pColorGroup === currentColorGroup;
+      const isComplementaryCat = targetCats.includes(p.categoria);
+      const catIndex = targetCats.indexOf(p.categoria);
+
+      let score = 0;
+      if (isSameColor) score += 500; // Máxima prioridad para el mismo color
+      if (isComplementaryCat) {
+        score += 200 - (catIndex * 30); // Prioridad para categoría complementaria
+      }
+
+      // Variación determinista pero variada por producto
+      const pseudoRandom = ((Number(p.id || 0) * 37 + productIdSeed * 13) % 100);
+      score += pseudoRandom;
+
+      return { product: p, score };
+    });
+
+    // Ordenar de mayor a menor puntuación
+    scoredProducts.sort((a, b) => b.score - a.score);
+
+    return scoredProducts.map(sp => sp.product).slice(0, 8);
+  }, [activeModalProduct, selectedVariant, productos]);
+
+  // ─── Búsqueda Dinámica de Packaging desde la BD (Categoría PQ) ──────────────
+  const matchedDbPackaging = useMemo(() => {
+    if (!activeModalProduct || !productos || productos.length === 0) return null;
+    const pqProducts = productos.filter(p => p.categoria === 'PQ' && p.activo !== false);
+    if (pqProducts.length === 0) return null;
+
+    const cat = activeModalProduct.categoria;
+    const catName = (activeModalProduct.categoria_display || '').toLowerCase();
+    const gCode = (activeModalProduct.genero || '').toUpperCase();
+    const gDisp = (activeModalProduct.genero_display || '').toLowerCase();
+    const isDama = gCode === 'MUJ' || gDisp.includes('dama') || gDisp.includes('mujer');
+
+    // Aros, Pulseras y Lentes no llevan caja especial de regalo
+    if (
+      cat === 'AR' || cat === 'PU' || cat === 'TO' || cat === 'LE' || cat === 'GA' || cat === 'AC' ||
+      catName.includes('lente') || catName.includes('gafa') || catName.includes('aro') || catName.includes('pulsera')
+    ) {
+      return null;
+    }
+
+    // 1. Para Anillos (AN)
+    if (cat === 'AN' || catName.includes('anillo')) {
+      if (isDama) {
+        return pqProducts.find(p => {
+          const n = (p.nombre || '').toLowerCase();
+          return n.includes('corazon') || n.includes('corazón') || n.includes('anillo');
+        }) || pqProducts.find(p => (p.nombre || '').toLowerCase().includes('anillo')) || null;
+      } else {
+        // Para anillos que NO son de dama (Caballero / Unisex), buscar una caja que NO sea de corazón
+        return pqProducts.find(p => {
+          const n = (p.nombre || '').toLowerCase();
+          return !n.includes('corazon') && !n.includes('corazón') && n.includes('anillo');
+        }) || null;
+      }
+    }
+
+    // 2. Para Collares / Cadenas / Dijes (CO, CA, DI)
+    if (cat === 'CO' || cat === 'CA' || cat === 'DI' || catName.includes('collar') || catName.includes('cadena') || catName.includes('dije')) {
+      return pqProducts.find(p => {
+        const n = (p.nombre || '').toLowerCase();
+        return n.includes('collar') || n.includes('cadena') || n.includes('dije');
+      }) || null;
+    }
+
+    return null;
+  }, [activeModalProduct, productos]);
+
   // ─── Manejo de Selección de Producto & Modal ──────────────────────────────
-  const handleOpenProductModal = (product) => {
+  const handleOpenProductModal = (product, targetVariant = null) => {
     setActiveModalProduct(product);
     setActiveImageIndex(0);
     setModalQuantity(1);
     setCustomEngravingText('');
+    setEngravingFace1('');
+    setEngravingFace2('');
+    setActiveEngravingFace('face1');
+    setSelectedPackaging('standard');
+    setIsGiftOption(false);
 
     let chosenVar = null;
-    // Seleccionar por defecto la variante del color filtrado, o la primera con stock
     if (product.variantes && product.variantes.length > 0) {
-      const colorMatchVar = getMatchingColorVariant(product, selectedColor);
-      if (colorMatchVar) {
-        chosenVar = colorMatchVar;
+      if (targetVariant) {
+        chosenVar = targetVariant;
       } else {
-        const firstWithStock = product.variantes.find(v => v.stock > 0) || product.variantes[0];
-        chosenVar = firstWithStock;
+        const colorMatchVar = getMatchingColorVariant(product, selectedColor);
+
+        if (colorMatchVar) {
+          chosenVar = colorMatchVar;
+        } else {
+          // Intentar hacer coincidir la variante con la foto de portada principal del producto
+          const mainImg = (product.imagen_url_completa || product.imagen_url || '').trim();
+
+          const coverMatchVar = mainImg
+            ? product.variantes.find(v => v.activo !== false && v.imagen_url && (v.imagen_url === mainImg || mainImg.endsWith(v.imagen_url) || mainImg.includes(v.imagen_url)))
+            : null;
+
+          if (coverMatchVar) {
+            chosenVar = coverMatchVar;
+          } else {
+            // Si la URL no coincide exactamente, detectar el color por el nombre/URL de la portada
+            const mainImgLower = mainImg.toLowerCase();
+            let coverColorVar = null;
+            if (mainImgLower.includes('negro') || mainImgLower.includes('black')) {
+              coverColorVar = product.variantes.find(v => v.activo !== false && (v.color || '').toLowerCase().includes('negr'));
+            } else if (mainImgLower.includes('platead') || mainImgLower.includes('silver') || mainImgLower.includes('plata')) {
+              coverColorVar = product.variantes.find(v => v.activo !== false && (v.color || '').toLowerCase().includes('plat'));
+            } else if (mainImgLower.includes('dorad') || mainImgLower.includes('gold') || mainImgLower.includes('oro')) {
+              coverColorVar = product.variantes.find(v => v.activo !== false && (v.color || '').toLowerCase().includes('dorad'));
+            }
+
+            if (coverColorVar) {
+              chosenVar = coverColorVar;
+            } else {
+              const firstWithStock = product.variantes.find(v => v.activo !== false && (v.stock || 0) > 0) || product.variantes[0];
+              chosenVar = firstWithStock;
+            }
+          }
+        }
       }
       setSelectedVariant(chosenVar);
     } else {
@@ -550,7 +821,7 @@ export default function StorefrontView({
     }
   };
 
-  const handleAddToCart = (product, variant, qty = 1, customText = '', presentation = null) => {
+  const handleAddToCart = (product, variant, qty = 1, customText = '', presentation = null, closeModal = true, unitPriceOverride = null) => {
     const isEarring = product.categoria === 'AR';
     const chosenPres = isEarring ? (presentation || earringOption) : null;
     const { precioPar, precioUnidad } = isEarring ? getAroPrecios(product) : { precioPar: 0, precioUnidad: 0 };
@@ -565,9 +836,11 @@ export default function StorefrontView({
       return;
     }
 
-    const itemPrice = isEarring
+    const basePrice = isEarring
       ? (chosenPres === 'par' ? precioPar : precioUnidad)
       : (variant?.precio_venta_pyg || product.precio_venta || 0);
+
+    const itemPrice = unitPriceOverride !== null ? unitPriceOverride : basePrice;
 
     const presentationLabel = isEarring
       ? (chosenPres === 'par' ? 'Par (2 un.)' : 'Individual (1 un.)')
@@ -615,7 +888,9 @@ export default function StorefrontView({
     // Efecto de rebote en el ícono del carrito
     setCartBounce(true);
     setTimeout(() => setCartBounce(false), 600);
-    setActiveModalProduct(null);
+    if (closeModal) {
+      setActiveModalProduct(null);
+    }
   };
 
   const updateCartItemQuantity = (key, delta) => {
@@ -663,7 +938,9 @@ export default function StorefrontView({
       return;
     }
 
-    if (!customerName.trim()) {
+    const fullCustomerName = `${customerFirstName.trim()} ${customerLastName.trim()}`.trim();
+
+    if (!fullCustomerName) {
       alert('Por favor, ingresa tu Nombre y Apellido para preparar tu pedido.');
       return;
     }
@@ -674,7 +951,7 @@ export default function StorefrontView({
         return;
       }
       if (!customerCity.trim()) {
-        alert('Por favor, ingresa la Ciudad y Departamento de destino.');
+        alert('Por favor, ingresa tu Ciudad de destino.');
         return;
       }
       if (!customerAddress.trim()) {
@@ -683,16 +960,18 @@ export default function StorefrontView({
       }
     }
 
+    const fullCityDept = customerDept.trim() ? `${customerCity.trim()}, ${customerDept.trim()}` : customerCity.trim();
+
     setIsSubmittingOrder(true);
 
     // Construccion del mensaje de WhatsApp (emojis con escapes para evitar corrupcion)
     let message = '\u{1F6CD}\uFE0F *\u00A1HOLA GUTSY!*\n\n';
 
     // -- Datos del cliente --
-    message += `\u{1F464} *${customerName.trim()}*\n`;
+    message += `\u{1F464} *${fullCustomerName}*\n`;
     if (customerDoc.trim())     message += `   \u{1F194} CI: ${customerDoc.trim()}\n`;
     if (customerPhone.trim())   message += `   \u{1F4F1} ${customerPhone.trim()}\n`;
-    if (customerCity.trim())    message += `   \u{1F4CD} ${customerCity.trim()}\n`;
+    if (fullCityDept)           message += `   \u{1F4CD} ${fullCityDept}\n`;
     if (customerAddress.trim()) message += `   \u{1F3E0} ${customerAddress.trim()}\n`;
     message += '\n';
 
@@ -726,7 +1005,7 @@ export default function StorefrontView({
       message += `\u{1F4B3} *PAGO:* Transferencia \u2014 ${selectedBank.shortName} (Alias: ${selectedBank.alias})\n`;
       message += '   \u{1F449} Les adjunto el comprobante enseguida.\n';
     } else if (paymentMethod === 'qr') {
-      message += '\u{1F4B3} *PAGO:* QR Bancario\n';
+      message += '\u{1F4B3} *PAGO:* QR\n';
       message += `   \u{1F449} Por favor env\u00EDenme el c\u00F3digo QR por Gs.\u00A0${formatGsInput(cartTotal)}.\n`;
     } else if (paymentMethod === 'contraentrega') {
       message += '\u{1F4B3} *PAGO:* Efectivo al recibir\n';
@@ -740,10 +1019,10 @@ export default function StorefrontView({
 
     // Registrar el pedido en la base de datos (segundo plano, sin bloquear WhatsApp)
     const pedidoPayload = {
-      cliente_nombre: customerName.trim(),
+      cliente_nombre: fullCustomerName,
       cliente_telefono: customerPhone.trim(),
       cliente_ci: customerDoc.trim(),
-      cliente_ciudad: customerCity.trim(),
+      cliente_ciudad: fullCityDept,
       cliente_direccion: customerAddress.trim(),
       tipo_envio: shippingType,
       metodo_pago: paymentMethod,
@@ -818,17 +1097,10 @@ export default function StorefrontView({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
           {/* Logo & Slogan de Gutsy */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center shadow-md">
-              <Gem className="w-5 h-5 stroke-[2.2]" />
-            </div>
-            <div>
-              <span className="text-xl sm:text-2xl font-black tracking-[0.2em] uppercase font-serif block leading-none">
-                GUTSY
-              </span>
-              <span className="text-[10px] sm:text-[11px] font-medium tracking-widest text-zinc-500 dark:text-zinc-400 uppercase font-sans mt-1 block">
-                Tu propio estilo, tu propia esencia.
-              </span>
-            </div>
+            <GutsyLogo className="w-9 h-9 shrink-0" />
+            <span className="text-xl sm:text-2xl font-black tracking-[0.22em] uppercase font-serif block leading-none">
+              GUTSY
+            </span>
           </div>
 
           {/* Barra de Búsqueda Desktop */}
@@ -839,7 +1111,7 @@ export default function StorefrontView({
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Buscar collares, anillos, pulseras, acero 316L..."
+                placeholder="Buscar collares, anillos, pulseras..."
                 className="w-full pl-10 pr-4 py-2 text-xs bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full focus:outline-none focus:border-black dark:focus:border-white transition"
               />
               {searchTerm && (
@@ -872,7 +1144,7 @@ export default function StorefrontView({
               className="p-2.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-black dark:text-white hover:border-black dark:hover:border-white transition"
               title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
             >
-              <Sparkles className="w-4 h-4" />
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-zinc-700" />}
             </button>
 
             {/* Botón Carrito de Compras */}
@@ -922,15 +1194,9 @@ export default function StorefrontView({
         </div>
       </header>
 
-      {/* ─── HERO LOOKBOOK (Elegante Blanco & Negro) ──────────────────────── */}
-      <section className="relative overflow-hidden bg-zinc-950 text-white py-16 sm:py-24 border-b border-zinc-800">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
-        
+      {/* ─── HERO LOOKBOOK (Estilo Editorial Limpio Blanco & Negro) ─────────── */}
+      <section className="relative overflow-hidden bg-black text-white py-14 sm:py-20 border-b border-zinc-800">
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-zinc-300 text-xs font-semibold tracking-widest uppercase mb-4 border border-white/15">
-            <Gem className="w-3.5 h-3.5 text-white" />
-            <span>JOYAS & ACCESORIOS · GUTSY</span>
-          </div>
 
           <h1 className="text-3xl sm:text-5xl md:text-6xl font-black tracking-tight uppercase font-serif leading-tight">
             TU PROPIO ESTILO,<br />
@@ -938,115 +1204,71 @@ export default function StorefrontView({
           </h1>
 
           <p className="mt-4 text-xs sm:text-sm md:text-base text-zinc-400 max-w-2xl mx-auto font-light leading-relaxed">
-            Joyas y accesorios diseñados para destacar tu personalidad. Piezas duraderas y resistentes diseñadas para redefinir tu estilo.
+            Piezas únicas seleccionadas para acompañar tu día a día.
           </p>
 
-          {/* Grid de 4 Pilares de Confianza (CAMBIO 3) */}
-          <div className="mt-10 grid grid-cols-2 md:grid-cols-4 gap-3 max-w-4xl mx-auto text-left">
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <ShieldCheck className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">CALIDAD SELECCIONADA</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Materiales elegidos para acompañarte.</p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <Sparkles className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">VARIEDAD</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Acero · Plata · Bijou</p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <Truck className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">ENVÍOS A TODO EL PAÍS</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Trabajamos con varias empresas de logística.</p>
-            </div>
-
-            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <CreditCard className="w-4 h-4 text-white mb-2" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white">PAGOS SEGUROS</h4>
-              <p className="text-[11px] text-zinc-400 mt-0.5">Transferencias · QR · POS</p>
-            </div>
+          {/* Cinta de Confianza Minimalista de 1 sola línea (Sin tarjetas pesadas ni supuestos) */}
+          <div className="mt-8 pt-6 border-t border-zinc-800/80 flex items-center justify-center flex-wrap gap-x-6 gap-y-2 text-xs text-zinc-400 font-medium tracking-wide">
+            <span className="flex items-center gap-1.5"><Truck className="w-3.5 h-3.5 text-zinc-300" /> Envíos a todo Paraguay</span>
+            <span className="text-zinc-700 hidden sm:inline">•</span>
+            <span className="flex items-center gap-1.5"><PenTool className="w-3.5 h-3.5 text-zinc-300" /> Grabados Láser Personalizados</span>
+            <span className="text-zinc-700 hidden sm:inline">•</span>
+            <span className="flex items-center gap-1.5"><CreditCard className="w-3.5 h-3.5 text-zinc-300" /> Pagos seguros</span>
+            <span className="text-zinc-700 hidden sm:inline">•</span>
+            <span className="flex items-center gap-1.5"><Layers className="w-3.5 h-3.5 text-zinc-300" /> Variedad de modelos</span>
           </div>
         </div>
       </section>
 
-      {/* ─── FILTROS Y CATEGORÍAS ────────────────────────────────────────── */}
+      {/* ─── FILTROS Y CATEGORÍAS (Estilo Tienda de Moda Editorial) ────────── */}
       <section
         id="catalogo"
         className="sticky top-20 z-20 bg-white/95 dark:bg-black/95 backdrop-blur-md border-b border-zinc-200 dark:border-zinc-800 py-3 scroll-mt-20"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3">
-            {/* Scroll Horizontal de Categorías (Centrado en Desktop) */}
+            {/* Pestañas de Categoría de Texto Plano (Estilo Zara / Farfetch / SSENSE) */}
             <div className="relative w-full">
-              {/* Fades laterales — solo mobile */}
-              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-black to-transparent z-10 md:hidden" />
-              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-10 bg-gradient-to-l from-white dark:from-black to-transparent z-10 md:hidden" />
-
-              <motion.div
-                className="flex items-center md:justify-center gap-1.5 overflow-x-auto no-scrollbar py-1 px-2 md:px-0"
-              >
+              <div className="flex items-center md:justify-center gap-2 sm:gap-6 overflow-x-auto no-scrollbar py-1 px-2 md:px-0">
                 {activeCategories.map((cat) => {
-                   const isActive = selectedCategory === cat.id;
-                   return (
-                     <motion.button
-                       key={cat.id}
-                       whileTap={{ scale: 0.94 }}
-                       transition={{ duration: 0.12 }}
-                       onClick={(e) => {
-                         setSelectedCategory(cat.id);
-                         e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-                       }}
-                       className={`relative px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase transition-colors whitespace-nowrap flex-shrink-0 ${
-                         isActive
-                           ? 'text-white dark:text-black'
-                           : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200 dark:border-zinc-800'
-                       }`}
-                     >
-                       {isActive && (
-                         <motion.div
-                           layoutId="categoryActivePill"
-                           className="absolute inset-0 bg-black dark:bg-white rounded-full shadow-sm"
-                           transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                         />
-                       )}
-                       <span className="relative z-10">{cat.label}</span>
-                     </motion.button>
-                   );
-                 })}
-              </motion.div>
+                  const isActive = selectedCategory === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={(e) => {
+                        setSelectedCategory(cat.id);
+                        e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                      }}
+                      className={`pb-1.5 text-xs sm:text-sm font-extrabold tracking-widest uppercase transition-all whitespace-nowrap border-b-2 flex-shrink-0 ${
+                        isActive
+                          ? 'text-black dark:text-white border-black dark:border-white font-black'
+                          : 'text-zinc-400 dark:text-zinc-500 hover:text-black dark:hover:text-white border-transparent'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Filtros Secundarios: Desktop (Centrado - Recomendación B) */}
-            <div className="hidden md:flex items-center justify-center gap-2.5 flex-wrap text-xs">
-              {/* Género */}
-              <div className="flex items-center gap-1 bg-zinc-100 dark:bg-zinc-900 p-1 rounded-full border border-zinc-200 dark:border-zinc-800">
-                {[
-                  { id: 'ALL', label: 'Todos' },
-                  { id: 'F', label: 'Dama' },
-                  { id: 'M', label: 'Caballero' },
-                  { id: 'U', label: 'Unisex' }
-                ].map(g => (
-                  <button
-                    key={g.id}
-                    onClick={() => setSelectedGender(g.id)}
-                    className={`relative px-2.5 py-1 rounded-full font-bold tracking-wider uppercase transition-colors text-[11px] ${
-                      selectedGender === g.id
-                        ? 'text-black dark:text-white'
-                        : 'text-zinc-500 hover:text-black dark:hover:text-white'
-                    }`}
-                  >
-                    {selectedGender === g.id && (
-                      <motion.div
-                        layoutId="genderActivePill"
-                        className="absolute inset-0 bg-white dark:bg-black rounded-full shadow-xs"
-                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                      />
-                    )}
-                    <span className="relative z-10">{g.label}</span>
-                  </button>
-                ))}
-              </div>
+            {/* Filtros Secundarios: Género, Material, Color, Ordenar */}
+            <div className="hidden md:flex items-center justify-center gap-3 flex-wrap text-xs pt-1">
+              {/* Selector Género (Desplegable unificado) */}
+              <select
+                value={selectedGender}
+                onChange={e => setSelectedGender(e.target.value)}
+                className={`border rounded-full px-3 py-1.5 font-bold tracking-wider text-[11px] uppercase focus:outline-none transition ${
+                  selectedGender !== 'ALL'
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
+                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
+                }`}
+              >
+                <option value="ALL">TODOS LOS GÉNEROS</option>
+                <option value="F">DAMA</option>
+                <option value="M">CABALLERO</option>
+                <option value="U">UNISEX</option>
+              </select>
 
               {/* Selector Material (Dinámico por ID) */}
               <select
@@ -1145,7 +1367,7 @@ export default function StorefrontView({
               {ALL_STORE_CATEGORIES.find(c => c.id === selectedCategory)?.label || 'Catálogo'}
             </h2>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Mostrando {filteredProducts.length} modelo{filteredProducts.length !== 1 ? 's' : ''} disponibles
+              Mostrando {displayedProducts.length}{hasMoreProducts ? ` de ${filteredProducts.length}` : ''} modelo{filteredProducts.length !== 1 ? 's' : ''} disponibles
             </p>
           </div>
 
@@ -1165,8 +1387,10 @@ export default function StorefrontView({
           )}
         </div>
 
-        {/* Empty state si no hay productos (CAMBIO 5) */}
-        {filteredProducts.length === 0 ? (
+        {/* Renderizado de Skeleton Wireframes de Carga o Grilla Real */}
+        {isLoading || isShimmering ? (
+          <ProductGridSkeleton count={8} />
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20 px-4 bg-zinc-50 dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 p-8">
             <div className="w-16 h-16 rounded-3xl bg-zinc-100 dark:bg-zinc-900 text-zinc-400 flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-zinc-800">
               <Search className="w-7 h-7 stroke-[1.5]" />
@@ -1207,9 +1431,10 @@ export default function StorefrontView({
               }}
               className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6"
             >
-              {filteredProducts.map((product, productIndex) => {
+              {displayedProducts.map((product, productIndex) => {
                 const activeVariantForCard = getMatchingColorVariant(product, selectedColor);
-                const imageSrc = activeVariantForCard?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
+                const rawImageSrc = activeVariantForCard?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
+                const imageSrc = getOptimizedImageUrl(rawImageSrc, 500);
                 const hasStock = product.activo !== false && (product.stock_total || 0) > 0;
                 const isLastUnit = hasStock && (product.stock_total || 0) === 1;
                 const variants = product.variantes || [];
@@ -1263,7 +1488,7 @@ export default function StorefrontView({
                             hasStock ? 'group-hover:scale-105' : 'opacity-75 grayscale-[20%] group-hover:opacity-100'
                           }`}
                           loading={isAboveFold ? 'eager' : 'lazy'}
-                          fetchPriority={isAboveFold ? 'high' : 'auto'}
+                          fetchpriority={isAboveFold ? 'high' : undefined}
                           decoding="async"
                           width="300"
                           height="300"
@@ -1287,11 +1512,7 @@ export default function StorefrontView({
                             Agotado
                           </span>
                         )}
-                        {(product.genero_display || product.genero) && (
-                          <span className="w-fit px-2 py-0.5 rounded-md bg-white/90 dark:bg-black/90 backdrop-blur-sm text-black dark:text-white text-[9px] font-bold tracking-wider uppercase border border-zinc-200 dark:border-zinc-800">
-                            {formatGenero(product.genero_display || product.genero)}
-                          </span>
-                        )}
+
                       </div>
 
                       {/* Botón Vista Rápida en hover */}
@@ -1332,14 +1553,22 @@ export default function StorefrontView({
                         {/* Variantes mini preview (sin colores repetidos) */}
                         {hasPreviewBadges && (
                           <div className="mt-2 flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
-                            {previewBadges.map((badge, i) => (
-                              <span
-                                key={i}
-                                className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold whitespace-nowrap"
-                              >
-                                {badge}
-                              </span>
-                            ))}
+                            {previewBadges.map((badge, i) => {
+                              const matchingVar = product.variantes?.find(v => (v.color || '').trim().toLowerCase() === badge.toLowerCase());
+                              return (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenProductModal(product, matchingVar || null);
+                                  }}
+                                  className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold whitespace-nowrap hover:border-black dark:hover:border-white transition"
+                                >
+                                  {badge}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -1390,9 +1619,197 @@ export default function StorefrontView({
             </motion.div>
           </AnimatePresence>
         )}
+
+        {/* Botón "Ver catálogo completo" */}
+        {hasMoreProducts && (
+          <div className="flex justify-center mt-10 mb-4">
+            <button
+              onClick={() => setShowAllProducts(true)}
+              className="group inline-flex items-center gap-2.5 px-8 py-3.5 rounded-2xl bg-black dark:bg-white text-white dark:text-black text-sm font-bold uppercase tracking-wider hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg hover:shadow-xl"
+            >
+              <Eye className="w-4 h-4" />
+              Ver catálogo completo ({filteredProducts.length} productos)
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        )}
+
+        {/* ─── SECCIÓN DE RESEÑAS Y EXPERIENCIAS DE CLIENTES ─── */}
+        <section className="mt-16 pt-10 border-t border-zinc-200 dark:border-zinc-800">
+          {/* Header Reseñas */}
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-900 dark:text-white uppercase">
+                Feedback de Clientes
+              </h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 max-w-2xl">
+                Capturas de conversaciones reales en WhatsApp y clientes satisfechos al recibir sus accesorios GUTSY en Paraguay.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold border border-emerald-500/20">
+                <CheckCircle2 className="w-4 h-4" /> 100% Compras Verificadas
+              </span>
+            </div>
+          </div>
+
+          {/* Grid de Tarjetas de Reseñas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            {[
+              {
+                id: 1,
+                name: 'Camila R.',
+                date: '10/10/2026',
+                city: 'Asunción',
+                rating: 5,
+                comment: 'Ya le entregué a mi novio, le encantó, realmente gracias por la paciencia, le quedó súper bien y es muy elegante como dijiste',
+                img: '/reviews/1.jpg'
+              },
+              {
+                id: 2,
+                name: 'Lucas M.',
+                date: '08/10/2026',
+                city: 'San Lorenzo',
+                rating: 5,
+                comment: 'Perdón por no agradecerle... Pero me encantó está muy fachero, Gracias por el buen servicio',
+                img: '/reviews/2.jpg'
+              },
+              {
+                id: 3,
+                name: 'Mariano G.',
+                date: '05/10/2026',
+                city: 'Capiatá',
+                rating: 5,
+                comment: 'Que tal rey me acaba de llegar. Muchas gracias, Super. Me encantó',
+                img: '/reviews/3.jpg'
+              },
+              {
+                id: 4,
+                name: 'Sofía B.',
+                date: '02/10/2026',
+                city: 'Ciudad del Este',
+                rating: 5,
+                comment: 'Muchísimas gracias, demasiado lindo es, me encantó',
+                img: '/reviews/4.jpg'
+              }
+            ].map((rev) => (
+              <div
+                key={rev.id}
+                onClick={() => setActiveReviewModal(rev)}
+                className="group relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col hover:border-black dark:hover:border-white transition-all duration-300 hover:shadow-xl cursor-pointer"
+              >
+                {/* Captura de WhatsApp */}
+                <div className="relative aspect-4/3 bg-zinc-900 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={rev.img}
+                    alt={`Feedback ${rev.name}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-semibold backdrop-blur-xs">
+                    <Maximize2 className="w-4 h-4" />
+                    <span>Ver captura real</span>
+                  </div>
+                </div>
+
+                {/* Info de la Reseña */}
+                <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-zinc-900 dark:text-white flex items-center gap-1">
+                        {rev.name}
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 inline" />
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-mono">{rev.date}</span>
+                    </div>
+                    <div className="flex items-center text-amber-400 my-1">
+                      {[...Array(rev.rating)].map((_, i) => (
+                        <Star key={i} className="w-3.5 h-3.5 fill-amber-400 stroke-amber-400" />
+                      ))}
+                    </div>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300 italic line-clamp-3 leading-snug">
+                      "{rev.comment}"
+                    </p>
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-900 flex items-center justify-between text-[10px] text-zinc-400">
+                    <span className="font-mono uppercase font-bold text-zinc-500 dark:text-zinc-400 truncate max-w-[150px]">
+                      {rev.productTag}
+                    </span>
+                    <span className="text-emerald-500 font-semibold">Verificada</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
-      {/* ─── MODAL DETALLE DE PRODUCTO (Lookbook View) ────────────────────── */}
+      {/* ─── MODAL LIGHTBOX DE RESEÑA EN ALTA RESOLUCIÓN ─── */}
+      <AnimatePresence>
+        {activeReviewModal && (
+          <motion.div
+            key="review-modal-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+            onClick={() => setActiveReviewModal(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-md w-full bg-zinc-950 rounded-3xl border border-zinc-800 overflow-hidden p-5 text-white shadow-2xl flex flex-col items-center"
+              onClick={e => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setActiveReviewModal(null)}
+                className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/70 text-white flex items-center justify-center border border-zinc-700 hover:scale-105 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+
+              <div className="w-full aspect-auto rounded-2xl overflow-hidden bg-black border border-zinc-800 mb-4 flex items-center justify-center">
+                <img
+                  src={activeReviewModal.img}
+                  alt={`Chat WhatsApp ${activeReviewModal.name}`}
+                  className="w-full h-auto max-h-[60vh] object-contain"
+                />
+              </div>
+
+              <div className="w-full space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-white">{activeReviewModal.name}</span>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-bold border border-emerald-500/30 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Compra Verificada
+                    </span>
+                  </div>
+                  <span className="text-xs text-zinc-400">{activeReviewModal.date}</span>
+                </div>
+
+                <div className="flex items-center text-amber-400">
+                  {[...Array(activeReviewModal.rating)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-amber-400 stroke-amber-400" />
+                  ))}
+                </div>
+
+                <p className="text-xs text-zinc-300 italic bg-zinc-900 p-3 rounded-xl border border-zinc-800">
+                  "{activeReviewModal.comment}"
+                </p>
+
+                <div className="text-[11px] text-zinc-500 font-mono pt-1">
+                  Producto adquirido: <span className="text-zinc-300 font-semibold">{activeReviewModal.productTag}</span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── MODAL DETALLE DE PRODUCTO (Luxury Lookbook View) ────────────────── */}
       <AnimatePresence>
         {activeModalProduct && (
           <motion.div
@@ -1401,448 +1818,616 @@ export default function StorefrontView({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md overflow-y-auto"
             onClick={() => setActiveModalProduct(null)}
           >
             <motion.div
               key="product-modal-panel"
-              initial={{ opacity: 0, scale: 0.94, y: 16 }}
+              initial={{ opacity: 0, scale: 0.94, y: 18 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.94, y: 12 }}
+              exit={{ opacity: 0, scale: 0.94, y: 14 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+              className="relative w-full max-w-4xl lg:max-w-5xl bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[92vh] my-auto"
               onClick={e => e.stopPropagation()}
             >
-            {/* Botón Cerrar */}
-            <button
-              onClick={() => setActiveModalProduct(null)}
-              className="absolute top-4 right-4 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-black/90 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-md hover:scale-105 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
+              {/* Botón Cerrar Flotante */}
+              <button
+                onClick={() => setActiveModalProduct(null)}
+                className="absolute top-3.5 right-3.5 z-30 w-9 h-9 rounded-full bg-white/90 dark:bg-black/90 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition"
+                title="Cerrar modal"
+              >
+                <X className="w-4 h-4" />
+              </button>
 
-            {/* Columna Imagen */}
-            <div className="md:w-1/2 bg-zinc-100 dark:bg-zinc-900 relative flex flex-col items-center justify-between p-6 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800">
-              <div className="w-full flex-1 flex flex-col items-center justify-center">
-                {/* Contenedor de la foto activa */}
-                <div className="w-full aspect-square rounded-2xl overflow-hidden bg-white dark:bg-black flex items-center justify-center shadow-inner relative group">
-                  {modalImages.length > 0 && (modalImages[activeImageIndex] || modalImages[0])?.url ? (
-                    <img
-                      key={(modalImages[activeImageIndex] || modalImages[0]).url}
-                      src={(modalImages[activeImageIndex] || modalImages[0]).url}
-                      alt={activeModalProduct.nombre}
-                      className="w-full h-full object-cover transition-opacity duration-200"
-                      decoding="async"
-                    />
-                  ) : activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url ? (
-                    <img
-                      src={activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url}
-                      alt={activeModalProduct.nombre}
-                      className="w-full h-full object-cover"
-                      decoding="async"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center text-zinc-400">
-                      <Gem className="w-12 h-12 stroke-[1.5] mb-2" />
-                      <span className="text-xs font-bold tracking-widest uppercase">GUTSY</span>
-                    </div>
-                  )}
-
-                  {/* Flechas de navegación si hay más de 1 foto */}
-                  {modalImages.length > 1 && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveImageIndex(prev => (prev > 0 ? prev - 1 : modalImages.length - 1));
-                        }}
-                        className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm opacity-90 hover:opacity-100 transition shadow-md"
-                        aria-label="Foto anterior"
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveImageIndex(prev => (prev < modalImages.length - 1 ? prev + 1 : 0));
-                        }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm opacity-90 hover:opacity-100 transition shadow-md"
-                        aria-label="Foto siguiente"
-                      >
-                        <ChevronRight className="w-4 h-4" />
-                      </button>
-
-                      {/* Contador de fotos (ej: 1 / 3) */}
-                      <div className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/70 text-white text-[10px] font-mono font-bold backdrop-blur-sm">
-                        {activeImageIndex + 1} / {modalImages.length}
+              {/* ─── COLUMNA IZQUIERDA: GALERÍA & FOTOS CON ZOOM (50% Equilibrado) ────── */}
+              <div className="md:w-1/2 bg-zinc-50/80 dark:bg-zinc-900/50 p-5 sm:p-6 border-b md:border-b-0 md:border-r border-zinc-200 dark:border-zinc-800 flex flex-col justify-center items-center">
+                <div className="w-full max-w-md">
+                  {/* Contenedor Principal de la Foto */}
+                  <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-inner group">
+                    {/* Badges sobre la foto */}
+                    {isCustomizableProduct(activeModalProduct) && (
+                      <div className="absolute top-3 left-3 z-20 flex flex-col items-start gap-1.5 pointer-events-none">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-amber-500 text-black text-[9px] font-black tracking-wider uppercase shadow-sm">
+                          <Sparkles className="w-3 h-3" />
+                          <span>Grabado Láser</span>
+                        </span>
                       </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Tira de Miniaturas (Thumbnails) si hay 2 o más fotos */}
-                {modalImages.length > 1 && (
-                  <div className="w-full flex items-center gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar justify-center">
-                    {modalImages.map((img, idx) => {
-                      const isActive = activeImageIndex === idx;
-                      return (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => setActiveImageIndex(idx)}
-                          className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${
-                            isActive
-                              ? 'border-black dark:border-white scale-105 shadow-md'
-                              : 'border-transparent opacity-50 hover:opacity-90'
-                          }`}
-                        >
-                          <img
-                            src={img.url}
-                            alt={img.label}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                            decoding="async"
-                            width="48"
-                            height="48"
-                          />
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* Beneficios Rápidos (Dinámicos por material) */}
-              <div className="mt-4 grid grid-cols-2 gap-2 w-full text-[11px] text-zinc-500 dark:text-zinc-400">
-                <div className="flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-black dark:text-white flex-shrink-0" />
-                  <span className="truncate">
-                    {activeModalProduct.materiales?.length > 0
-                      ? activeModalProduct.materiales.map(m => m.nombre).join(', ')
-                      : 'Garantía de Calidad'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-black dark:text-white flex-shrink-0" />
-                  <span>Diseño Exclusivo</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Columna Detalles y Variantes */}
-            <div className="md:w-1/2 p-6 overflow-y-auto flex flex-col justify-between">
-              <div>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 block">
-                  {activeModalProduct.categoria_display} • {formatGenero(activeModalProduct.genero_display || activeModalProduct.genero)}
-                </span>
-
-                <h2 className="text-lg font-black tracking-wide uppercase font-serif mt-1">
-                  {activeModalProduct.nombre}
-                </h2>
-
-                <div className="mt-3 flex items-baseline gap-2 flex-wrap">
-                  <span className="text-2xl font-black text-black dark:text-white">
-                    Gs. {formatGsInput(
-                      activeModalProduct.categoria === 'AR'
-                        ? (earringOption === 'par'
-                            ? getAroPrecios(activeModalProduct).precioPar
-                            : getAroPrecios(activeModalProduct).precioUnidad)
-                        : (selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0)
                     )}
-                  </span>
-                  {activeModalProduct.categoria === 'AR' && (
-                    <span className="text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 self-center">
-                      {earringOption === 'par' ? 'Par' : 'Unidad'}
-                    </span>
+
+                    {/* Botón Lupa / Pantalla Completa */}
+                    <button
+                      type="button"
+                      onClick={() => setIsLightboxOpen(true)}
+                      className="absolute top-3 right-3 z-20 w-8 h-8 rounded-full bg-white/90 dark:bg-black/90 text-black dark:text-white border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-md hover:scale-110 transition"
+                      title="Ver en pantalla completa"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </button>
+
+                    {/* Foto Activa con Click para Expandir */}
+                    <div
+                      className="w-full h-full cursor-zoom-in flex items-center justify-center"
+                      onClick={() => setIsLightboxOpen(true)}
+                    >
+                      {modalImages.length > 0 && (modalImages[activeImageIndex] || modalImages[0])?.url ? (
+                        <img
+                          key={(modalImages[activeImageIndex] || modalImages[0]).url}
+                          src={(modalImages[activeImageIndex] || modalImages[0]).url}
+                          alt={activeModalProduct.nombre}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                          decoding="async"
+                        />
+                      ) : activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url ? (
+                        <img
+                          src={activeModalProduct.imagen_url_completa || activeModalProduct.imagen_url}
+                          alt={activeModalProduct.nombre}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          decoding="async"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-zinc-400">
+                          <Gem className="w-12 h-12 stroke-[1.5] mb-2" />
+                          <span className="text-xs font-bold tracking-widest uppercase">GUTSY</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Flechas de Navegación de Fotos */}
+                    {modalImages.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveImageIndex(prev => (prev > 0 ? prev - 1 : modalImages.length - 1));
+                          }}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm transition hover:scale-105 shadow-md"
+                          aria-label="Foto anterior"
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveImageIndex(prev => (prev < modalImages.length - 1 ? prev + 1 : 0));
+                          }}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center backdrop-blur-sm transition hover:scale-105 shadow-md"
+                          aria-label="Foto siguiente"
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+
+                        <div className="absolute bottom-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-black/75 text-white text-[10px] font-mono font-bold backdrop-blur-sm shadow-sm">
+                          {activeImageIndex + 1} / {modalImages.length}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Tira de Miniaturas (Thumbnails) */}
+                  {modalImages.length > 1 && (
+                    <div className="w-full flex items-center gap-2 mt-3 overflow-x-auto pb-1 no-scrollbar justify-center">
+                      {modalImages.map((img, idx) => {
+                        const isActive = activeImageIndex === idx;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setActiveImageIndex(idx)}
+                            className={`relative w-12 h-12 rounded-xl overflow-hidden border-2 flex-shrink-0 transition-all ${
+                              isActive
+                                ? 'border-black dark:border-white scale-105 shadow-md ring-2 ring-black/10 dark:ring-white/20'
+                                : 'border-transparent opacity-60 hover:opacity-100'
+                            }`}
+                          >
+                            <img
+                              src={img.url}
+                              alt={img.label}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                              decoding="async"
+                            />
+                          </button>
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
 
-                {/* Selector de Presentación (Par vs Individual) para Aros & Aretes */}
-                {activeModalProduct.categoria === 'AR' && (() => {
-                  const currentStock = selectedVariant != null ? (selectedVariant.stock ?? 0) : (activeModalProduct.stock_total ?? 0);
-                  const canBuyPair = currentStock >= 2;
-                  const { precioPar, precioUnidad } = getAroPrecios(activeModalProduct);
+                {/* Especificaciones & Destacados */}
+                <div className="mt-4 pt-3 border-t border-zinc-200/70 dark:border-zinc-800/70 flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 px-1 gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0" title={activeModalProduct.materiales?.map(m => m.nombre).join(', ') || 'Acero Quirúrgico'}>
+                    <Gem className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
+                      {activeModalProduct.materiales?.map(m => m.nombre).join(', ') || 'Acero Quirúrgico'}
+                    </span>
+                  </div>
+                  <span className="text-zinc-300 dark:text-zinc-700 shrink-0">•</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200">Garantía de Calidad</span>
+                  </div>
+                  <span className="text-zinc-300 dark:text-zinc-700 shrink-0">•</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <Truck className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                    <span className="font-medium text-zinc-800 dark:text-zinc-200">Envíos a todo el país</span>
+                  </div>
+                </div>
+              </div>
 
-                  return (
-                    <div className="mt-4 p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
-                      <label className="text-[11px] font-bold uppercase tracking-wider block text-zinc-700 dark:text-zinc-300">
-                        Presentación:
-                      </label>
-                      <div className="grid grid-cols-2 gap-2">
+              {/* ─── COLUMNA DERECHA: DETALLES, SELECTORES & ACORDEÓN (50%) ───────── */}
+              <div className="md:w-1/2 p-5 sm:p-6 md:p-8 overflow-y-auto flex flex-col justify-between">
+                <div className="space-y-5">
+                  {/* Categoría, Género & Referencia */}
+                  <div>
+                    <div className="flex items-center justify-between gap-2 flex-wrap text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
+                      <span className="inline-flex items-center gap-1 text-zinc-600 dark:text-zinc-300">
+                        <Tag className="w-3 h-3 text-zinc-400" />
+                        <span>{activeModalProduct.categoria_display || 'Accesorio'}</span>
+                      </span>
+
+                      {selectedVariant?.sku && (
+                        <span className="font-mono text-zinc-400 text-[9px]">
+                          SKU: {selectedVariant.sku}
+                        </span>
+                      )}
+                    </div>
+
+                    <h2 className="text-xl sm:text-2xl font-black tracking-tight uppercase font-serif text-black dark:text-white leading-tight">
+                      {activeModalProduct.nombre}
+                    </h2>
+
+                    {/* Precios & Estado */}
+                    <div className="mt-3 flex items-baseline gap-3 flex-wrap">
+                      <span className="text-2xl sm:text-3xl font-black text-black dark:text-white tracking-tight">
+                        Gs. {formatGsInput(
+                          activeModalProduct.categoria === 'AR'
+                            ? (earringOption === 'par'
+                                ? getAroPrecios(activeModalProduct).precioPar
+                                : getAroPrecios(activeModalProduct).precioUnidad)
+                            : (selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0)
+                        )}
+                      </span>
+                      {activeModalProduct.categoria === 'AR' && (
+                        <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700 self-center">
+                          {earringOption === 'par' ? 'Por Par (2 un.)' : 'Por Unidad (1 un.)'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Selector de Presentación (Par vs Unidad) para Aros & Aretes */}
+                  {activeModalProduct.categoria === 'AR' && (() => {
+                    const currentStock = selectedVariant != null ? (selectedVariant.stock ?? 0) : (activeModalProduct.stock_total ?? 0);
+                    const canBuyPair = currentStock >= 2;
+                    const { precioPar, precioUnidad } = getAroPrecios(activeModalProduct);
+
+                    return (
+                      <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
+                        <label className="text-[11px] font-bold uppercase tracking-wider block text-zinc-700 dark:text-zinc-300">
+                          Selecciona Presentación:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <button
+                            type="button"
+                            disabled={!canBuyPair}
+                            onClick={() => setEarringOption('par')}
+                            className={`p-3 rounded-xl border text-left transition relative ${
+                              earringOption === 'par' && canBuyPair
+                                ? 'border-black dark:border-white bg-white dark:bg-zinc-800 shadow-md ring-2 ring-black dark:ring-white'
+                                : canBuyPair
+                                  ? 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 bg-white/50 dark:bg-zinc-950/50'
+                                  : 'border-zinc-200 dark:border-zinc-800 opacity-40 cursor-not-allowed bg-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black uppercase text-black dark:text-white">Par Completo</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                                2 un.
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mt-1">
+                              Gs. {formatGsInput(precioPar)}
+                            </span>
+                            {!canBuyPair && (
+                              <span className="text-[9px] text-rose-500 font-semibold block mt-0.5">Stock insuf. para par</span>
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={currentStock <= 0}
+                            onClick={() => setEarringOption('unidad')}
+                            className={`p-3 rounded-xl border text-left transition relative ${
+                              earringOption === 'unidad' || !canBuyPair
+                                ? 'border-black dark:border-white bg-white dark:bg-zinc-800 shadow-md ring-2 ring-black dark:ring-white'
+                                : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 bg-white/50 dark:bg-zinc-950/50'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black uppercase text-black dark:text-white">Individual</span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
+                                1 un.
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mt-1">
+                              Gs. {formatGsInput(precioUnidad)}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Selector de Variantes (Colores & Talles) */}
+                  {activeModalProduct.variantes && activeModalProduct.variantes.length > 0 && (() => {
+                    const talleNum = (v) => {
+                      const n = parseFloat((v.talle_medida || '').toString().replace(/[^0-9.]/g, ''));
+                      return isNaN(n) ? 9999 : n;
+                    };
+
+                    const colorList = [];
+                    const seenColors = new Set();
+                    activeModalProduct.variantes.forEach(v => {
+                      const c = (v.color || '').trim();
+                      if (c && !seenColors.has(c.toLowerCase())) {
+                        seenColors.add(c.toLowerCase());
+                        colorList.push(c);
+                      }
+                    });
+
+                    const currentColor = (selectedVariant?.color || '').trim() || (colorList.length > 0 ? colorList[0] : '');
+                    const filteredVariants = colorList.length > 0
+                      ? activeModalProduct.variantes.filter(v => (v.color || '').trim().toLowerCase() === currentColor.toLowerCase())
+                      : activeModalProduct.variantes;
+
+                    const disp = filteredVariants.filter(v => (v.stock || 0) > 0).sort((a, b) => talleNum(a) - talleNum(b));
+                    const agot = filteredVariants.filter(v => (v.stock || 0) <= 0).sort((a, b) => talleNum(a) - talleNum(b));
+                    const currentVariants = [...disp, ...agot];
+
+                    const isNoSizeProduct = activeModalProduct.categoria === 'AR' || activeModalProduct.categoria === 'PQ';
+                    const hasSizes = !isNoSizeProduct && currentVariants.some(v => v.talle_medida && v.talle_medida.trim() !== '' && v.talle_medida.toLowerCase() !== 'único');
+
+                    return (
+                      <div className="space-y-4">
+                        {/* Selector de Color */}
+                        {colorList.length > 0 && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                                Color: <span className="font-black text-black dark:text-white capitalize">{currentColor || 'Estándar'}</span>
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              {colorList.map((colName) => {
+                                const isColorActive = currentColor.toLowerCase() === colName.toLowerCase();
+                                const swatch = getColorSwatchStyle(colName);
+                                const hasStockInColor = activeModalProduct.variantes.some(
+                                  v => (v.color || '').trim().toLowerCase() === colName.toLowerCase() && (v.stock || 0) > 0
+                                );
+
+                                return (
+                                  <button
+                                    key={colName}
+                                    type="button"
+                                    onClick={() => {
+                                      const nextVariants = activeModalProduct.variantes.filter(
+                                        v => (v.color || '').trim().toLowerCase() === colName.toLowerCase()
+                                      );
+                                      const currentTalle = selectedVariant?.talle_medida;
+                                      let matchVar = nextVariants.find(v => v.talle_medida === currentTalle && (v.stock || 0) > 0);
+                                      if (!matchVar) {
+                                        matchVar = nextVariants.find(v => (v.stock || 0) > 0) || nextVariants[0];
+                                      }
+                                      if (matchVar) {
+                                        setSelectedVariant(matchVar);
+                                        setActiveImageIndex(0);
+                                      }
+                                    }}
+                                    className={`relative w-8 h-8 rounded-full border transition-all flex items-center justify-center ${swatch.borderClass} ${swatch.bgClass} ${
+                                      isColorActive
+                                        ? 'ring-2 ring-black dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-zinc-950 scale-110 shadow-md'
+                                        : 'opacity-80 hover:opacity-100 hover:scale-105'
+                                    }`}
+                                    title={`${colName}${!hasStockInColor ? ' (Agotado)' : ''}`}
+                                  >
+                                    {isColorActive && (
+                                      <Check className={`w-3.5 h-3.5 stroke-[3] ${swatch.isLight ? 'text-black' : 'text-white'}`} />
+                                    )}
+                                    {!hasStockInColor && (
+                                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white dark:border-zinc-900" />
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Selector de Talle con Botón Guía de Talles */}
+                        {hasSizes && (
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                                Talle / Medida: {selectedVariant?.talle_medida ? (
+                                  <span className="font-extrabold text-black dark:text-white ml-1">
+                                    {selectedVariant.talle_medida}
+                                  </span>
+                                ) : null}
+                              </label>
+
+                              {/* Botón Guía de Talles Interactivo */}
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSizeGuide(activeModalProduct.categoria)}
+                                className="inline-flex items-center gap-1 text-[11px] font-bold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white underline"
+                              >
+                                <Ruler className="w-3.5 h-3.5 text-amber-500" />
+                                <span>Guía de Talles</span>
+                              </button>
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2">
+                              {currentVariants.map(v => {
+                                const isSelected = selectedVariant?.id === v.id;
+                                const hasVarStock = (v.stock || 0) > 0;
+                                const displayNum = (v.talle_medida || '').replace(/^talle\s*/i, '').trim() || 'Único';
+
+                                return (
+                                  <button
+                                    key={v.id}
+                                    type="button"
+                                    disabled={!hasVarStock}
+                                    onClick={() => setSelectedVariant(v)}
+                                    title={!hasVarStock ? 'Agotado' : `Talle ${displayNum} (Stock: ${v.stock} un.)`}
+                                    className={`min-w-[42px] h-9 px-3 rounded-xl border text-xs font-bold transition flex items-center justify-center ${
+                                      isSelected
+                                        ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black shadow-md scale-105'
+                                        : hasVarStock
+                                          ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 hover:border-black dark:hover:border-white'
+                                          : 'border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-400 opacity-40 cursor-not-allowed line-through'
+                                    }`}
+                                  >
+                                    {displayNum}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {/* Personalización / Grabado Láser con Previsualizador Multi-Cara */}
+                  {isCustomizableProduct(activeModalProduct) && (
+                    <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold uppercase tracking-wider text-black dark:text-white flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Personalización Láser Gratis</span>
+                        </label>
+                        <span className="text-[10px] font-mono font-medium text-zinc-500 dark:text-zinc-400">
+                          {activeEngravingFace === 'face1' ? engravingFace1.length : engravingFace2.length}/15 chars (Max 15 por cara)
+                        </span>
+                      </div>
+
+                      {/* Selector de Caras (Frente / Dorso) */}
+                      <div className="grid grid-cols-2 gap-2 bg-zinc-200/60 dark:bg-zinc-800 p-1 rounded-xl text-xs font-bold">
                         <button
                           type="button"
-                          disabled={!canBuyPair}
-                          onClick={() => setEarringOption('par')}
-                          className={`p-2.5 rounded-xl border text-left transition relative ${
-                            earringOption === 'par' && canBuyPair
-                              ? 'border-black dark:border-white bg-white dark:bg-zinc-800 shadow-sm ring-1 ring-black dark:ring-white'
-                              : canBuyPair
-                                ? 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 bg-white/50 dark:bg-zinc-950/50'
-                                : 'border-zinc-200 dark:border-zinc-800 opacity-40 cursor-not-allowed bg-transparent'
+                          onClick={() => setActiveEngravingFace('face1')}
+                          className={`py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                            activeEngravingFace === 'face1'
+                              ? 'bg-white dark:bg-zinc-950 text-black dark:text-white shadow-xs'
+                              : 'text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white'
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black uppercase text-black dark:text-white">Par</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                              2 un.
-                            </span>
-                          </div>
-                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mt-1">
-                            Gs. {formatGsInput(precioPar)}
-                          </span>
-                          {!canBuyPair && (
-                            <span className="text-[9px] text-rose-500 font-semibold block mt-0.5">Stock insuf. para par</span>
-                          )}
+                          <span>Cara 1 (Frente)</span>
+                          {engravingFace1.trim() && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                         </button>
-
                         <button
                           type="button"
-                          disabled={currentStock <= 0}
-                          onClick={() => setEarringOption('unidad')}
-                          className={`p-2.5 rounded-xl border text-left transition relative ${
-                            earringOption === 'unidad' || !canBuyPair
-                              ? 'border-black dark:border-white bg-white dark:bg-zinc-800 shadow-sm ring-1 ring-black dark:ring-white'
-                              : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 bg-white/50 dark:bg-zinc-950/50'
+                          onClick={() => setActiveEngravingFace('face2')}
+                          className={`py-1.5 px-3 rounded-lg transition flex items-center justify-center gap-1.5 ${
+                            activeEngravingFace === 'face2'
+                              ? 'bg-white dark:bg-zinc-950 text-black dark:text-white shadow-xs'
+                              : 'text-zinc-500 dark:text-zinc-400 hover:text-black dark:hover:text-white'
                           }`}
                         >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-black uppercase text-black dark:text-white">Unidad</span>
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
-                              1 un.
-                            </span>
-                          </div>
-                          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mt-1">
-                            Gs. {formatGsInput(precioUnidad)}
-                          </span>
+                          <span>Cara 2 (Dorso)</span>
+                          {engravingFace2.trim() && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
                         </button>
                       </div>
-                    </div>
-                  );
-                })()}
 
-                {/* Selector de Variantes (Paso 1: Color -> Paso 2: Talle) */}
-                {activeModalProduct.variantes && activeModalProduct.variantes.length > 0 && (() => {
-                  const talleNum = (v) => {
-                    const n = parseFloat((v.talle_medida || '').toString().replace(/[^0-9.]/g, ''));
-                    return isNaN(n) ? 9999 : n;
-                  };
-
-                  // 1. Extraer colores únicos disponibles en las variantes
-                  const colorList = [];
-                  const seenColors = new Set();
-                  activeModalProduct.variantes.forEach(v => {
-                    const c = (v.color || '').trim();
-                    if (c && !seenColors.has(c.toLowerCase())) {
-                      seenColors.add(c.toLowerCase());
-                      colorList.push(c);
-                    }
-                  });
-
-                  // Color actualmente activo (o del selectedVariant, o el primero de la lista)
-                  const currentColor = (selectedVariant?.color || '').trim() || (colorList.length > 0 ? colorList[0] : '');
-
-                  // 2. Variantes del color seleccionado (o todas si el producto no tiene variantes con color)
-                  const filteredVariants = colorList.length > 0
-                    ? activeModalProduct.variantes.filter(v => (v.color || '').trim().toLowerCase() === currentColor.toLowerCase())
-                    : activeModalProduct.variantes;
-
-                  // Ordenar variantes de este color: disponibles primero por talle, luego agotadas
-                  const disp = filteredVariants.filter(v => (v.stock || 0) > 0).sort((a, b) => talleNum(a) - talleNum(b));
-                  const agot = filteredVariants.filter(v => (v.stock || 0) <= 0).sort((a, b) => talleNum(a) - talleNum(b));
-                  const currentVariants = [...disp, ...agot];
-
-                  // Comprobar si hay talles diferenciados (ej: Talle 8, 9, 10...)
-                  // NOTA: Para Aros/Aretes (AR) y Paquetería/Packaging (PQ) no aplica selector de talles
-                  const isNoSizeProduct = activeModalProduct.categoria === 'AR' || activeModalProduct.categoria === 'PQ';
-                  const hasSizes = !isNoSizeProduct && currentVariants.some(v => v.talle_medida && v.talle_medida.trim() !== '' && v.talle_medida.toLowerCase() !== 'único');
-
-                  return (
-                    <div className="mt-5 space-y-4">
-                      {/* PASO 1: Selector de Color (Círculos puros / Swatches) */}
-                      {colorList.length > 0 && (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                              Color: <span className="font-extrabold text-black dark:text-white capitalize">{currentColor || 'Estándar'}</span>
-                            </label>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {colorList.map((colName) => {
-                              const isColorActive = currentColor.toLowerCase() === colName.toLowerCase();
-                              const swatch = getColorSwatchStyle(colName);
-                              
-                              // Comprobar si hay stock en este color
-                              const hasStockInColor = activeModalProduct.variantes.some(
-                                v => (v.color || '').trim().toLowerCase() === colName.toLowerCase() && (v.stock || 0) > 0
-                              );
-
-                              return (
-                                <button
-                                  key={colName}
-                                  type="button"
-                                  onClick={() => {
-                                    const nextVariants = activeModalProduct.variantes.filter(
-                                      v => (v.color || '').trim().toLowerCase() === colName.toLowerCase()
-                                    );
-                                    const currentTalle = selectedVariant?.talle_medida;
-                                    
-                                    // Intentar preservar el mismo talle si existe con stock en el nuevo color
-                                    let matchVar = nextVariants.find(v => v.talle_medida === currentTalle && (v.stock || 0) > 0);
-                                    if (!matchVar) {
-                                      matchVar = nextVariants.find(v => (v.stock || 0) > 0) || nextVariants[0];
-                                    }
-                                    if (matchVar) {
-                                      setSelectedVariant(matchVar);
-                                      setActiveImageIndex(0);
-                                    }
-                                  }}
-                                  className={`relative w-8 h-8 rounded-full border transition-all flex items-center justify-center ${swatch.borderClass} ${swatch.bgClass} ${
-                                    isColorActive
-                                      ? 'ring-2 ring-black dark:ring-white ring-offset-2 ring-offset-white dark:ring-offset-zinc-950 scale-110 shadow-md'
-                                      : 'opacity-85 hover:opacity-100 hover:scale-105'
-                                  }`}
-                                  title={`${colName}${!hasStockInColor ? ' (Agotado)' : ''}`}
-                                >
-                                  {isColorActive && (
-                                    <Check className={`w-3.5 h-3.5 stroke-[3] ${swatch.isLight ? 'text-black' : 'text-white'}`} />
-                                  )}
-                                  {!hasStockInColor && (
-                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 border border-white dark:border-zinc-900" />
-                                  )}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* PASO 2: Selector de Talle / Medida (solo números para caber en una línea) */}
-                      {hasSizes && (
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
-                              Seleccionar Talle: {selectedVariant?.talle_medida ? (
-                                <span className="font-extrabold text-black dark:text-white ml-1">
-                                  {selectedVariant.talle_medida}
-                                </span>
-                              ) : null}
-                            </label>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {currentVariants.map(v => {
-                              const isSelected = selectedVariant?.id === v.id;
-                              const hasVarStock = (v.stock || 0) > 0;
-                              const displayNum = (v.talle_medida || '').replace(/^talle\s*/i, '').trim() || 'Único';
-
-                              return (
-                                <button
-                                  key={v.id}
-                                  type="button"
-                                  disabled={!hasVarStock}
-                                  onClick={() => setSelectedVariant(v)}
-                                  title={!hasVarStock ? 'Agotado' : `Talle ${displayNum} (Stock: ${v.stock} un.)`}
-                                  className={`min-w-[38px] h-9 px-2 rounded-xl border text-xs font-bold transition flex items-center justify-center ${
-                                    isSelected
-                                      ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black shadow-sm scale-105'
-                                      : hasVarStock
-                                        ? 'border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 hover:border-black dark:hover:border-white'
-                                        : 'border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-400 opacity-40 cursor-not-allowed line-through'
-                                  }`}
-                                >
-                                  {displayNum}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-
-                {/* Personalización / Grabado Láser */}
-                {isCustomizableProduct(activeModalProduct) && (
-                  <div className="mt-5 p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-black dark:text-white flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>Personalización / Grabado Láser</span>
-                      </label>
-                    </div>
-                    <textarea
-                      rows={2}
-                      value={customEngravingText}
-                      onChange={e => setCustomEngravingText(e.target.value)}
-                      placeholder="Ej: Cara 1: Lucas · Cara 2: 15.08.2024 · Cara 3: Coordenadas (o 'Adjuntaré logo en el chat')"
-                      className="w-full text-xs p-2.5 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white transition resize-none text-black dark:text-white"
-                    />
-                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
-                      Si deseas grabar un logo, foto o diseño especial, indícalo aquí y podrás adjuntar el archivo directamente en el chat de WhatsApp al finalizar.
-                    </p>
-                  </div>
-                )}
-
-                {/* Estado de disponibilidad */}
-                {(() => {
-                  const currentStock = selectedVariant != null
-                    ? (selectedVariant.stock ?? 0)
-                    : (activeModalProduct.stock_total ?? 0);
-                  
-                  const isEarring = activeModalProduct.categoria === 'AR';
-                  const maxAllowedQty = isEarring
-                    ? (earringOption === 'par' ? Math.floor(currentStock / 2) : currentStock)
-                    : currentStock;
-
-                  const isAvailable = activeModalProduct.activo !== false && (
-                    isEarring ? (earringOption === 'par' ? currentStock >= 2 : currentStock >= 1) : currentStock > 0
-                  );
-
-                  const currentUnitEffectivePrice = isEarring
-                    ? (earringOption === 'par' ? getAroPrecios(activeModalProduct).precioPar : getAroPrecios(activeModalProduct).precioUnidad)
-                    : (selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0);
-
-                  return (
-                    <>
-                      {/* Selector de Cantidad */}
-                      {isAvailable && (
-                        <div className="mt-5 flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
-                          <span className="text-xs font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300">
-                            Cantidad {isEarring && (earringOption === 'par' ? '(Pares)' : '(Unidades)')}
-                          </span>
-                          <div className="flex items-center gap-3">
+                      {/* Selector de Estilo de Tipografía */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] text-zinc-400 font-medium block">Estilo de grabado:</span>
+                        <div className="grid grid-cols-3 gap-1.5">
+                          {[
+                            { id: 'cursiva', label: 'Cursiva' },
+                            { id: 'clasica', label: 'Clásica' },
+                            { id: 'romana', label: 'Romanos' }
+                          ].map(font => (
                             <button
-                              onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
-                              className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
+                              key={font.id}
+                              type="button"
+                              onClick={() => setEngravingFont(font.id)}
+                              className={`py-1.5 px-1 text-center rounded-lg text-[10px] font-bold uppercase tracking-wider transition ${
+                                engravingFont === font.id
+                                  ? 'bg-black text-white dark:bg-white dark:text-black shadow-xs ring-1 ring-black dark:ring-white'
+                                  : 'bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white'
+                              }`}
                             >
-                              <Minus className="w-3.5 h-3.5" />
+                              {font.label}
                             </button>
-                            <span className="text-sm font-black w-6 text-center">{modalQuantity}</span>
-                            <button
-                              onClick={() => {
-                                if (modalQuantity < maxAllowedQty) {
-                                  setModalQuantity(modalQuantity + 1);
-                                } else {
-                                  alert(`Solo hay disponible para ${maxAllowedQty} ${isEarring && earringOption === 'par' ? 'par(es)' : 'unidad(es)'}.`);
-                                }
-                              }}
-                              className="w-7 h-7 rounded-lg bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold"
-                            >
-                              <Plus className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 🌟 PREVISUALIZADOR GRÁFICO EN VIVO EN MEDALLA / PLACA */}
+                      <div className="relative p-3 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-gradient-to-r from-zinc-200 via-zinc-100 to-zinc-300 dark:from-zinc-800 dark:via-zinc-900 dark:to-zinc-800 shadow-inner flex flex-col items-center justify-center text-center overflow-hidden">
+                        <span className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 dark:text-zinc-500 block mb-0.5">
+                          Simulación — {activeEngravingFace === 'face1' ? 'Cara 1 (Frente)' : 'Cara 2 (Dorso)'}
+                        </span>
+                        <div
+                          className={`text-sm sm:text-base text-zinc-900 dark:text-zinc-100 transition-all select-none truncate max-w-full px-2 py-1 drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_1px_1px_rgba(0,0,0,0.9)] ${
+                            engravingFont === 'cursiva'
+                              ? 'font-serif italic font-medium tracking-wide'
+                              : engravingFont === 'clasica'
+                                ? 'font-sans font-black tracking-widest uppercase'
+                                : 'font-serif font-bold tracking-widest uppercase'
+                          }`}
+                        >
+                          {(activeEngravingFace === 'face1' ? engravingFace1 : engravingFace2).trim() || 'Escribe tu grabado'}
+                        </div>
+                      </div>
+
+                      {/* Campo de Texto para la Cara Seleccionada */}
+                      <div className="space-y-1.5">
+                        <input
+                          type="text"
+                          maxLength={15}
+                          value={activeEngravingFace === 'face1' ? engravingFace1 : engravingFace2}
+                          onChange={e => {
+                            if (activeEngravingFace === 'face1') setEngravingFace1(e.target.value);
+                            else setEngravingFace2(e.target.value);
+                          }}
+                          placeholder={activeEngravingFace === 'face1' ? "Ej: Lucas, Inicial A, Fecha..." : "Ej: 15.08.2024, Coordenadas..."}
+                          className="w-full text-xs px-3 py-2 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white transition text-black dark:text-white placeholder:text-zinc-400"
+                        />
+                      </div>
+
+                      {/* Ejemplos de Inserción Rápida */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] text-zinc-400 font-medium">Sugerencias:</span>
+                        {[
+                          '15.08.2024',
+                          'Lucas ♡',
+                          'A ♾️ B',
+                          '25°45\'S 56°W'
+                        ].map(example => (
+                          <button
+                            key={example}
+                            type="button"
+                            onClick={() => {
+                              if (activeEngravingFace === 'face1') setEngravingFace1(example.slice(0, 15));
+                              else setEngravingFace2(example.slice(0, 15));
+                            }}
+                            className="px-2 py-0.5 rounded-lg text-[9px] font-bold bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition"
+                          >
+                            +{example}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Resumen del Grabado Completo */}
+                      {customEngravingText && (
+                        <div className="text-[11px] p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <span className="font-semibold shrink-0">Resumen final:</span>
+                          <span className="font-mono text-xs font-medium text-amber-800 dark:text-amber-300 break-words">{customEngravingText}</span>
                         </div>
                       )}
 
-                      {/* Botón Agregar al Carrito o Agotado */}
-                      <div className="mt-6">
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
+                        💡 Max 15 caracteres por cara para garantizar máxima claridad física en el grabado láser. Para dijes de 4 caras o fotos/dibujos personalizados, coordina en WhatsApp al finalizar.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Selector de Cantidad y Botón Comprar */}
+                  {(() => {
+                    const currentStock = selectedVariant != null
+                      ? (selectedVariant.stock ?? 0)
+                      : (activeModalProduct.stock_total ?? 0);
+
+                    const isEarring = activeModalProduct.categoria === 'AR';
+                    const maxAllowedQty = isEarring
+                      ? (earringOption === 'par' ? Math.floor(currentStock / 2) : currentStock)
+                      : currentStock;
+
+                    const isAvailable = activeModalProduct.activo !== false && (
+                      isEarring ? (earringOption === 'par' ? currentStock >= 2 : currentStock >= 1) : currentStock > 0
+                    );
+
+                    const currentUnitEffectivePrice = isEarring
+                      ? (earringOption === 'par' ? getAroPrecios(activeModalProduct).precioPar : getAroPrecios(activeModalProduct).precioUnidad)
+                      : (selectedVariant?.precio_venta_pyg || activeModalProduct.precio_venta || 0);
+
+                    return (
+                      <div className="space-y-3 pt-2">
+                        {/* Selector de Cantidad */}
+                        {isAvailable && (
+                          <div className="flex items-center justify-between p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                            <span className="text-xs font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300">
+                              Cantidad {isEarring && (earringOption === 'par' ? '(Pares)' : '(Unidades)')}
+                            </span>
+                            <div className="flex items-center gap-3">
+                              <button
+                                onClick={() => setModalQuantity(Math.max(1, modalQuantity - 1))}
+                                className="w-8 h-8 rounded-xl bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold hover:scale-105 transition"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                              </button>
+                              <span className="text-sm font-black w-6 text-center">{modalQuantity}</span>
+                              <button
+                                onClick={() => {
+                                  if (modalQuantity < maxAllowedQty) {
+                                    setModalQuantity(modalQuantity + 1);
+                                  } else {
+                                    alert(`Solo hay disponible para ${maxAllowedQty} ${isEarring && earringOption === 'par' ? 'par(es)' : 'unidad(es)'}.`);
+                                  }
+                                }}
+                                className="w-8 h-8 rounded-xl bg-white dark:bg-black border border-zinc-200 dark:border-zinc-800 flex items-center justify-center font-bold hover:scale-105 transition"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Botón Principal de Compra */}
                         <button
-                          onClick={() => isAvailable && handleAddToCart(activeModalProduct, selectedVariant, modalQuantity, customEngravingText, isEarring ? earringOption : null)}
+                          onClick={() => {
+                            if (!isAvailable) return;
+                            
+                            const finalCustom = customEngravingText.trim()
+                              ? `[GRABADO ${engravingFont.toUpperCase()}]: ${customEngravingText.trim()}`
+                              : '';
+
+                            handleAddToCart(
+                              activeModalProduct,
+                              selectedVariant,
+                              modalQuantity,
+                              finalCustom,
+                              isEarring ? earringOption : null
+                            );
+                          }}
                           disabled={!isAvailable}
-                          className={`w-full py-3.5 rounded-2xl font-bold text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition ${
+                          className={`w-full py-4 rounded-2xl font-black text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition-all ${
                             isAvailable
-                              ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-[1.02] active:scale-95'
+                              ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-[1.01] active:scale-98 cursor-pointer'
                               : 'bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-500 cursor-not-allowed opacity-75'
                           }`}
                         >
@@ -1850,7 +2435,7 @@ export default function StorefrontView({
                             <>
                               <ShoppingBag className="w-4 h-4" />
                               <span>
-                                Agregar al Carrito • Gs. {formatGsInput(currentUnitEffectivePrice * modalQuantity)}
+                                AGREGAR AL PEDIDO • Gs. {formatGsInput(currentUnitEffectivePrice * modalQuantity)}
                               </span>
                             </>
                           ) : (
@@ -1858,11 +2443,350 @@ export default function StorefrontView({
                           )}
                         </button>
                       </div>
-                    </>
-                  );
-                })()}
+                    );
+                  })()}
+
+                  {/* ─── DESPLEGABLES & SECCIONES ADICIONALES ────────────── */}
+                  <div className="mt-6 space-y-4">
+                    
+                    {/* Desplegable Opcional "¿Es para regalo?" */}
+                    <div className="border-t border-b border-zinc-200 dark:border-zinc-800/80">
+                      <button
+                        type="button"
+                        onClick={() => setOpenAccordion(openAccordion === 'gift' ? null : 'gift')}
+                        className="w-full py-3 px-1 flex items-center justify-between text-left text-xs font-semibold text-zinc-900 dark:text-zinc-100 hover:text-black dark:hover:text-white transition"
+                      >
+                        <span className="flex items-center gap-2">
+                          <Gift className="w-4 h-4 text-zinc-400 shrink-0" />
+                          <span>¿Es para regalo?</span>
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] font-normal text-zinc-400">
+                            Personaliza tu regalo
+                          </span>
+                          {openAccordion === 'gift' ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                        </div>
+                      </button>
+
+                      <AnimatePresence>
+                        {openAccordion === 'gift' && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="pb-3.5 space-y-2.5 text-xs text-zinc-600 dark:text-zinc-400"
+                          >
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
+                              Selecciona cómo te gustaría presentar tu joya para sorprender a esa persona especial:
+                            </p>
+
+                            <div className="space-y-2 pt-1">
+                              {/* Opción 1: Empaque Estándar */}
+                              <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between gap-3 hover:border-zinc-400 dark:hover:border-zinc-600 transition">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="w-9 h-9 rounded-lg border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0 text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
+                                    <Package className="w-4 h-4" />
+                                  </div>
+                                  <div className="min-w-0">
+                                    <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
+                                      Empaque Estándar de Regalo
+                                    </h5>
+                                    <span className="text-[11px] font-medium text-emerald-500 block mt-0.5">
+                                      Gratis 
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    handleAddToCart(
+                                      {
+                                        id: 'pkg-standard-gift',
+                                        nombre: 'Empaque Estándar de Regalo',
+                                        precio_venta: 0
+                                      },
+                                      null,
+                                      1,
+                                      '🎁 [EMPAQUE DE REGALO ESTÁNDAR]',
+                                      null,
+                                      false
+                                    );
+                                  }}
+                                  className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:bg-black dark:hover:bg-white transition shrink-0"
+                                  title="Agregar empaque de regalo gratis"
+                                >
+                                  + Agregar
+                                </button>
+                              </div>
+
+                              {/* Opción 2: Cajita Especial de Regalo */}
+                              {(() => {
+                                if (!matchedDbPackaging) return null;
+
+                                const gCode = (activeModalProduct.genero || '').toUpperCase();
+                                const gDisp = (activeModalProduct.genero_display || '').toLowerCase();
+                                const isDama = gCode === 'MUJ' || gDisp.includes('dama') || gDisp.includes('mujer');
+
+                                const dbBoxTitle = matchedDbPackaging.nombre || 'Cajita Especial de Regalo';
+                                const isHeartBox = (dbBoxTitle || '').toLowerCase().includes('coraz');
+
+                                if (isHeartBox && !isDama) return null;
+
+                                const dbBoxImg = matchedDbPackaging.imagen_url_completa || matchedDbPackaging.imagen_url || matchedDbPackaging.variantes?.[0]?.imagen_url;
+                                const dbBoxPrice = matchedDbPackaging.precio_venta || 30000;
+                                const targetBoxProduct = matchedDbPackaging;
+
+                                return (
+                                  <div className="p-3 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between gap-3 hover:border-zinc-400 dark:hover:border-zinc-600 transition">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      {dbBoxImg ? (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setPreviewImage({ url: dbBoxImg, title: dbBoxTitle });
+                                          }}
+                                          className="relative w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 dark:border-zinc-800 shrink-0 bg-zinc-100 dark:bg-zinc-900 group/box cursor-zoom-in focus:outline-none"
+                                          title="Ver foto en tamaño completo"
+                                        >
+                                          <img src={dbBoxImg} alt={dbBoxTitle} className="w-full h-full object-cover group-hover/box:scale-110 transition duration-300" />
+                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/box:opacity-100 flex items-center justify-center transition backdrop-blur-[1px]">
+                                            <ZoomIn className="w-4 h-4 text-white" />
+                                          </div>
+                                        </button>
+                                      ) : (
+                                        <div className="w-9 h-9 rounded-lg border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shrink-0 text-zinc-400 bg-zinc-100 dark:bg-zinc-800">
+                                          <Gift className="w-4 h-4" />
+                                        </div>
+                                      )}
+                                      <div className="min-w-0">
+                                        <h5 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 leading-tight">
+                                          {dbBoxTitle}
+                                        </h5>
+                                        <span className="text-[11px] font-medium text-zinc-400 block mt-0.5">
+                                          Gs. {formatGsInput(dbBoxPrice)}
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddToCart(targetBoxProduct, targetBoxProduct.variantes?.[0] || null, 1, '', null, false)}
+                                      className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:bg-black dark:hover:bg-white transition shrink-0"
+                                      title="Agregar cajita especial de regalo"
+                                    >
+                                      + Agregar
+                                    </button>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+
+                    {/* ─── MÓDULO "COMPLETA TU LOOK" (Carrusel de Sugerencias) ────── */}
+                    {crossSellProducts.length > 0 && (
+                      <div className="py-2 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-zinc-400" />
+                            <span>Combiná con</span>
+                          </span>
+                          
+                          {/* Controles del Carrusel */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (crossSellScrollRef.current) {
+                                  crossSellScrollRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+                                }
+                              }}
+                              className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-black dark:hover:text-white transition"
+                              title="Anterior"
+                            >
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (crossSellScrollRef.current) {
+                                  crossSellScrollRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                                }
+                              }}
+                              className="w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-black dark:hover:text-white transition"
+                              title="Siguiente"
+                            >
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Carrusel Desplazable Horizontal */}
+                        <div
+                          ref={crossSellScrollRef}
+                          className="flex gap-2.5 overflow-x-auto scrollbar-none snap-x snap-mandatory pb-1 pt-0.5 scroll-smooth"
+                        >
+                          {crossSellProducts.map(item => {
+                            const itemImg = item.imagen_url_completa || item.imagen_url || (item.variantes?.[0]?.imagen_url);
+                            return (
+                              <div
+                                key={item.id}
+                                className="w-[160px] sm:w-[180px] shrink-0 snap-start p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900/60 border border-zinc-200/80 dark:border-zinc-800 flex flex-col justify-between hover:border-zinc-400 dark:hover:border-zinc-600 transition group"
+                              >
+                                <div>
+                                  {/* Imagen del producto */}
+                                  <div
+                                    className="w-full aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-zinc-900 cursor-pointer mb-2 relative"
+                                    onClick={() => handleOpenProductModal(item)}
+                                  >
+                                    {itemImg ? (
+                                      <img src={itemImg} alt={item.nombre} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-zinc-400">
+                                        <Gem className="w-5 h-5" />
+                                      </div>
+                                    )}
+                                  </div>
+                                  {/* Nombre del producto */}
+                                  <h5
+                                    onClick={() => handleOpenProductModal(item)}
+                                    className="text-[11px] font-semibold text-zinc-900 dark:text-zinc-100 truncate cursor-pointer hover:underline"
+                                    title={item.nombre}
+                                  >
+                                    {item.nombre}
+                                  </h5>
+                                </div>
+
+                                {/* Precio y Botón Agregar */}
+                                <div className="flex items-center justify-between gap-1 mt-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-800/60">
+                                  <span className="text-[11px] font-bold text-zinc-900 dark:text-zinc-100">
+                                    Gs. {formatGsInput(item.precio_venta || 0)}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleAddToCart(item, item.variantes?.[0] || null, 1, '', null, false)}
+                                    className="px-2 py-1 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-[10px] font-medium hover:scale-105 transition shrink-0"
+                                    title="Agregar al pedido"
+                                  >
+                                    + Agregar
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ─── ACORDEONES MINIMALISTAS ──────────────────────── */}
+                    <div className="border-t border-b border-zinc-200 dark:border-zinc-800/80 divide-y divide-zinc-200 dark:divide-zinc-800/80">
+                      {/* Item 2: Cuidados de la Joya */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenAccordion(openAccordion === 'care' ? null : 'care')}
+                          className="w-full py-3 px-1 flex items-center justify-between text-left text-xs font-semibold text-zinc-900 dark:text-zinc-100 hover:text-black dark:hover:text-white transition"
+                        >
+                          <span className="flex items-center gap-2">
+                            <ShieldCheck className="w-4 h-4 text-zinc-400 shrink-0" />
+                            <span>Cuidados & Durabilidad</span>
+                          </span>
+                          {openAccordion === 'care' ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                        </button>
+
+                        <AnimatePresence>
+                          {openAccordion === 'care' && (() => {
+                            const matNames = (activeModalProduct.materiales || []).map(m => (m.nombre || '').toLowerCase());
+                            const isAcero = matNames.some(m => m.includes('acero'));
+                            const isPlata = matNames.some(m => m.includes('plata'));
+
+                            return (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="pb-3.5 px-1 text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed"
+                              >
+                                {isAcero ? (
+                                  <>
+                                    <p>
+                                      • <strong>Resistencia al agua:</strong> Las piezas de Acero Quirúrgico son altamente resistentes al agua y sudor. No manchan la piel ni se oscurecen.
+                                    </p>
+                                    <p>
+                                      • <strong>Mantenimiento:</strong> Limpia periódicamente tu joya con un paño de microfibra seco para mantener su acabado brillante original.
+                                    </p>
+                                  </>
+                                ) : isPlata ? (
+                                  <>
+                                    <p>
+                                      • <strong>Cuidado de la Plata 925:</strong> Guardar en un lugar seco y proteger de la humedad constante para evitar deslustre.
+                                    </p>
+                                    <p>
+                                      • <strong>Restauración de brillo:</strong> Si la plata se opaca naturalmente con el tiempo, frotar suavemente con un paño limpio especial para joyas de plata.
+                                    </p>
+                                  </>
+                                ) : (
+                                  <>
+                                    <p>
+                                      • <strong>Cuidado del acabado:</strong> Evitar contacto directo con agua, humedad constante, sudor excesivo o químicos para prolongar el brillo y durabilidad del acabado.
+                                    </p>
+                                    <p>
+                                      • <strong>Almacenamiento:</strong> Guardar por separado en su estuche o bolsa protectora en un ambiente seco.
+                                    </p>
+                                  </>
+                                )}
+                                <p>
+                                  • <strong>Perfumes y lociones:</strong> Aplica lociones, cosméticos o perfumes antes de colocarte los accesorios para proteger el acabado.
+                                </p>
+                              </motion.div>
+                            );
+                          })()}
+                        </AnimatePresence>
+                      </div>
+
+                      {/* Item 3: Logística de Envíos & Medios de Pago */}
+                      <div>
+                        <button
+                          type="button"
+                          onClick={() => setOpenAccordion(openAccordion === 'shipping' ? null : 'shipping')}
+                          className="w-full py-3 px-1 flex items-center justify-between text-left text-xs font-semibold text-zinc-900 dark:text-zinc-100 hover:text-black dark:hover:text-white transition"
+                        >
+                          <span className="flex items-center gap-2">
+                            <Truck className="w-4 h-4 text-zinc-400 shrink-0" />
+                            <span>Envíos & Medios de Pago</span>
+                          </span>
+                          {openAccordion === 'shipping' ? <ChevronUp className="w-4 h-4 text-zinc-400" /> : <ChevronDown className="w-4 h-4 text-zinc-400" />}
+                        </button>
+
+                        <AnimatePresence>
+                          {openAccordion === 'shipping' && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="pb-3.5 px-1 text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1.5 leading-relaxed"
+                            >
+                              <p>
+                                • <strong>Villarrica:</strong> Delivery local a domicilio (Gs. 15.000) o retiro acordado.
+                              </p>
+                              <p>
+                                • <strong>Envíos Nacionales:</strong> A todo el Paraguay vía encomienda / transportadora.
+                              </p>
+                              <p>
+                                • <strong>Medios de Pago:</strong> Transferencias SIPAP, pagos QR (débito/crédito) o efectivo al recibir (solo Villarrica).
+                              </p>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
             </motion.div>
           </motion.div>
         )}
@@ -1890,9 +2814,7 @@ export default function StorefrontView({
             {/* Header del Carrito */}
             <div className="p-4 sm:p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50 dark:bg-zinc-900/50">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-black text-white dark:bg-white dark:text-black flex items-center justify-center">
-                  <ShoppingBag className="w-4 h-4" />
-                </div>
+                <GutsyLogo className="w-7 h-7 shrink-0" />
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider font-serif">Tu Pedido</h3>
                   <span className="text-[10px] text-zinc-500 uppercase tracking-widest block">
@@ -2001,122 +2923,149 @@ export default function StorefrontView({
 
                   {/* ─── PASO 1: Destino de Entrega ──────────────────────── */}
                   <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
-                      1. Selecciona tu Ubicación y Envío:
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
+                      1. Ubicación y Tipo de Envío
                     </span>
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 gap-2.5">
                       <button
-                        onClick={() => {
-                          setShippingType('villarrica');
-                        }}
-                        className={`p-3 rounded-2xl text-left border text-xs transition flex items-center justify-between ${
+                        type="button"
+                        onClick={() => setShippingType('villarrica')}
+                        className={`p-3.5 rounded-2xl text-left border text-xs transition-all flex items-center justify-between ${
                           shippingType === 'villarrica'
-                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
-                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
+                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <Truck className="w-4 h-4 flex-shrink-0" />
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${shippingType === 'villarrica' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                            <Truck className="w-4 h-4" />
+                          </div>
                           <div>
-                            <div className="font-bold">Delivery Villarrica y/o alrededores</div>
-                            <div className="text-[10px] opacity-80">Entrega en puerta</div>
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              <span>Delivery Villarrica y alrededores</span>
+                              {shippingType === 'villarrica' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">Entrega local en puerta</div>
                           </div>
                         </div>
-                        <span className="font-black text-xs whitespace-nowrap">+ Gs. 15.000</span>
+                        <span className="font-bold text-xs text-emerald-400 whitespace-nowrap">+ Gs. 15.000</span>
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => {
                           setShippingType('interior');
                           if (paymentMethod === 'contraentrega') setPaymentMethod('contimovil');
                         }}
-                        className={`p-3 rounded-2xl text-left border text-xs transition flex items-center justify-between ${
+                        className={`p-3.5 rounded-2xl text-left border text-xs transition-all flex items-center justify-between ${
                           shippingType === 'interior'
-                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
-                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
+                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <Truck className="w-4 h-4 flex-shrink-0" />
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${shippingType === 'interior' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                            <Truck className="w-4 h-4" />
+                          </div>
                           <div>
-                            <div className="font-bold">Envíos Nacionales</div>
-                            <div className="text-[10px] opacity-80">Vía Transportadora · Podes abonar el COSTO DE ENVIO al recibir (Promedio Gs. 35.000)</div>
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              <span>Envíos Nacionales</span>
+                              {shippingType === 'interior' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">Vía Transportadora (prom. Gs. 35.000)</div>
                           </div>
                         </div>
-                        <span className="font-black text-[11px] whitespace-nowrap">Flete en destino</span>
+                        <span className="font-bold text-xs text-zinc-300 whitespace-nowrap">Flete en destino</span>
                       </button>
                     </div>
                   </div>
 
                   {/* ─── PASO 2: Datos de Envío / Contacto ────────────────── */}
                   <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
-                      {shippingType === 'villarrica' ? '2. Datos de Contacto:' : '2. Datos para el Envío y Rótulo:'}
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
+                      {shippingType === 'villarrica' ? '2. Datos de Contacto:' : '2. Datos para la Entrega y Rótulo:'}
                     </span>
-                    <div className="space-y-2 text-xs">
+                    <div className="space-y-2.5 text-xs">
+                      {/* Nombre y Apellido separados en 2 campos */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <input
+                            type="text"
+                            autoComplete="given-name"
+                            value={customerFirstName}
+                            onChange={e => setCustomerFirstName(e.target.value)}
+                            placeholder="Nombre *"
+                            className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            autoComplete="family-name"
+                            value={customerLastName}
+                            onChange={e => setCustomerLastName(e.target.value)}
+                            placeholder="Apellido *"
+                            className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                          />
+                        </div>
+                      </div>
+
                       {shippingType === 'villarrica' ? (
-                        <>
-                          <div>
-                            <input
-                              type="text"
-                              value={customerName}
-                              onChange={e => setCustomerName(e.target.value)}
-                              placeholder="Nombre y Apellido *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
-                            />
+                        <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-[11px] text-zinc-300 space-y-1">
+                          <div className="font-bold text-white flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                            <span>Coordinación de Entrega en Villarrica</span>
                           </div>
-                          <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-600 dark:text-zinc-400 space-y-1">
-                            <div className="font-bold text-black dark:text-white flex items-center gap-1.5">
-                              <span>📍</span>
-                              <span>Coordinación de Entrega en Villarrica</span>
-                            </div>
-                            <p className="leading-snug">
-                              Al confirmar tu pedido y pago por WhatsApp, te pediremos tu ubicación o referencias exactas para entregar tu pedido.
-                            </p>
-                          </div>
-                        </>
+                          <p className="leading-relaxed text-zinc-400">
+                            Al confirmar tu pedido por WhatsApp, te pediremos tu ubicación o referencias exactas para coordinar la entrega a domicilio.
+                          </p>
+                        </div>
                       ) : (
                         <>
-                          <div>
-                            <input
-                              type="text"
-                              value={customerName}
-                              onChange={e => setCustomerName(e.target.value)}
-                              placeholder="Nombre y Apellido completo *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
-                            />
-                          </div>
-
                           <div className="grid grid-cols-2 gap-2">
                             <input
                               type="text"
                               value={customerDoc}
                               onChange={e => setCustomerDoc(e.target.value)}
                               placeholder="Nro. Cédula (C.I.) *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                             <input
                               type="text"
+                              autoComplete="tel"
                               value={customerPhone}
                               onChange={e => setCustomerPhone(e.target.value)}
                               placeholder="Celular / WhatsApp *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
+                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                           </div>
 
-                          <input
-                            type="text"
-                            value={customerCity}
-                            onChange={e => setCustomerCity(e.target.value)}
-                            placeholder="Ciudad y Departamento de destino *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white"
-                          />
+                          <div className="grid grid-cols-2 gap-2">
+                            <input
+                              type="text"
+                              autoComplete="address-level2"
+                              value={customerCity}
+                              onChange={e => setCustomerCity(e.target.value)}
+                              placeholder="Ciudad *"
+                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                            />
+                            <input
+                              type="text"
+                              autoComplete="address-level1"
+                              value={customerDept}
+                              onChange={e => setCustomerDept(e.target.value)}
+                              placeholder="Departamento *"
+                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                            />
+                          </div>
+
                           <textarea
                             rows={2}
+                            autoComplete="street-address"
                             value={customerAddress}
                             onChange={e => setCustomerAddress(e.target.value)}
-                            placeholder="Dirección exacta o Sucursal de Transportadora *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:outline-none focus:border-black dark:focus:border-white resize-none"
+                            placeholder="Dirección exacta o Sucursal de Transportadora (ej: AEX Central, NSA Sucursal) *"
+                            className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 resize-none transition"
                           />
                         </>
                       )}
@@ -2125,24 +3074,30 @@ export default function StorefrontView({
 
                   {/* ─── PASO 3: Medio de Pago ──────────────────────────── */}
                   <div className="space-y-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-700 dark:text-zinc-300 block">
-                      3. Selecciona tu Medio de Pago:
+                    <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
+                      3. Medio de Pago
                     </span>
-                    <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-1 gap-2.5">
                       {/* Link ContiMóvil */}
                       <button
+                        type="button"
                         onClick={() => setPaymentMethod('contimovil')}
-                        className={`p-3 rounded-2xl text-left border text-xs transition ${
+                        className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                           paymentMethod === 'contimovil'
-                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
-                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
+                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <CreditCard className="w-4 h-4 flex-shrink-0" />
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'contimovil' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                            <CreditCard className="w-4 h-4" />
+                          </div>
                           <div>
-                            <div className="font-bold">Link de Pago ContiMóvil (Tarjetas)</div>
-                            <div className="text-[10px] opacity-80">
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              <span>Link de Pago (Tarjetas DÉBITO O CRÉDITO)</span>
+                              {paymentMethod === 'contimovil' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">
                               Te enviamos el link seguro a tu WhatsApp para pagar con tarjeta
                             </div>
                           </div>
@@ -2151,19 +3106,25 @@ export default function StorefrontView({
 
                       {/* Transferencia SIPAP */}
                       <button
+                        type="button"
                         onClick={() => setPaymentMethod('transferencia')}
-                        className={`p-3 rounded-2xl text-left border text-xs transition ${
+                        className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                           paymentMethod === 'transferencia'
-                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
-                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
+                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <Building2 className="w-4 h-4 flex-shrink-0" />
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'transferencia' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                            <Building2 className="w-4 h-4" />
+                          </div>
                           <div>
-                            <div className="font-bold">Transferencia Bancaria (SIPAP)</div>
-                            <div className="text-[10px] opacity-80">
-                              Transferencia directa a los bancos habilitados. 
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              <span>Transferencia Bancaria</span>
+                              {paymentMethod === 'transferencia' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">
+                              Transferencia directa a bancos habilitados
                             </div>
                           </div>
                         </div>
@@ -2171,10 +3132,9 @@ export default function StorefrontView({
 
                       {/* CAJA DESPLEGABLE CON SELECTOR DE 3 BANCOS & COPIA DE ALIAS */}
                       {paymentMethod === 'transferencia' && (
-                        <div className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs animate-in fade-in">
-                          {/* Pestañas de Bancos */}
+                        <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3 text-xs animate-in fade-in">
                           <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 block mb-1.5">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1.5">
                               Selecciona tu Banco de preferencia:
                             </span>
                             <div className="grid grid-cols-3 gap-1.5">
@@ -2187,8 +3147,8 @@ export default function StorefrontView({
                                     onClick={() => setSelectedBankId(bank.id)}
                                     className={`py-2 px-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider transition text-center truncate ${
                                       isBankActive
-                                        ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm'
-                                        : 'bg-white dark:bg-black text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:text-black dark:hover:text-white'
+                                        ? 'bg-zinc-100 text-zinc-900 shadow-sm'
+                                        : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white'
                                     }`}
                                   >
                                     {bank.shortName}
@@ -2198,16 +3158,14 @@ export default function StorefrontView({
                             </div>
                           </div>
 
-                          {/* Destacado Especial para TIPO DE ALIAS & ALIAS (Copia en 1 Clic del dato limpio) */}
-                          <div className="p-3 rounded-2xl bg-white dark:bg-black border-2 border-black dark:border-white flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
+                          <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
                             <div className="min-w-0 space-y-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-black dark:text-white text-[10px] font-bold tracking-wider uppercase border border-zinc-300 dark:border-zinc-700">
+                                <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-white text-[10px] font-bold tracking-wider uppercase border border-zinc-700">
                                   Tipo: {selectedBank.tipoAlias}
                                 </span>
-                                <span className="text-[10px] text-zinc-400 font-sans">({selectedBank.shortName})</span>
                               </div>
-                              <div className="text-base sm:text-lg font-black text-black dark:text-white font-mono tracking-tight select-all">
+                              <div className="text-base sm:text-lg font-black text-white font-mono tracking-tight select-all">
                                 {selectedBank.alias}
                               </div>
                             </div>
@@ -2215,16 +3173,15 @@ export default function StorefrontView({
                             <button
                               type="button"
                               onClick={() => copyAliasOnly(selectedBank.alias)}
-                              className="px-4 py-2 rounded-xl bg-black text-white dark:bg-white dark:text-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition flex-shrink-0"
+                              className="px-3.5 py-2 rounded-xl bg-zinc-100 text-zinc-900 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition flex-shrink-0"
                               title="Copiar solo el alias"
                             >
-                              {copiedAlias ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                              {copiedAlias ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                               <span>{copiedAlias ? '¡Alias Copiado!' : 'Copiar Alias'}</span>
                             </button>
                           </div>
 
-                          {/* Todos los detalles de la cuenta */}
-                          <div className="text-[11px] space-y-0.5 text-zinc-700 dark:text-zinc-300 font-mono bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
+                          <div className="text-[11px] space-y-0.5 text-zinc-300 font-mono bg-zinc-950 p-2.5 rounded-xl border border-zinc-800">
                             <div><strong>Banco:</strong> {selectedBank.name}</div>
                             <div><strong>Titular:</strong> {selectedBank.titular}</div>
                             <div><strong>C.I. / RUC:</strong> {selectedBank.documento}</div>
@@ -2232,17 +3189,16 @@ export default function StorefrontView({
                             <div><strong>Tipo:</strong> {selectedBank.tipoCuenta}</div>
                           </div>
 
-                          {/* Botón secundario para copiar todos los datos */}
                           <div className="flex items-center justify-between pt-1">
-                            <span className="text-[10px] text-zinc-500 italic">
+                            <span className="text-[10px] text-zinc-400 italic">
                               * Adjunta tu comprobante por WhatsApp.
                             </span>
                             <button
                               type="button"
                               onClick={() => copyBankDetails(selectedBank)}
-                              className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white underline flex items-center gap-1"
+                              className="text-[10px] font-medium text-zinc-400 hover:text-white underline flex items-center gap-1"
                             >
-                              {copiedBank ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+                              {copiedBank ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                               <span>{copiedBank ? '¡Datos Copiados!' : 'Copiar todo el bloque'}</span>
                             </button>
                           </div>
@@ -2251,19 +3207,25 @@ export default function StorefrontView({
 
                       {/* QR Bancario */}
                       <button
+                        type="button"
                         onClick={() => setPaymentMethod('qr')}
-                        className={`p-3 rounded-2xl text-left border text-xs transition ${
+                        className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                           paymentMethod === 'qr'
-                            ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
-                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
+                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                         }`}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <QrCode className="w-4 h-4 flex-shrink-0" />
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'qr' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                            <QrCode className="w-4 h-4" />
+                          </div>
                           <div>
-                            <div className="font-bold">Pago con QR</div>
-                            <div className="text-[10px] opacity-80">
-                              Te enviaremos el código QR con el monto exacto de tu pedido para escanearlo y pagar desde tu app bancaria
+                            <div className="font-bold text-white flex items-center gap-1.5">
+                              <span>Pago con QR</span>
+                              {paymentMethod === 'qr' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-zinc-400 mt-0.5">
+                              Te enviaremos el código QR con el monto exacto para escanear y pagar desde tu app bancaria
                             </div>
                           </div>
                         </div>
@@ -2272,19 +3234,25 @@ export default function StorefrontView({
                       {/* Contra Entrega (Solo para Villarrica) */}
                       {shippingType === 'villarrica' && (
                         <button
+                          type="button"
                           onClick={() => setPaymentMethod('contraentrega')}
-                          className={`p-3 rounded-2xl text-left border text-xs transition ${
+                          className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                             paymentMethod === 'contraentrega'
-                              ? 'border-black dark:border-white bg-black text-white dark:bg-white dark:text-black font-bold'
-                              : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900'
+                              ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
+                              : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                           }`}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <Banknote className="w-4 h-4 flex-shrink-0" />
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'contraentrega' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                              <Banknote className="w-4 h-4" />
+                            </div>
                             <div>
-                              <div className="font-bold">Pago Contra Entrega (Villarrica)</div>
-                              <div className="text-[10px] opacity-80">
-                                Pagas al recibir en efectivo
+                              <div className="font-bold text-white flex items-center gap-1.5">
+                                <span>Pago Contra Entrega (Villarrica)</span>
+                                {paymentMethod === 'contraentrega' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
+                              </div>
+                              <div className="text-[11px] text-zinc-400 mt-0.5">
+                                Abonas en efectivo al recibir tu pedido en puerta
                               </div>
                             </div>
                           </div>
@@ -2300,28 +3268,29 @@ export default function StorefrontView({
             {cart.length > 0 && (
               <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80 space-y-3">
                 <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between text-zinc-500">
+                  <div className="flex items-center justify-between text-zinc-300">
                     <span>Subtotal Productos</span>
                     <span>Gs. {formatGsInput(cartSubtotal)}</span>
                   </div>
                   {deliveryCost > 0 && (
-                    <div className="flex items-center justify-between text-zinc-500">
+                    <div className="flex items-center justify-between text-zinc-300">
                       <span>Delivery en Villarrica</span>
                       <span>Gs. {formatGsInput(deliveryCost)}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-sm sm:text-base font-black text-black dark:text-white pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                  <div className="flex items-center justify-between text-sm sm:text-base font-bold text-white pt-2 border-t border-zinc-800">
                     <span>Total a Pagar</span>
-                    <span className="text-base sm:text-lg">Gs. {formatGsInput(cartTotal)}</span>
+                    <span className="text-base sm:text-lg text-white">Gs. {formatGsInput(cartTotal)}</span>
                   </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={handleSendOrderWhatsApp}
                   disabled={isSubmittingOrder}
-                  className="w-full py-4 rounded-2xl bg-black text-white dark:bg-white dark:text-black font-bold text-xs sm:text-sm uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-2xl hover:scale-[1.02] active:scale-95 transition"
+                  className="w-full py-3.5 rounded-xl bg-white text-zinc-950 font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-lg hover:bg-zinc-100 active:scale-98 transition"
                 >
-                  <MessageCircle className="w-5 h-5 text-emerald-500 fill-emerald-500/20" />
+                  <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600/20" />
                   <span>Finalizar Pedido por WhatsApp</span>
                 </button>
               </div>
@@ -2516,65 +3485,138 @@ export default function StorefrontView({
         </div>
       )}
 
-      {/* ─── FOOTER PERSUASIVO & ELEGANTE ───────────────────────────────── */}
-      <footer className="bg-zinc-950 text-white border-t border-zinc-900 py-12 px-4 sm:px-6 lg:px-8 mt-auto">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Marca */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-white text-black flex items-center justify-center">
-                <Gem className="w-4 h-4" />
+      {/* ─── MODAL GUÍA DE TALLES INTERACTIVA ────────────────────────────── */}
+      <SizeGuideModal
+        isOpen={isSizeGuideOpen}
+        onClose={() => setIsSizeGuideOpen(false)}
+        initialTab={sizeGuideInitialTab}
+      />
+
+      {/* ─── LIGHTBOX ZOOM PANTALLA COMPLETA ─────────────────────────────── */}
+      <ProductLightbox
+        isOpen={isLightboxOpen}
+        onClose={() => setIsLightboxOpen(false)}
+        images={modalImages}
+        activeIndex={activeImageIndex}
+        onSelectIndex={(idx) => setActiveImageIndex(idx)}
+        title={activeModalProduct?.nombre || ''}
+      />
+
+      {/* ─── LIGHTBOX ZOOM VISTA PREVIA PACKAGING ────────────────────────── */}
+      {previewImage && (
+        <ProductLightbox
+          isOpen={!!previewImage}
+          onClose={() => setPreviewImage(null)}
+          images={[{ url: previewImage.url, label: previewImage.title }]}
+          activeIndex={0}
+          onSelectIndex={() => {}}
+          title={previewImage.title || 'Vista Previa'}
+        />
+      )}
+
+      {/* ─── FOOTER MINIMALISTA & HUMANIZADO ───────────────────────────────── */}
+      <footer className="bg-zinc-950 text-white border-t border-zinc-900 pt-14 pb-10 px-4 sm:px-6 lg:px-8 mt-auto">
+        <div className="max-w-7xl mx-auto">
+          {/* Main Footer Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-12">
+            {/* Columna 1: Marca */}
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-2.5">
+                <GutsyLogo className="w-8 h-8 shrink-0" forceWhite={true} />
+                <span className="text-lg font-black uppercase tracking-widest font-serif text-white">GUTSY</span>
               </div>
-              <span className="text-xl font-black uppercase tracking-widest font-serif">GUTSY</span>
+              <p className="text-xs text-zinc-400 leading-relaxed font-light max-w-xs">
+                Accesorios y detalles seleccionados para potenciar tu estilo y esencia.
+              </p>
+              <div className="pt-1 flex items-center gap-1.5 text-xs text-zinc-400">
+                <MapPin className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span>Villarrica, Guairá, Paraguay</span>
+              </div>
             </div>
-            <p className="text-xs text-zinc-400 font-light leading-relaxed">
-              Tu propio estilo, tu propia esencia. Accesorios diseñados para acompañarte en cada momento.
-            </p>
-            <p className="text-[11px] text-zinc-500">
-              📍 Villarrica, Guairá, Paraguay.
-            </p>
+
+            {/* Columna 2: Medios de Pago */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">Medios de Pago</h4>
+              <ul className="space-y-2 text-xs text-zinc-400">
+                <li className="flex items-center gap-2">
+                  <CreditCard className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Tarjetas de Crédito y Débito</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Building2 className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Transferencia SIPAP</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <QrCode className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Pagos por QR</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Banknote className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Efectivo al recibir (Villarrica)</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Columna 3: Envíos */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">Logística & Envíos</h4>
+              <ul className="space-y-2 text-xs text-zinc-400">
+                <li className="flex items-start gap-2">
+                  <Truck className="w-3.5 h-3.5 text-zinc-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-zinc-200 font-medium">Villarrica:</span> Delivery local
+                  </div>
+                </li>
+                <li className="flex items-start gap-2">
+                  <Package className="w-3.5 h-3.5 text-zinc-400 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="text-zinc-200 font-medium">Interior del País:</span> Vía encomienda
+                  </div>
+                </li>
+                <li className="flex items-center gap-2 text-zinc-400 pt-0.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Entrega garantizada</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Columna 4: Contacto */}
+            <div className="space-y-3.5">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-300">Contacto</h4>
+              
+              <a
+                href={`https://wa.me/${STORE_WHATSAPP}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800/80 text-zinc-200 hover:text-white hover:bg-zinc-850 hover:border-zinc-700 transition text-xs font-medium"
+              >
+                <MessageCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>WhatsApp: {STORE_WHATSAPP_DISPLAY}</span>
+              </a>
+
+              <div className="space-y-2 text-xs text-zinc-400 pt-1">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Lun a Dom: 08:00 - 19:00 hs</span>
+                </div>
+                <a
+                  href="https://instagram.com"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 text-zinc-400 hover:text-zinc-200 transition"
+                >
+                  <Instagram className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                  <span>Instagram: @gutsy.py</span>
+                </a>
+              </div>
+            </div>
           </div>
 
-          {/* Medios de Pago */}
-          <div className="space-y-2 text-xs">
-            <h4 className="font-bold uppercase tracking-wider text-zinc-300">Medios de Pago</h4>
-            <ul className="space-y-1.5 text-zinc-400 text-[11px]">
-              <li>• Tarjetas (Crédito / Débito)</li>
-              <li>• Transferencias</li>
-              <li>• Pagos QR</li>
-            </ul>
+          {/* Pie de página inferior */}
+          <div className="mt-12 pt-6 border-t border-zinc-900/80 flex flex-col sm:flex-row items-center justify-between text-xs text-zinc-400 gap-2">
+            <span>© {new Date().getFullYear()} GUTSY.</span>
+            <span className="text-zinc-400">Villarrica • Paraguay</span>
           </div>
-
-          {/* Envíos */}
-          <div className="space-y-2 text-xs">
-            <h4 className="font-bold uppercase tracking-wider text-zinc-300">Logística & Envíos</h4>
-            <ul className="space-y-1.5 text-zinc-400 text-[11px]">
-              <li>• <strong>Villarrica:</strong> Delivery local</li>
-              <li>• <strong>Interior del País:</strong> Vía Transportadora</li>
-              <li>• Entrega garantizada.</li>
-            </ul>
-          </div>
-
-          {/* Contacto & Acceso */}
-          <div className="space-y-3 text-xs">
-            <h4 className="font-bold uppercase tracking-wider text-zinc-300">Atención al Cliente</h4>
-            <a
-              href={`https://wa.me/${STORE_WHATSAPP}`}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white hover:border-zinc-600 transition"
-            >
-              <MessageCircle className="w-4 h-4 text-emerald-400" />
-              <span>WhatsApp: {STORE_WHATSAPP_DISPLAY}</span>
-            </a>
-
-
-          </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto mt-8 pt-6 border-t border-zinc-900 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-600 gap-2">
-          <span>© {new Date().getFullYear()} GUTSY. Todos los derechos reservados.</span>
-          <span>Desarrollado para Gutsy Paraguay</span>
         </div>
       </footer>
     </div>

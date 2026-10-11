@@ -49,3 +49,18 @@ export function parseDecimalInput(value) {
   const num = parseFloat(str);
   return isNaN(num) ? 0.0 : num;
 }
+
+
+/**
+ * Optimiza URLs de Cloudinary inyectando parámetros f_auto, q_auto y ancho responsivo.
+ * Reduce drásticamente la carga de imágenes (WebP/AVIF comprimido).
+ */
+export function getOptimizedImageUrl(url, width = 600) {
+  if (!url || typeof url !== 'string') return url;
+  if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+    // Si ya tiene transformaciones avanzadas, evitar duplicar
+    if (url.includes('/upload/f_auto')) return url;
+    return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width},c_limit/`);
+  }
+  return url;
+}

@@ -499,7 +499,7 @@ def dashboard_stats(request):
     from django.utils.dateparse import parse_date
 
     ahora = timezone.now()
-    periodo = request.GET.get('periodo', '30d').lower()
+    periodo = request.GET.get('periodo', 'mes').lower()
     start_param = request.GET.get('start_date')
     end_param = request.GET.get('end_date')
 
@@ -528,6 +528,13 @@ def dashboard_stats(request):
         fecha_inicio_prev = fecha_inicio - timedelta(days=1)
         fecha_fin_prev = fecha_inicio - timedelta(seconds=1)
         periodo_label = "Hoy"
+    elif periodo == '30d':
+        duracion_dias = 30
+        fecha_fin = ahora
+        fecha_inicio = ahora - timedelta(days=30)
+        fecha_inicio_prev = fecha_inicio - timedelta(days=30)
+        fecha_fin_prev = fecha_inicio
+        periodo_label = "Últimos 30 días"
     elif periodo == '7d':
         duracion_dias = 7
         fecha_fin = ahora
@@ -556,13 +563,16 @@ def dashboard_stats(request):
         fecha_inicio_prev = fecha_inicio - timedelta(days=365)
         fecha_fin_prev = fecha_inicio
         periodo_label = "Últimos 12 meses"
-    else:  # 30d por defecto
-        duracion_dias = 30
+    else:  # 'mes' / 'mes_actual' por defecto (Mes Calendario Actual)
+        fecha_inicio = ahora.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         fecha_fin = ahora
-        fecha_inicio = ahora - timedelta(days=30)
-        fecha_inicio_prev = fecha_inicio - timedelta(days=30)
-        fecha_fin_prev = fecha_inicio
-        periodo_label = "Últimos 30 días"
+        duracion_dias = (ahora.date() - fecha_inicio.date()).days + 1
+        if fecha_inicio.month == 1:
+            fecha_inicio_prev = fecha_inicio.replace(year=fecha_inicio.year - 1, month=12, day=1)
+        else:
+            fecha_inicio_prev = fecha_inicio.replace(month=fecha_inicio.month - 1, day=1)
+        fecha_fin_prev = fecha_inicio - timedelta(seconds=1)
+        periodo_label = "Mes Actual"
 
     # 2. Métricas del Período Actual (Evaluadas en memoria para evitar múltiples viajes a la BD)
     ventas_curr = list(Venta.objects.filter(fecha_venta__range=(fecha_inicio, fecha_fin)))

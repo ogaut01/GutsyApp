@@ -16,6 +16,7 @@ import SalesHistoryView from './SalesHistoryView';
 import ExpensesView from './ExpensesView';
 
 const PERIODOS = [
+  { id: 'mes', label: 'Mes Actual' },
   { id: 'hoy', label: 'Hoy' },
   { id: '30d', label: '30 Días' },
 ];
@@ -31,7 +32,7 @@ const CATEGORIAS_GASTO = [
 
 export default function DashboardView({ onActionSuccess, onNavigate }) {
   const [activeSubTab, setActiveSubTab] = useState('metricas'); // 'metricas' | 'ventas' | 'gastos'
-  const [periodo, setPeriodo] = useState('30d');
+  const [periodo, setPeriodo] = useState('mes');
   const [showCustomDate, setShowCustomDate] = useState(false);
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');

@@ -10,6 +10,7 @@ import {
   uploadFotoProducto, fetchProveedores, fetchMateriales, createMaterial,
   bulkUploadProductos, uploadFotoVariante,
   uploadFotoGaleria, addFotoUrlGaleria, deleteFotoGaleria,
+  createProveedor, fetchPlataformas,
 } from '../services/api';
 import { formatGsInput, parseGsInput } from '../currency';
 
@@ -83,17 +84,31 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
   const [galleryColorInput, setGalleryColorInput] = useState('');
   const [savingGalleryUrl, setSavingGalleryUrl] = useState(false);
 
-  // Materiales y Proveedores
+  // Materiales, Proveedores y Plataformas
   const [materialesList, setMaterialesList] = useState([]);
+  const [proveedores, setProveedores] = useState([]);
+  const [plataformas, setPlataformas] = useState([]);
+
+  // Modal de creación rápida de proveedor
+  const [showQuickProveedorModal, setShowQuickProveedorModal] = useState(false);
+  const [quickProveedorNombre, setQuickProveedorNombre] = useState('');
+  const [quickProveedorContacto, setQuickProveedorContacto] = useState('');
+  const [quickProveedorPlataforma, setQuickProveedorPlataforma] = useState('');
+  const [savingQuickProveedor, setSavingQuickProveedor] = useState(false);
+
+  // Modal de creación rápida de material
+  const [showQuickMaterialModal, setShowQuickMaterialModal] = useState(false);
+  const [quickMaterialNombre, setQuickMaterialNombre] = useState('');
+  const [savingQuickMaterial, setSavingQuickMaterial] = useState(false);
 
   useEffect(() => {
     fetchMateriales().then(mats => setMaterialesList(mats || [])).catch(() => {});
     fetchProveedores().then(provs => setProveedores(provs || [])).catch(() => {});
+    fetchPlataformas().then(plats => setPlataformas(plats || [])).catch(() => {});
   }, []);
 
   // Modal Nuevo Producto manual
   const [showNuevoProductoModal, setShowNuevoProductoModal] = useState(false);
-  const [proveedores, setProveedores] = useState([]);
   const [nuevoProductoFoto, setNuevoProductoFoto] = useState(null);
   const [nuevoProductoFotoPreview, setNuevoProductoFotoPreview] = useState(null);
   const nuevoProductoFotoInputRef = useRef(null);
@@ -221,6 +236,51 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
       alert('Error al agregar foto por URL: ' + err.message);
     } finally {
       setSavingGalleryUrl(false);
+    }
+  };
+
+  // Crear nuevo proveedor rápido
+  const handleCreateQuickProveedor = async (e) => {
+    e.preventDefault();
+    if (!quickProveedorNombre.trim()) return;
+    setSavingQuickProveedor(true);
+    try {
+      const payload = {
+        nombre: quickProveedorNombre.trim(),
+        contacto: quickProveedorContacto.trim() || '',
+        plataforma: quickProveedorPlataforma ? parseInt(quickProveedorPlataforma) : (plataformas[0]?.id || null),
+      };
+      const created = await createProveedor(payload);
+      const updatedProvs = await fetchProveedores();
+      setProveedores(updatedProvs || []);
+      setNuevoProductoForm(f => ({ ...f, proveedor: created.nombre }));
+      setShowQuickProveedorModal(false);
+      setQuickProveedorNombre('');
+      setQuickProveedorContacto('');
+      setQuickProveedorPlataforma('');
+    } catch (err) {
+      alert('Error al crear proveedor: ' + err.message);
+    } finally {
+      setSavingQuickProveedor(false);
+    }
+  };
+
+  // Crear nuevo material rápido
+  const handleCreateQuickMaterial = async (e) => {
+    e.preventDefault();
+    if (!quickMaterialNombre.trim()) return;
+    setSavingQuickMaterial(true);
+    try {
+      const created = await createMaterial({ nombre: quickMaterialNombre.trim() });
+      const updatedMats = await fetchMateriales();
+      setMaterialesList(updatedMats || []);
+      setNuevoProductoForm(f => ({ ...f, materiales: created.nombre }));
+      setShowQuickMaterialModal(false);
+      setQuickMaterialNombre('');
+    } catch (err) {
+      alert('Error al crear material: ' + err.message);
+    } finally {
+      setSavingQuickMaterial(false);
     }
   };
 
@@ -1385,7 +1445,22 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Proveedor Principal</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300">Proveedor Principal</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (plataformas.length > 0 && !quickProveedorPlataforma) {
+                          setQuickProveedorPlataforma(plataformas[0].id.toString());
+                        }
+                        setShowQuickProveedorModal(true);
+                      }}
+                      className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Nuevo
+                    </button>
+                  </div>
                   <select
                     value={nuevoProductoForm.proveedor}
                     onChange={e => setNuevoProductoForm(f => ({ ...f, proveedor: e.target.value }))}
@@ -1396,7 +1471,17 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">Material</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300">Material</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowQuickMaterialModal(true)}
+                      className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-0.5"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Nuevo
+                    </button>
+                  </div>
                   <select
                     value={nuevoProductoForm.materiales}
                     onChange={e => setNuevoProductoForm(f => ({ ...f, materiales: e.target.value }))}
@@ -2032,6 +2117,148 @@ export default function InventoryView({ productos = [], alertFilter, onClearAler
                   className="flex-1 py-2.5 bg-black text-white dark:bg-white dark:text-black font-bold rounded-xl text-xs hover:opacity-90 transition disabled:opacity-50 active:scale-95"
                 >
                   {savingGalleryUrl ? 'Guardando...' : 'Agregar a Galería'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          MODAL — Crear Proveedor Rápido
+      ══════════════════════════════════════════════════════ */}
+      {showQuickProveedorModal && (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-zinc-800 mb-4">
+              <h3 className="font-bold text-sm text-stone-900 dark:text-white flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-emerald-500" />
+                Agregar Nuevo Proveedor
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowQuickProveedorModal(false)}
+                className="p-1 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuickProveedor} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                  Nombre del Proveedor / Tienda *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Yiwu Accessory Store"
+                  value={quickProveedorNombre}
+                  onChange={e => setQuickProveedorNombre(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                />
+              </div>
+
+              {plataformas.length > 0 && (
+                <div>
+                  <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                    Plataforma / Marketplace
+                  </label>
+                  <select
+                    value={quickProveedorPlataforma}
+                    onChange={e => setQuickProveedorPlataforma(e.target.value)}
+                    className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                  >
+                    {plataformas.map(p => (
+                      <option key={p.id} value={p.id}>{p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                  Contacto / WhatsApp / Enlace (Opcional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: +86 138... o https://..."
+                  value={quickProveedorContacto}
+                  onChange={e => setQuickProveedorContacto(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickProveedorModal(false)}
+                  className="flex-1 py-2.5 bg-neutral-100 dark:bg-zinc-800 hover:bg-neutral-200 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 font-semibold rounded-xl text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingQuickProveedor || !quickProveedorNombre.trim()}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-sm transition active:scale-95 disabled:opacity-50"
+                >
+                  {savingQuickProveedor ? 'Guardando...' : 'Guardar y Usar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ══════════════════════════════════════════════════════
+          MODAL — Crear Material Rápido
+      ══════════════════════════════════════════════════════ */}
+      {showQuickMaterialModal && (
+        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-zinc-900 text-stone-900 dark:text-stone-100 border border-neutral-200 dark:border-zinc-800 rounded-2xl w-full max-w-sm p-5 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-neutral-200 dark:border-zinc-800 mb-4">
+              <h3 className="font-bold text-sm text-stone-900 dark:text-white flex items-center gap-1.5">
+                <Plus className="w-4 h-4 text-emerald-500" />
+                Agregar Nuevo Material
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowQuickMaterialModal(false)}
+                className="p-1 rounded-full text-stone-400 hover:text-stone-700 dark:hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateQuickMaterial} className="space-y-3">
+              <div>
+                <label className="text-xs font-semibold text-stone-700 dark:text-zinc-300 block mb-1">
+                  Nombre del Material *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Titanio G23, Bañado en Oro 18K"
+                  value={quickMaterialNombre}
+                  onChange={e => setQuickMaterialNombre(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#fcfbf9] dark:bg-zinc-950 border border-neutral-200 dark:border-zinc-800 rounded-xl text-sm text-stone-900 dark:text-white focus:border-black dark:focus:border-white outline-none"
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQuickMaterialModal(false)}
+                  className="flex-1 py-2.5 bg-neutral-100 dark:bg-zinc-800 hover:bg-neutral-200 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 font-semibold rounded-xl text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingQuickMaterial || !quickMaterialNombre.trim()}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-sm transition active:scale-95 disabled:opacity-50"
+                >
+                  {savingQuickMaterial ? 'Guardando...' : 'Guardar y Usar'}
                 </button>
               </div>
             </form>

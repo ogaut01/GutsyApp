@@ -208,10 +208,16 @@ export async function uploadFotoVariante(id, file) {
 
 export async function uploadFotoGaleria(productoId, files, color = '') {
   const form = new FormData();
-  if (Array.isArray(files) || files instanceof FileList) {
-    Array.from(files).forEach(f => form.append('fotos', f));
-  } else {
-    form.append('fotos', files);
+  if (files) {
+    if (files instanceof File) {
+      form.append('fotos', files);
+    } else if (typeof files.length === 'number') {
+      for (let i = 0; i < files.length; i++) {
+        form.append('fotos', files[i]);
+      }
+    } else {
+      form.append('fotos', files);
+    }
   }
   if (color) {
     form.append('color', color);

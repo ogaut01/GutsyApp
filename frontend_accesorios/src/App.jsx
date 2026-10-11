@@ -210,6 +210,7 @@ export default function App() {
           user={null}
           theme={theme}
           onToggleTheme={toggleTheme}
+          isLoading={loading}
         />
       </Suspense>
     );
@@ -225,6 +226,7 @@ export default function App() {
           onGoToAdmin={() => setActiveTab('dashboard')}
           theme={theme}
           onToggleTheme={toggleTheme}
+          isLoading={loading}
         />
       </Suspense>
     );
