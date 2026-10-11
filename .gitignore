@@ -38,3 +38,9 @@ frontend_accesorios/node_modules/
 frontend_accesorios/dist/
 frontend_accesorios/dist-ssr/
 frontend_accesorios/.vite/
+
+# AI Agents & Lighthouse Reports
+.agents/
+*.json.report
+*lighthouse*.json
+localhost_*.json
