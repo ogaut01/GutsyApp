@@ -1964,23 +1964,15 @@ export default function StorefrontView({
                   )}
                 </div>
 
-                {/* Especificaciones & Destacados */}
-                <div className="mt-4 pt-3 border-t border-zinc-200/70 dark:border-zinc-800/70 flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-400 px-1 gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0" title={activeModalProduct.materiales?.map(m => m.nombre).join(', ') || 'Acero Quirúrgico'}>
+                {/* Material del Artículo */}
+                <div className="mt-4 pt-3 border-t border-zinc-200/70 dark:border-zinc-800/70 flex items-center justify-center text-xs text-zinc-600 dark:text-zinc-400 px-1">
+                  <div className="flex items-center gap-2" title={activeModalProduct.materiales?.map(m => m.nombre).join(', ') || 'Acero Quirúrgico'}>
                     <Gem className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
-                    <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate">
-                      {activeModalProduct.materiales?.map(m => m.nombre).join(', ') || 'Acero Quirúrgico'}
+                    <span className="font-semibold text-zinc-800 dark:text-zinc-200 uppercase tracking-wider text-xs">
+                      {activeModalProduct.materiales && activeModalProduct.materiales.length > 0
+                        ? activeModalProduct.materiales.map(m => m.nombre).join(', ')
+                        : 'Acero Quirúrgico'}
                     </span>
-                  </div>
-                  <span className="text-zinc-300 dark:text-zinc-700 shrink-0">•</span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <ShieldCheck className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
-                    <span className="font-medium text-zinc-800 dark:text-zinc-200">Garantía de Calidad</span>
-                  </div>
-                  <span className="text-zinc-300 dark:text-zinc-700 shrink-0">•</span>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Truck className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
-                    <span className="font-medium text-zinc-800 dark:text-zinc-200">Envíos a todo el país</span>
                   </div>
                 </div>
               </div>
