@@ -1227,9 +1227,13 @@ export default function StorefrontView({
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-3">
-            {/* Pestañas de Categoría de Texto Plano (Estilo Zara / Farfetch / SSENSE) */}
+            {/* Pestañas de Categoría en Cápsulas Editoriales */}
             <div className="relative w-full">
-              <div className="flex items-center md:justify-center gap-2 sm:gap-6 overflow-x-auto no-scrollbar py-1 px-2 md:px-0">
+              {/* Desvanecido sutil a los bordes para indicar scroll en móvil */}
+              <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-black to-transparent z-10 md:hidden" />
+              <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white dark:from-black to-transparent z-10 md:hidden" />
+
+              <div className="flex items-center md:justify-center gap-2 sm:gap-2.5 overflow-x-auto no-scrollbar py-1 px-3 sm:px-0 scroll-smooth">
                 {activeCategories.map((cat) => {
                   const isActive = selectedCategory === cat.id;
                   return (
@@ -1239,10 +1243,10 @@ export default function StorefrontView({
                         setSelectedCategory(cat.id);
                         e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                       }}
-                      className={`pb-1.5 text-xs sm:text-sm font-extrabold tracking-widest uppercase transition-all whitespace-nowrap border-b-2 flex-shrink-0 ${
+                      className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all whitespace-nowrap flex-shrink-0 active:scale-95 ${
                         isActive
-                          ? 'text-black dark:text-white border-black dark:border-white font-black'
-                          : 'text-zinc-400 dark:text-zinc-500 hover:text-black dark:hover:text-white border-transparent'
+                          ? 'bg-black text-white dark:bg-white dark:text-black font-semibold shadow-xs border border-black dark:border-white'
+                          : 'bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200/90 dark:border-zinc-800/90 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60'
                       }`}
                     >
                       {cat.label}
@@ -1330,13 +1334,13 @@ export default function StorefrontView({
             </div>
 
             {/* Filtros Secundarios: Mobile (Botón FILTRAR + Ordenar) */}
-            <div className="flex md:hidden items-center justify-between gap-2">
+            <div className="flex md:hidden items-center justify-between gap-2.5 pt-1.5 border-t border-zinc-100 dark:border-zinc-800/60">
               <button
                 onClick={() => setIsMobileFiltersOpen(true)}
-                className={`flex-1 py-2 px-4 rounded-full border text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition ${
+                className={`flex-1 py-2 px-3.5 rounded-full border text-xs font-semibold tracking-wide flex items-center justify-center gap-2 transition active:scale-95 ${
                   activeFilterCount > 0
-                    ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-sm'
-                    : 'bg-zinc-100 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-black dark:text-white'
+                    ? 'bg-black text-white dark:bg-white dark:text-black border-black dark:border-white shadow-xs'
+                    : 'bg-zinc-100/90 dark:bg-zinc-900/90 border-zinc-200/90 dark:border-zinc-800/90 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60'
                 }`}
               >
                 <Filter className="w-3.5 h-3.5" />
@@ -1346,7 +1350,7 @@ export default function StorefrontView({
               <select
                 value={sortBy}
                 onChange={e => setSortBy(e.target.value)}
-                className="bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-black dark:text-white rounded-full px-3 py-2 font-bold tracking-wider text-xs uppercase focus:outline-none"
+                className="bg-zinc-100/90 dark:bg-zinc-900/90 border border-zinc-200/90 dark:border-zinc-800/90 text-zinc-700 dark:text-zinc-300 rounded-full px-3.5 py-2 font-semibold tracking-wide text-xs focus:outline-none"
               >
                 <option value="featured">Destacados</option>
                 <option value="price-asc">Menor Precio</option>
@@ -1359,15 +1363,20 @@ export default function StorefrontView({
       </section>
 
       {/* ─── GRILLA DEL CATÁLOGO ─────────────────────────────────────────── */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Encabezado del listado */}
-        <div className="flex items-center justify-between mb-6 pb-3 border-b border-zinc-200 dark:border-zinc-800">
+        <div className="flex items-center justify-between mb-6 pb-3.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
           <div>
-            <h2 className="text-lg font-bold tracking-wider uppercase font-serif">
-              {ALL_STORE_CATEGORIES.find(c => c.id === selectedCategory)?.label || 'Catálogo'}
-            </h2>
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base sm:text-lg font-bold tracking-wider uppercase font-serif">
+                {ALL_STORE_CATEGORIES.find(c => c.id === selectedCategory)?.label || 'Catálogo'}
+              </h2>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800">
+                {displayedProducts.length}{hasMoreProducts ? ` / ${filteredProducts.length}` : ''}
+              </span>
+            </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Mostrando {displayedProducts.length}{hasMoreProducts ? ` de ${filteredProducts.length}` : ''} modelo{filteredProducts.length !== 1 ? 's' : ''} disponibles
+              {filteredProducts.length === 1 ? '1 modelo disponible' : `${filteredProducts.length} modelos disponibles`}
             </p>
           </div>
 
