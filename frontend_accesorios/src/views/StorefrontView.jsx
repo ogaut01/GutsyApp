@@ -1243,10 +1243,10 @@ export default function StorefrontView({
                         setSelectedCategory(cat.id);
                         e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
                       }}
-                      className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all whitespace-nowrap flex-shrink-0 active:scale-95 ${
+                      className={`px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-extrabold tracking-widest uppercase transition-all whitespace-nowrap flex-shrink-0 active:scale-95 ${
                         isActive
-                          ? 'bg-black text-white dark:bg-white dark:text-black font-semibold shadow-xs border border-black dark:border-white'
-                          : 'bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white border border-zinc-200/90 dark:border-zinc-800/90 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60'
+                          ? 'bg-black text-white dark:bg-white dark:text-black font-black shadow-xs border border-black dark:border-white'
+                          : 'bg-zinc-100/90 dark:bg-zinc-900/90 text-zinc-400 dark:text-zinc-500 hover:text-black dark:hover:text-white border border-zinc-200/90 dark:border-zinc-800/90 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60'
                       }`}
                     >
                       {cat.label}
