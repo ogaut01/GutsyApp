@@ -822,6 +822,10 @@ export default function StorefrontView({
   };
 
   const handleAddToCart = (product, variant, qty = 1, customText = '', presentation = null, closeModal = true, unitPriceOverride = null) => {
+    // El empaque estándar de regalo es un insumo básico (bolsita con logo)
+    // que siempre está disponible — no requiere control de stock.
+    const isStandardGiftPkg = product.id === 'pkg-standard-gift';
+
     const isEarring = product.categoria === 'AR';
     const chosenPres = isEarring ? (presentation || earringOption) : null;
     const { precioPar, precioUnidad } = isEarring ? getAroPrecios(product) : { precioPar: 0, precioUnidad: 0 };
@@ -830,10 +834,12 @@ export default function StorefrontView({
     const stockUnitsPerQty = isEarring && chosenPres === 'par' ? 2 : 1;
     const totalRequiredStock = qty * stockUnitsPerQty;
 
-    const availableStock = variant ? (variant.stock || 0) : (product.stock_total || 0);
-    if (product.activo === false || availableStock < totalRequiredStock) {
-      alert(`No hay suficiente stock disponible. (Disponibles: ${availableStock} un.)`);
-      return;
+    if (!isStandardGiftPkg) {
+      const availableStock = variant ? (variant.stock || 0) : (product.stock_total || 0);
+      if (product.activo === false || availableStock < totalRequiredStock) {
+        alert(`No hay suficiente stock disponible. (Disponibles: ${availableStock} un.)`);
+        return;
+      }
     }
 
     const basePrice = isEarring
@@ -878,7 +884,7 @@ export default function StorefrontView({
           image: itemImage,
           presentation: presentationLabel,
           stockUnitsPerItem: stockUnitsPerQty,
-          maxStock: variant ? variant.stock : product.stock_total || 99,
+          maxStock: isStandardGiftPkg ? 1 : (variant ? variant.stock : product.stock_total || 99),
           quantity: qty,
           customText: customText.trim() || null,
         }
