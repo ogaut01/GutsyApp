@@ -1842,7 +1842,7 @@ export default function StorefrontView({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.94, y: 14 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="relative w-full max-w-4xl lg:max-w-5xl bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[92vh] my-auto"
+              className="relative w-full max-w-4xl lg:max-w-5xl bg-white dark:bg-zinc-950 rounded-3xl border border-zinc-200 dark:border-zinc-800 shadow-2xl overflow-y-auto md:overflow-hidden flex flex-col md:flex-row max-h-[92vh] my-auto"
               onClick={e => e.stopPropagation()}
             >
               {/* Botón Cerrar Flotante */}
@@ -1984,7 +1984,7 @@ export default function StorefrontView({
               </div>
 
               {/* ─── COLUMNA DERECHA: DETALLES, SELECTORES & ACORDEÓN (50%) ───────── */}
-              <div className="md:w-1/2 p-5 sm:p-6 md:p-8 overflow-y-auto flex flex-col justify-between">
+              <div className="md:w-1/2 p-5 sm:p-6 md:p-8 md:overflow-y-auto flex flex-col justify-between">
                 <div className="space-y-5">
                   {/* Categoría, Género & Referencia */}
                   <div>
@@ -2358,7 +2358,7 @@ export default function StorefrontView({
                       )}
 
                       <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
-                        💡 Max 15 caracteres por cara para garantizar máxima claridad física en el grabado láser. Para dijes de 4 caras o fotos/dibujos personalizados, coordina en WhatsApp al finalizar.
+                        💡 Max 15 caracteres por cara para garantizar máxima claridad física en el grabado láser. Para fotos/dibujos personalizados, coordina en WhatsApp al finalizar.
                       </p>
                     </div>
                   )}
@@ -2515,7 +2515,7 @@ export default function StorefrontView({
                                       },
                                       null,
                                       1,
-                                      '🎁 [EMPAQUE DE REGALO ESTÁNDAR]',
+                                      '',
                                       null,
                                       false
                                     );
