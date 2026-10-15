@@ -2358,7 +2358,7 @@ export default function StorefrontView({
                       )}
 
                       <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
-                        💡 Max 15 caracteres por cara para garantizar máxima claridad física en el grabado láser. Para dijes de 4 caras o fotos/dibujos personalizados, coordina en WhatsApp al finalizar.
+                        💡 Max 15 caracteres por cara para garantizar máxima claridad física en el grabado láser. Para fotos/dibujos personalizados, coordina en WhatsApp al finalizar.
                       </p>
                     </div>
                   )}
@@ -2515,7 +2515,7 @@ export default function StorefrontView({
                                       },
                                       null,
                                       1,
-                                      '🎁 [EMPAQUE DE REGALO ESTÁNDAR]',
+                                      '',
                                       null,
                                       false
                                     );
