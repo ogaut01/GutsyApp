@@ -2504,27 +2504,41 @@ export default function StorefrontView({
                                   </div>
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    handleAddToCart(
-                                      {
-                                        id: 'pkg-standard-gift',
-                                        nombre: 'Empaque Estándar de Regalo',
-                                        precio_venta: 0
-                                      },
-                                      null,
-                                      1,
-                                      '',
-                                      null,
-                                      false
-                                    );
-                                  }}
-                                  className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 text-xs font-medium hover:bg-black dark:hover:bg-white transition shrink-0"
-                                  title="Agregar empaque de regalo gratis"
-                                >
-                                  + Agregar
-                                </button>
+                                {(() => {
+                                  const giftInCart = cart.some(i => i.productId === 'pkg-standard-gift');
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (giftInCart) {
+                                          const giftItem = cart.find(i => i.productId === 'pkg-standard-gift');
+                                          if (giftItem) removeCartItem(giftItem.key);
+                                        } else {
+                                          handleAddToCart(
+                                            {
+                                              id: 'pkg-standard-gift',
+                                              nombre: 'Empaque Estándar de Regalo',
+                                              precio_venta: 0
+                                            },
+                                            null,
+                                            1,
+                                            '',
+                                            null,
+                                            false
+                                          );
+                                        }
+                                      }}
+                                      className={`px-3 py-1.5 rounded-lg text-xs font-medium transition shrink-0 ${
+                                        giftInCart
+                                          ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                                          : 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 hover:bg-black dark:hover:bg-white'
+                                      }`}
+                                      title={giftInCart ? 'Quitar empaque de regalo' : 'Agregar empaque de regalo gratis'}
+                                    >
+                                      {giftInCart ? '✓ Agregado' : '+ Agregar'}
+                                    </button>
+                                  );
+                                })()}
                               </div>
 
                               {/* Opción 2: Cajita Especial de Regalo */}
@@ -2863,7 +2877,14 @@ export default function StorefrontView({
                     <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400 block">
                       Artículos seleccionados
                     </span>
-                    {cart.map(item => (
+                    {[...cart].sort((a, b) => {
+                      // Empaque estándar siempre al final
+                      const aIsGift = a.productId === 'pkg-standard-gift' ? 1 : 0;
+                      const bIsGift = b.productId === 'pkg-standard-gift' ? 1 : 0;
+                      return aIsGift - bIsGift;
+                    }).map(item => {
+                      const isGiftPkg = item.productId === 'pkg-standard-gift';
+                      return (
                       <div
                         key={item.key}
                         className="p-3 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center gap-3"
@@ -2898,10 +2919,12 @@ export default function StorefrontView({
                             </div>
                           )}
                           <span className="text-xs font-black text-black dark:text-white mt-0.5 block">
-                            Gs. {formatGsInput(item.price * item.quantity)}
+                            {isGiftPkg ? 'Gratis' : `Gs. ${formatGsInput(item.price * item.quantity)}`}
                           </span>
                         </div>
 
+                        {/* Controles de cantidad: ocultos para empaque estándar */}
+                        {!isGiftPkg && (
                         <div className="flex items-center gap-1.5 bg-white dark:bg-black p-1 rounded-xl border border-zinc-200 dark:border-zinc-800">
                           <button
                             onClick={() => updateCartItemQuantity(item.key, -1)}
@@ -2917,6 +2940,7 @@ export default function StorefrontView({
                             <Plus className="w-3 h-3" />
                           </button>
                         </div>
+                        )}
 
                         <button
                           onClick={() => removeCartItem(item.key)}
@@ -2925,7 +2949,8 @@ export default function StorefrontView({
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* ─── PASO 1: Destino de Entrega ──────────────────────── */}
