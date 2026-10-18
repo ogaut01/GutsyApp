@@ -2964,23 +2964,23 @@ export default function StorefrontView({
                         onClick={() => setShippingType('villarrica')}
                         className={`p-3.5 rounded-2xl text-left border text-xs transition-all flex items-center justify-between ${
                           shippingType === 'villarrica'
-                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
-                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+                            ? 'border-zinc-900 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${shippingType === 'villarrica' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${shippingType === 'villarrica' ? 'bg-zinc-800 text-white' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                             <Truck className="w-4 h-4" />
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-1.5">
+                            <div className={`font-bold flex items-center gap-1.5 ${shippingType === 'villarrica' ? 'text-white' : 'text-zinc-900 dark:text-zinc-100'}`}>
                               <span>Delivery Villarrica y alrededores</span>
                               {shippingType === 'villarrica' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                             </div>
-                            <div className="text-[11px] text-zinc-400 mt-0.5">Entrega local en puerta</div>
+                            <div className={`text-[11px] mt-0.5 ${shippingType === 'villarrica' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>Entrega local en puerta</div>
                           </div>
                         </div>
-                        <span className="font-bold text-xs text-emerald-400 whitespace-nowrap">+ Gs. 15.000</span>
+                        <span className={`font-bold text-xs whitespace-nowrap ${shippingType === 'villarrica' ? 'text-emerald-400' : 'text-emerald-600 dark:text-emerald-400'}`}>+ Gs. 15.000</span>
                       </button>
 
                       <button
@@ -2991,23 +2991,23 @@ export default function StorefrontView({
                         }}
                         className={`p-3.5 rounded-2xl text-left border text-xs transition-all flex items-center justify-between ${
                           shippingType === 'interior'
-                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
-                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+                            ? 'border-zinc-900 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${shippingType === 'interior' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${shippingType === 'interior' ? 'bg-zinc-800 text-white' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                             <Truck className="w-4 h-4" />
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-1.5">
+                            <div className={`font-bold flex items-center gap-1.5 ${shippingType === 'interior' ? 'text-white' : 'text-zinc-900 dark:text-zinc-100'}`}>
                               <span>Envíos Nacionales</span>
                               {shippingType === 'interior' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                             </div>
-                            <div className="text-[11px] text-zinc-400 mt-0.5">Vía Transportadora (prom. Gs. 35.000)</div>
+                            <div className={`text-[11px] mt-0.5 ${shippingType === 'interior' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>Vía Transportadora (prom. Gs. 35.000)</div>
                           </div>
                         </div>
-                        <span className="font-bold text-xs text-zinc-300 whitespace-nowrap">Flete en destino</span>
+                        <span className={`font-bold text-xs whitespace-nowrap ${shippingType === 'interior' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>Flete en destino</span>
                       </button>
                     </div>
                   </div>
@@ -3027,7 +3027,7 @@ export default function StorefrontView({
                             value={customerFirstName}
                             onChange={e => setCustomerFirstName(e.target.value)}
                             placeholder="Nombre *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                            className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                           />
                         </div>
                         <div>
@@ -3037,18 +3037,18 @@ export default function StorefrontView({
                             value={customerLastName}
                             onChange={e => setCustomerLastName(e.target.value)}
                             placeholder="Apellido *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                            className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                           />
                         </div>
                       </div>
 
                       {shippingType === 'villarrica' ? (
-                        <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 text-[11px] text-zinc-300 space-y-1">
-                          <div className="font-bold text-white flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-700 dark:text-zinc-300 space-y-1">
+                          <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                             <span>Coordinación de Entrega en Villarrica</span>
                           </div>
-                          <p className="leading-relaxed text-zinc-400">
+                          <p className="leading-relaxed text-zinc-600 dark:text-zinc-400">
                             Al confirmar tu pedido por WhatsApp, te pediremos tu ubicación o referencias exactas para coordinar la entrega a domicilio.
                           </p>
                         </div>
@@ -3060,7 +3060,7 @@ export default function StorefrontView({
                               value={customerDoc}
                               onChange={e => setCustomerDoc(e.target.value)}
                               placeholder="Nro. Cédula (C.I.) *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                             <input
                               type="text"
@@ -3068,7 +3068,7 @@ export default function StorefrontView({
                               value={customerPhone}
                               onChange={e => setCustomerPhone(e.target.value)}
                               placeholder="Celular / WhatsApp *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                           </div>
 
@@ -3079,7 +3079,7 @@ export default function StorefrontView({
                               value={customerCity}
                               onChange={e => setCustomerCity(e.target.value)}
                               placeholder="Ciudad *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                             <input
                               type="text"
@@ -3087,7 +3087,7 @@ export default function StorefrontView({
                               value={customerDept}
                               onChange={e => setCustomerDept(e.target.value)}
                               placeholder="Departamento *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                           </div>
 
@@ -3097,7 +3097,7 @@ export default function StorefrontView({
                             value={customerAddress}
                             onChange={e => setCustomerAddress(e.target.value)}
                             placeholder="Dirección exacta o Sucursal de Transportadora (ej: AEX Central, NSA Sucursal) *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 resize-none transition"
+                            className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 resize-none transition"
                           />
                         </>
                       )}
@@ -3116,20 +3116,20 @@ export default function StorefrontView({
                         onClick={() => setPaymentMethod('contimovil')}
                         className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                           paymentMethod === 'contimovil'
-                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
-                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+                            ? 'border-zinc-900 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'contimovil' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'contimovil' ? 'bg-zinc-800 text-white' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                             <CreditCard className="w-4 h-4" />
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-1.5">
+                            <div className={`font-bold flex items-center gap-1.5 ${paymentMethod === 'contimovil' ? 'text-white' : 'text-zinc-900 dark:text-zinc-100'}`}>
                               <span>Link de Pago (Tarjetas DÉBITO O CRÉDITO)</span>
                               {paymentMethod === 'contimovil' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                             </div>
-                            <div className="text-[11px] text-zinc-400 mt-0.5">
+                            <div className={`text-[11px] mt-0.5 ${paymentMethod === 'contimovil' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
                               Te enviamos el link seguro a tu WhatsApp para pagar con tarjeta
                             </div>
                           </div>
@@ -3142,20 +3142,20 @@ export default function StorefrontView({
                         onClick={() => setPaymentMethod('transferencia')}
                         className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                           paymentMethod === 'transferencia'
-                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
-                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+                            ? 'border-zinc-900 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'transferencia' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'transferencia' ? 'bg-zinc-800 text-white' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                             <Building2 className="w-4 h-4" />
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-1.5">
+                            <div className={`font-bold flex items-center gap-1.5 ${paymentMethod === 'transferencia' ? 'text-white' : 'text-zinc-900 dark:text-zinc-100'}`}>
                               <span>Transferencia Bancaria</span>
                               {paymentMethod === 'transferencia' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                             </div>
-                            <div className="text-[11px] text-zinc-400 mt-0.5">
+                            <div className={`text-[11px] mt-0.5 ${paymentMethod === 'transferencia' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
                               Transferencia directa a bancos habilitados
                             </div>
                           </div>
@@ -3164,9 +3164,9 @@ export default function StorefrontView({
 
                       {/* CAJA DESPLEGABLE CON SELECTOR DE 3 BANCOS & COPIA DE ALIAS */}
                       {paymentMethod === 'transferencia' && (
-                        <div className="p-3.5 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-3 text-xs animate-in fade-in">
+                        <div className="p-3.5 rounded-2xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 space-y-3 text-xs animate-in fade-in">
                           <div>
-                            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400 block mb-1.5">
+                            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 block mb-1.5">
                               Selecciona tu Banco de preferencia:
                             </span>
                             <div className="grid grid-cols-3 gap-1.5">
@@ -3179,8 +3179,8 @@ export default function StorefrontView({
                                     onClick={() => setSelectedBankId(bank.id)}
                                     className={`py-2 px-1.5 rounded-xl font-bold text-[11px] uppercase tracking-wider transition text-center truncate ${
                                       isBankActive
-                                        ? 'bg-zinc-100 text-zinc-900 shadow-sm'
-                                        : 'bg-zinc-950 text-zinc-400 border border-zinc-800 hover:text-white'
+                                        ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-sm'
+                                        : 'bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:text-zinc-900 dark:hover:text-white'
                                     }`}
                                   >
                                     {bank.shortName}
@@ -3190,14 +3190,14 @@ export default function StorefrontView({
                             </div>
                           </div>
 
-                          <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
+                          <div className="p-3 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 shadow-sm">
                             <div className="min-w-0 space-y-1">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-white text-[10px] font-bold tracking-wider uppercase border border-zinc-700">
+                                <span className="px-2 py-0.5 rounded-md bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-white text-[10px] font-bold tracking-wider uppercase border border-zinc-300 dark:border-zinc-700">
                                   Tipo: {selectedBank.tipoAlias}
                                 </span>
                               </div>
-                              <div className="text-base sm:text-lg font-black text-white font-mono tracking-tight select-all">
+                              <div className="text-base sm:text-lg font-black text-zinc-900 dark:text-white font-mono tracking-tight select-all">
                                 {selectedBank.alias}
                               </div>
                             </div>
@@ -3205,15 +3205,15 @@ export default function StorefrontView({
                             <button
                               type="button"
                               onClick={() => copyAliasOnly(selectedBank.alias)}
-                              className="px-3.5 py-2 rounded-xl bg-zinc-100 text-zinc-900 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition flex-shrink-0"
+                              className="px-3.5 py-2 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition flex-shrink-0"
                               title="Copiar solo el alias"
                             >
-                              {copiedAlias ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                              <span>{copiedAlias ? '¡Alias Copiado!' : 'Copiar Alias'}</span>
+                              {copiedAlias ? <Check className="w-4 h-4 text-emerald-400 dark:text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                              <span>{copiedAlias ? '¡Copiado!' : 'Copiar Alias'}</span>
                             </button>
                           </div>
 
-                          <div className="text-[11px] space-y-0.5 text-zinc-300 font-mono bg-zinc-950 p-2.5 rounded-xl border border-zinc-800">
+                          <div className="text-[11px] space-y-0.5 text-zinc-700 dark:text-zinc-300 font-mono bg-white dark:bg-zinc-950 p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800">
                             <div><strong>Banco:</strong> {selectedBank.name}</div>
                             <div><strong>Titular:</strong> {selectedBank.titular}</div>
                             <div><strong>C.I. / RUC:</strong> {selectedBank.documento}</div>
@@ -3222,15 +3222,15 @@ export default function StorefrontView({
                           </div>
 
                           <div className="flex items-center justify-between pt-1">
-                            <span className="text-[10px] text-zinc-400 italic">
+                            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 italic">
                               * Adjunta tu comprobante por WhatsApp.
                             </span>
                             <button
                               type="button"
                               onClick={() => copyBankDetails(selectedBank)}
-                              className="text-[10px] font-medium text-zinc-400 hover:text-white underline flex items-center gap-1"
+                              className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white underline flex items-center gap-1"
                             >
-                              {copiedBank ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                              {copiedBank ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
                               <span>{copiedBank ? '¡Datos Copiados!' : 'Copiar todo el bloque'}</span>
                             </button>
                           </div>
@@ -3243,20 +3243,20 @@ export default function StorefrontView({
                         onClick={() => setPaymentMethod('qr')}
                         className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                           paymentMethod === 'qr'
-                            ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
-                            : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+                            ? 'border-zinc-900 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm'
+                            : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'qr' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'qr' ? 'bg-zinc-800 text-white' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                             <QrCode className="w-4 h-4" />
                           </div>
                           <div>
-                            <div className="font-bold text-white flex items-center gap-1.5">
+                            <div className={`font-bold flex items-center gap-1.5 ${paymentMethod === 'qr' ? 'text-white' : 'text-zinc-900 dark:text-zinc-100'}`}>
                               <span>Pago con QR</span>
                               {paymentMethod === 'qr' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                             </div>
-                            <div className="text-[11px] text-zinc-400 mt-0.5">
+                            <div className={`text-[11px] mt-0.5 ${paymentMethod === 'qr' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
                               Te enviaremos el código QR con el monto exacto para escanear y pagar desde tu app bancaria
                             </div>
                           </div>
@@ -3270,20 +3270,20 @@ export default function StorefrontView({
                           onClick={() => setPaymentMethod('contraentrega')}
                           className={`p-3.5 rounded-2xl text-left border text-xs transition-all ${
                             paymentMethod === 'contraentrega'
-                              ? 'border-zinc-300 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm ring-1 ring-zinc-300/30'
-                              : 'border-zinc-200 dark:border-zinc-800/80 bg-zinc-50 dark:bg-zinc-900/40 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+                              ? 'border-zinc-900 dark:border-zinc-200 bg-zinc-900 text-white font-medium shadow-sm'
+                              : 'border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/40 hover:border-zinc-300 dark:hover:border-zinc-700'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'contraentrega' ? 'bg-zinc-800 text-white' : 'bg-zinc-800/40 text-zinc-400'}`}>
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${paymentMethod === 'contraentrega' ? 'bg-zinc-800 text-white' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300'}`}>
                               <Banknote className="w-4 h-4" />
                             </div>
                             <div>
-                              <div className="font-bold text-white flex items-center gap-1.5">
+                              <div className={`font-bold flex items-center gap-1.5 ${paymentMethod === 'contraentrega' ? 'text-white' : 'text-zinc-900 dark:text-zinc-100'}`}>
                                 <span>Pago Contra Entrega (Villarrica)</span>
                                 {paymentMethod === 'contraentrega' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                               </div>
-                              <div className="text-[11px] text-zinc-400 mt-0.5">
+                              <div className={`text-[11px] mt-0.5 ${paymentMethod === 'contraentrega' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
                                 Abonas en efectivo al recibir tu pedido en puerta
                               </div>
                             </div>
@@ -3298,21 +3298,37 @@ export default function StorefrontView({
 
             {/* Footer del Carrito con Totales y Botón WhatsApp */}
             {cart.length > 0 && (
-              <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/80 space-y-3">
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between text-zinc-300">
+              <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 space-y-3">
+                {/* Tarjeta Resumen */}
+                <div className="p-3.5 rounded-2xl bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 space-y-2 text-xs">
+                  <div className="flex items-center justify-between text-zinc-600 dark:text-zinc-400">
                     <span>Subtotal Productos</span>
-                    <span>Gs. {formatGsInput(cartSubtotal)}</span>
+                    <span className="font-semibold text-zinc-900 dark:text-zinc-100">Gs. {formatGsInput(cartSubtotal)}</span>
                   </div>
-                  {deliveryCost > 0 && (
-                    <div className="flex items-center justify-between text-zinc-300">
-                      <span>Delivery en Villarrica</span>
-                      <span>Gs. {formatGsInput(deliveryCost)}</span>
+
+                  <div className="flex items-center justify-between text-zinc-600 dark:text-zinc-400">
+                    <span>Costo de Envío</span>
+                    {shippingType === 'villarrica' ? (
+                      <span className="font-semibold text-zinc-900 dark:text-zinc-100">Gs. {formatGsInput(deliveryCost)}</span>
+                    ) : (
+                      <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/40">
+                        Flete en destino
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2.5 border-t border-zinc-200 dark:border-zinc-800 text-sm">
+                    <span className="font-bold text-zinc-900 dark:text-white">Total a Pagar</span>
+                    <div className="text-right">
+                      <span className="text-lg sm:text-xl font-black text-zinc-900 dark:text-white tracking-tight">
+                        Gs. {formatGsInput(cartTotal)}
+                      </span>
+                      {shippingType === 'interior' && (
+                        <span className="block text-[10px] text-zinc-500 dark:text-zinc-400">
+                          + flete al recibir
+                        </span>
+                      )}
                     </div>
-                  )}
-                  <div className="flex items-center justify-between text-sm sm:text-base font-bold text-white pt-2 border-t border-zinc-800">
-                    <span>Total a Pagar</span>
-                    <span className="text-base sm:text-lg text-white">Gs. {formatGsInput(cartTotal)}</span>
                   </div>
                 </div>
 
@@ -3320,11 +3336,14 @@ export default function StorefrontView({
                   type="button"
                   onClick={handleSendOrderWhatsApp}
                   disabled={isSubmittingOrder}
-                  className="w-full py-3.5 rounded-xl bg-white text-zinc-950 font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-lg hover:bg-zinc-100 active:scale-98 transition"
+                  className="w-full py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 active:scale-98 transition disabled:opacity-50"
                 >
-                  <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-600/20" />
+                  <MessageCircle className="w-4 h-4 fill-white/20" />
                   <span>Finalizar Pedido por WhatsApp</span>
                 </button>
+                <div className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Atención y coordinación directa por WhatsApp
+                </div>
               </div>
             )}
             </motion.div>
