@@ -3017,11 +3017,13 @@ export default function StorefrontView({
                     <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
                       {shippingType === 'villarrica' ? '2. Datos de Contacto:' : '2. Datos para la Entrega y Rótulo:'}
                     </span>
-                    <div className="space-y-2.5 text-xs">
+                    <form onSubmit={e => e.preventDefault()} autoComplete="on" className="space-y-2.5 text-xs">
                       {/* Nombre y Apellido separados en 2 campos */}
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <input
+                            id="given-name"
+                            name="given-name"
                             type="text"
                             autoComplete="given-name"
                             value={customerFirstName}
@@ -3032,6 +3034,8 @@ export default function StorefrontView({
                         </div>
                         <div>
                           <input
+                            id="family-name"
+                            name="family-name"
                             type="text"
                             autoComplete="family-name"
                             value={customerLastName}
@@ -3056,14 +3060,20 @@ export default function StorefrontView({
                         <>
                           <div className="grid grid-cols-2 gap-2">
                             <input
+                              id="customer-doc"
+                              name="doc"
                               type="text"
+                              inputMode="numeric"
                               value={customerDoc}
                               onChange={e => setCustomerDoc(e.target.value)}
                               placeholder="Nro. Cédula (C.I.) *"
                               className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                             <input
-                              type="text"
+                              id="tel"
+                              name="tel"
+                              type="tel"
+                              inputMode="tel"
                               autoComplete="tel"
                               value={customerPhone}
                               onChange={e => setCustomerPhone(e.target.value)}
@@ -3074,6 +3084,8 @@ export default function StorefrontView({
 
                           <div className="grid grid-cols-2 gap-2">
                             <input
+                              id="address-level2"
+                              name="address-level2"
                               type="text"
                               autoComplete="address-level2"
                               value={customerCity}
@@ -3082,6 +3094,8 @@ export default function StorefrontView({
                               className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
                             />
                             <input
+                              id="address-level1"
+                              name="address-level1"
                               type="text"
                               autoComplete="address-level1"
                               value={customerDept}
@@ -3092,6 +3106,8 @@ export default function StorefrontView({
                           </div>
 
                           <textarea
+                            id="street-address"
+                            name="street-address"
                             rows={2}
                             autoComplete="street-address"
                             value={customerAddress}
@@ -3101,7 +3117,7 @@ export default function StorefrontView({
                           />
                         </>
                       )}
-                    </div>
+                    </form>
                   </div>
 
                   {/* ─── PASO 3: Medio de Pago ──────────────────────────── */}
