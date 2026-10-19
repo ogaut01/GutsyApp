@@ -44,6 +44,12 @@ export default function App() {
   });
 
   const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+      if (p.startsWith('/producto') || p.startsWith('/p/') || p.startsWith('/categoria')) {
+        return 'storefront';
+      }
+    }
     return localStorage.getItem('gutsy_active_tab') || 'dashboard';
   });
 
