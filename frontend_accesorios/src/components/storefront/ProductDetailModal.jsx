@@ -262,8 +262,8 @@ export default function ProductDetailModal({
           {/* ─── COLUMNA DERECHA: DETALLES, SELECTORES & ACORDEÓN ───────── */}
           <div className="md:w-1/2 p-5 sm:p-6 md:p-8 md:overflow-y-auto flex flex-col justify-between">
             <div className="space-y-5">
-              {/* Categoría, Género & Referencia */}
-              <div>
+              {/* Categoría, Género & Referencia (con padding derecho en desktop para no colisionar con el botón cerrar) */}
+              <div className="md:pr-12">
                 <div className="flex items-center justify-between gap-2 flex-wrap text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-1">
                   <span className="inline-flex items-center gap-1 text-zinc-600 dark:text-zinc-300">
                     <Tag className="w-3 h-3 text-zinc-400" />
@@ -271,7 +271,7 @@ export default function ProductDetailModal({
                   </span>
 
                   {selectedVariant?.sku && (
-                    <span className="font-mono text-zinc-400 text-[9px]">
+                    <span className="font-mono text-zinc-400 text-[9px] bg-zinc-100 dark:bg-zinc-800/80 px-2 py-0.5 rounded">
                       SKU: {selectedVariant.sku}
                     </span>
                   )}
