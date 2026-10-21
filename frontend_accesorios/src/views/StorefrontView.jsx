@@ -39,6 +39,7 @@ import CartDrawer from '../components/storefront/CartDrawer';
 import OrderSuccessModal from '../components/storefront/OrderSuccessModal';
 import CustomerReviewsSection from '../components/storefront/CustomerReviewsSection';
 import StorefrontFooter from '../components/storefront/StorefrontFooter';
+import StorePoliciesModal from '../components/storefront/StorePoliciesModal';
 
 // Exportar cuentas bancarias por compatibilidad
 export { BANK_ACCOUNTS };
@@ -106,12 +107,28 @@ export default function StorefrontView({
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
+  // Modal de Políticas de la Tienda (Privacidad, Reembolso, Términos, Envíos, Contacto)
+  const [policyModalTab, setPolicyModalTab] = useState(null);
+
+  useEffect(() => {
+    const handlePolicyHash = () => {
+      const hash = window.location.hash.toLowerCase();
+      if (hash === '#privacidad' || hash === '#politica-privacidad') setPolicyModalTab('privacidad');
+      else if (hash === '#reembolso' || hash === '#politica-reembolso') setPolicyModalTab('reembolso');
+      else if (hash === '#terminos' || hash === '#terminos-servicio') setPolicyModalTab('terminos');
+      else if (hash === '#envio' || hash === '#politica-envio') setPolicyModalTab('envio');
+      else if (hash === '#contacto' || hash === '#informacion-contacto') setPolicyModalTab('contacto');
+    };
+    handlePolicyHash();
+    window.addEventListener('hashchange', handlePolicyHash);
+    return () => window.removeEventListener('hashchange', handlePolicyHash);
+  }, []);
+
   // Formulario de Envío y Checkout
   const [shippingType, setShippingType] = useState('villarrica');
   const [paymentMethod, setPaymentMethod] = useState('contimovil');
   const [selectedBankId, setSelectedBankId] = useState('continental');
-  const [customerFirstName, setCustomerFirstName] = useState('');
-  const [customerLastName, setCustomerLastName] = useState('');
+  const [customerFullName, setCustomerFullName] = useState('');
   const [customerDoc, setCustomerDoc] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerCity, setCustomerCity] = useState('');
@@ -122,6 +139,7 @@ export default function StorefrontView({
   const [copiedBank, setCopiedBank] = useState(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderSentSuccess, setOrderSentSuccess] = useState(false);
+  const [formErrors, setFormErrors] = useState({});
 
   const selectedBank = useMemo(() => {
     return BANK_ACCOUNTS.find(b => b.id === selectedBankId) || BANK_ACCOUNTS[0];
@@ -595,31 +613,36 @@ export default function StorefrontView({
   // ─── Envío de Pedido a WhatsApp ───────────────────────────────────────────
   const handleSendOrderWhatsApp = () => {
     if (cart.length === 0) {
-      alert('Tu carrito está vacío. Agrega accesorios antes de finalizar.');
       return;
     }
 
-    const fullCustomerName = `${customerFirstName.trim()} ${customerLastName.trim()}`.trim();
-    if (!fullCustomerName) {
-      alert('Por favor, ingresa tu Nombre y Apellido para preparar tu pedido.');
-      return;
+    const errors = {};
+    if (!customerFullName.trim()) {
+      errors.fullName = 'Ingresa tu nombre y apellido';
+    }
+    if (!customerPhone.trim()) {
+      errors.phone = 'Ingresa tu número de WhatsApp';
     }
 
     if (shippingType === 'interior') {
-      if (!customerPhone.trim()) {
-        alert('Por favor, ingresa un número de Celular o WhatsApp para el rótulo de la transportadora.');
-        return;
+      if (!customerDept.trim()) {
+        errors.dept = 'Selecciona tu departamento';
       }
       if (!customerCity.trim()) {
-        alert('Por favor, ingresa tu Ciudad de destino.');
-        return;
+        errors.city = 'Selecciona tu ciudad de destino';
       }
       if (!customerAddress.trim()) {
-        alert('Por favor, ingresa tu dirección de entrega o la sucursal de transportadora.');
-        return;
+        errors.address = 'Ingresa tu dirección o sucursal';
       }
     }
 
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+
+    setFormErrors({});
+    const fullCustomerName = customerFullName.trim();
     const fullCityDept = customerDept.trim() ? `${customerCity.trim()}, ${customerDept.trim()}` : customerCity.trim();
 
     setIsSubmittingOrder(true);
@@ -849,10 +872,8 @@ export default function StorefrontView({
         removeCartItem={removeCartItem}
         shippingType={shippingType}
         setShippingType={setShippingType}
-        customerFirstName={customerFirstName}
-        setCustomerFirstName={setCustomerFirstName}
-        customerLastName={customerLastName}
-        setCustomerLastName={setCustomerLastName}
+        customerFullName={customerFullName}
+        setCustomerFullName={setCustomerFullName}
         customerDoc={customerDoc}
         setCustomerDoc={setCustomerDoc}
         customerPhone={customerPhone}
@@ -873,7 +894,10 @@ export default function StorefrontView({
         copyAliasOnly={copyAliasOnly}
         copyBankDetails={copyBankDetails}
         isSubmittingOrder={isSubmittingOrder}
+        formErrors={formErrors}
+        setFormErrors={setFormErrors}
         onSendOrderWhatsApp={handleSendOrderWhatsApp}
+        onOpenPolicy={setPolicyModalTab}
       />
 
       {/* 9. Modal de Éxito de Pedido */}
@@ -913,8 +937,15 @@ export default function StorefrontView({
         />
       )}
 
-      {/* 11. Footer */}
-      <StorefrontFooter />
+      {/* 11. Modal de Políticas de la Tienda */}
+      <StorePoliciesModal
+        isOpen={Boolean(policyModalTab)}
+        initialTab={policyModalTab || 'privacidad'}
+        onClose={() => setPolicyModalTab(null)}
+      />
+
+      {/* 12. Footer */}
+      <StorefrontFooter onOpenPolicy={setPolicyModalTab} />
     </div>
   );
 }

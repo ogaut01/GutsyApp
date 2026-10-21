@@ -53,6 +53,7 @@ export default function ProductCard({
         exit: { opacity: 0, transition: { duration: 0.08 } }
       }}
       key={product.id}
+      data-testid="product-card"
       className="group relative bg-white dark:bg-zinc-950 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden flex flex-col hover:border-black dark:hover:border-white transition-all duration-300 hover:shadow-xl"
     >
       {/* Contenedor de Imagen */}
@@ -101,7 +102,8 @@ export default function ProductCard({
             onOpenModal(product);
           }}
           className="absolute bottom-3 right-3 w-8 h-8 rounded-full bg-white dark:bg-black text-black dark:text-white shadow-md flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all duration-200"
-          title="Ver detalle"
+          title={`Ver detalle de ${product.nombre}`}
+          aria-label={`Ver detalle de ${product.nombre}`}
         >
           <Eye className="w-4 h-4" />
         </button>
@@ -175,6 +177,8 @@ export default function ProductCard({
 
           <button
             onClick={() => onOpenModal(product)}
+            title={hasStock ? `Comprar ${product.nombre}` : `Producto agotado: ${product.nombre}`}
+            aria-label={hasStock ? `Comprar ${product.nombre}` : `Producto agotado: ${product.nombre}`}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1 ${
               hasStock
                 ? 'bg-black text-white dark:bg-white dark:text-black hover:scale-105 active:scale-95 shadow-sm'

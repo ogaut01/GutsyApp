@@ -1,0 +1,11 @@
+[
+  {
+    "persona": "The Mobile User",
+    "title": "Touch targets demasiado pequenos para dedos",
+    "description": "21 botones con ancho/alto < 36px. Apple recomienda min 44px.",
+    "screenshot": "mobile_small_targets.png",
+    "severity": "low",
+    "element": null,
+    "timestamp": "2026-10-21T14:13:58.387Z"
+  }
+]

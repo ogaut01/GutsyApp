@@ -6,7 +6,7 @@ import {
 import GutsyLogo from '../GutsyLogo';
 import { STORE_WHATSAPP, STORE_WHATSAPP_DISPLAY } from '../../constants/storefrontConstants';
 
-export default function StorefrontFooter() {
+export default function StorefrontFooter({ onOpenPolicy }) {
   return (
     <footer className="bg-zinc-950 text-white border-t border-zinc-900 pt-14 pb-10 px-4 sm:px-6 lg:px-8 mt-auto">
       <div className="max-w-7xl mx-auto">
@@ -103,6 +103,54 @@ export default function StorefrontFooter() {
               </a>
             </div>
           </div>
+        </div>
+
+        {/* Fila de Políticas (estilo Outribe) */}
+        <div className="border-t border-zinc-900 mt-12 pt-8">
+          <div className="flex flex-wrap justify-center items-center gap-x-3 sm:gap-x-5 gap-y-2 text-[11px] sm:text-xs text-zinc-400">
+            <button
+              type="button"
+              onClick={() => onOpenPolicy?.('privacidad')}
+              className="hover:text-zinc-200 transition underline-offset-4 hover:underline cursor-pointer"
+            >
+              Política de privacidad
+            </button>
+            <span className="text-zinc-700 select-none">·</span>
+            <button
+              type="button"
+              onClick={() => onOpenPolicy?.('reembolso')}
+              className="hover:text-zinc-200 transition underline-offset-4 hover:underline cursor-pointer"
+            >
+              Política de reembolso
+            </button>
+            <span className="text-zinc-700 select-none">·</span>
+            <button
+              type="button"
+              onClick={() => onOpenPolicy?.('terminos')}
+              className="hover:text-zinc-200 transition underline-offset-4 hover:underline cursor-pointer"
+            >
+              Términos del servicio
+            </button>
+            <span className="text-zinc-700 select-none">·</span>
+            <button
+              type="button"
+              onClick={() => onOpenPolicy?.('envio')}
+              className="hover:text-zinc-200 transition underline-offset-4 hover:underline cursor-pointer"
+            >
+              Política de envío
+            </button>
+            <span className="text-zinc-700 select-none">·</span>
+            <button
+              type="button"
+              onClick={() => onOpenPolicy?.('contacto')}
+              className="hover:text-zinc-200 transition underline-offset-4 hover:underline cursor-pointer"
+            >
+              Información de contacto
+            </button>
+          </div>
+          <p className="text-center text-[10px] sm:text-xs text-zinc-600 mt-5 font-light">
+            © {new Date().getFullYear()} GUTSY. Todos los derechos reservados.
+          </p>
         </div>
       </div>
     </footer>

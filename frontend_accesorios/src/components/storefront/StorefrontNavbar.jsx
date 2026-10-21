@@ -105,7 +105,8 @@ export default function StorefrontNavbar({
             <button
               onClick={onToggleTheme}
               className="p-2.5 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-black dark:text-white hover:border-black dark:hover:border-white transition"
-              title={theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+              title={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+              aria-label={theme === 'dark' ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-zinc-700" />}
             </button>
@@ -113,6 +114,8 @@ export default function StorefrontNavbar({
             {/* Botón Carrito de Compras */}
             <button
               onClick={onOpenCart}
+              title={`Ver carrito de compras (${totalCartItems} productos)`}
+              aria-label={`Ver carrito de compras (${totalCartItems} productos)`}
               className={`relative px-4 py-2.5 rounded-full bg-black text-white dark:bg-white dark:text-black font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg active:scale-95 transition-all ${
                 cartBounce ? 'scale-110 ring-4 ring-black/20 dark:ring-white/20' : ''
               }`}
