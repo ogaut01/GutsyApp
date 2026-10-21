@@ -8,6 +8,8 @@ import {
 import { formatGsInput } from '../../currency';
 import GutsyLogo from '../GutsyLogo';
 import { BANK_ACCOUNTS } from '../../constants/storefrontConstants';
+import SearchableSelect from './SearchableSelect';
+import { PARAGUAY_LOCATIONS, DEPARTAMENTOS_PARAGUAY } from '../../constants/paraguayLocations';
 
 export default function CartDrawer({
   isOpen,
@@ -21,6 +23,8 @@ export default function CartDrawer({
   removeCartItem,
   shippingType,
   setShippingType,
+  customerFullName,
+  setCustomerFullName,
   customerFirstName,
   setCustomerFirstName,
   customerLastName,
@@ -45,7 +49,10 @@ export default function CartDrawer({
   copyAliasOnly,
   copyBankDetails,
   isSubmittingOrder,
-  onSendOrderWhatsApp
+  formErrors = {},
+  setFormErrors = () => {},
+  onSendOrderWhatsApp,
+  onOpenPolicy
 }) {
   return (
     <AnimatePresence>
@@ -80,7 +87,9 @@ export default function CartDrawer({
 
               <button
                 onClick={onClose}
-                className="w-8 h-8 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center hover:scale-105 transition"
+                aria-label="Cerrar carrito"
+                title="Cerrar carrito"
+                className="w-10 h-10 rounded-xl bg-zinc-200 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 flex items-center justify-center hover:scale-105 active:scale-95 transition cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -237,7 +246,9 @@ export default function CartDrawer({
                               <span>Envíos Nacionales</span>
                               {shippingType === 'interior' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
                             </div>
-                            <div className={`text-[11px] mt-0.5 ${shippingType === 'interior' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>Vía Transportadora (prom. Gs. 35.000)</div>
+                            <div className={`text-[11px] mt-0.5 ${shippingType === 'interior' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                              Todo Paraguay vía Transportadora (prom. Gs. 32.000)
+                            </div>
                           </div>
                         </div>
                         <span className={`font-bold text-xs whitespace-nowrap ${shippingType === 'interior' ? 'text-zinc-300' : 'text-zinc-500 dark:text-zinc-400'}`}>Flete en destino</span>
@@ -250,106 +261,161 @@ export default function CartDrawer({
                     <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 block">
                       {shippingType === 'villarrica' ? '2. Datos de Contacto:' : '2. Datos para la Entrega y Rótulo:'}
                     </span>
-                    <form onSubmit={e => e.preventDefault()} autoComplete="on" className="space-y-2.5 text-xs">
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <input
-                            id="given-name"
-                            name="given-name"
-                            type="text"
-                            autoComplete="given-name"
-                            value={customerFirstName}
-                            onChange={e => setCustomerFirstName(e.target.value)}
-                            placeholder="Nombre *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
-                          />
-                        </div>
-                        <div>
-                          <input
-                            id="family-name"
-                            name="family-name"
-                            type="text"
-                            autoComplete="family-name"
-                            value={customerLastName}
-                            onChange={e => setCustomerLastName(e.target.value)}
-                            placeholder="Apellido *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
-                          />
-                        </div>
-                      </div>
+                    {(() => {
+                      const fullNameValue = customerFullName !== undefined ? customerFullName : (customerFirstName || '');
+                      const handleFullNameChange = (val) => {
+                        if (setCustomerFullName) setCustomerFullName(val);
+                        if (setCustomerFirstName) setCustomerFirstName(val);
+                      };
 
-                      {shippingType === 'villarrica' ? (
-                        <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-700 dark:text-zinc-300 space-y-1">
-                          <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                            <span>Coordinación de Entrega en Villarrica</span>
+                      return (
+                        <form onSubmit={e => e.preventDefault()} autoComplete="on" className="space-y-2.5 text-xs">
+                          {/* 1. Nombre y Apellido * (ancho completo) */}
+                          <div>
+                            <input
+                              id="customer-fullname"
+                              name="name"
+                              type="text"
+                              autoComplete="name"
+                              value={fullNameValue}
+                              onChange={e => {
+                                handleFullNameChange(e.target.value);
+                                if (formErrors.fullName) setFormErrors(prev => ({ ...prev, fullName: undefined }));
+                                if (formErrors.firstName) setFormErrors(prev => ({ ...prev, firstName: undefined }));
+                              }}
+                              placeholder="Nombre y Apellido"
+                              aria-label="Nombre y Apellido"
+                              className={`w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition ${
+                                (formErrors.fullName || formErrors.firstName)
+                                  ? 'border-rose-500 ring-1 ring-rose-500/50 bg-rose-50/10'
+                                  : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50'
+                              }`}
+                            />
+                            {(formErrors.fullName || formErrors.firstName) && (
+                              <span className="text-[10px] text-rose-500 font-medium block mt-0.5">
+                                {formErrors.fullName || formErrors.firstName}
+                              </span>
+                            )}
                           </div>
-                          <p className="leading-relaxed text-zinc-600 dark:text-zinc-400">
-                            Al confirmar tu pedido por WhatsApp, te pediremos tu ubicación o referencias exactas para coordinar la entrega a domicilio.
-                          </p>
-                        </div>
-                      ) : (
-                        <>
+
+                          {/* 2. Celular | Nro. Cédula (en 2 columnas) */}
                           <div className="grid grid-cols-2 gap-2">
-                            <input
-                              id="customer-doc"
-                              name="doc"
-                              type="text"
-                              inputMode="numeric"
-                              value={customerDoc}
-                              onChange={e => setCustomerDoc(e.target.value)}
-                              placeholder="Nro. Cédula (C.I.) *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
-                            />
-                            <input
-                              id="tel"
-                              name="tel"
-                              type="tel"
-                              inputMode="tel"
-                              autoComplete="tel"
-                              value={customerPhone}
-                              onChange={e => setCustomerPhone(e.target.value)}
-                              placeholder="Celular / WhatsApp *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
-                            />
+                            <div>
+                              <input
+                                id="tel"
+                                name="tel"
+                                type="tel"
+                                inputMode="tel"
+                                autoComplete="tel"
+                                value={customerPhone}
+                                onChange={e => {
+                                  setCustomerPhone(e.target.value);
+                                  if (formErrors.phone) setFormErrors(prev => ({ ...prev, phone: undefined }));
+                                }}
+                                placeholder="Numero de celular"
+                                aria-label="Celular o WhatsApp"
+                                className={`w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none transition ${
+                                  formErrors.phone ? 'border-rose-500 ring-1 ring-rose-500/50 bg-rose-50/10' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50'
+                                }`}
+                              />
+                              {formErrors.phone && (
+                                <span className="text-[10px] text-rose-500 font-medium block mt-0.5">{formErrors.phone}</span>
+                              )}
+                            </div>
+                            <div>
+                              <input
+                                id="customer-doc"
+                                name="doc"
+                                type="text"
+                                inputMode="numeric"
+                                value={customerDoc}
+                                onChange={e => setCustomerDoc(e.target.value)}
+                                placeholder="Nro. Cédula"
+                                aria-label="Número de Cédula"
+                                className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
+                              />
+                            </div>
                           </div>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            <input
-                              id="address-level2"
-                              name="address-level2"
-                              type="text"
-                              autoComplete="address-level2"
-                              value={customerCity}
-                              onChange={e => setCustomerCity(e.target.value)}
-                              placeholder="Ciudad *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
-                            />
-                            <input
-                              id="address-level1"
-                              name="address-level1"
-                              type="text"
-                              autoComplete="address-level1"
-                              value={customerDept}
-                              onChange={e => setCustomerDept(e.target.value)}
-                              placeholder="Departamento *"
-                              className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 transition"
-                            />
-                          </div>
+                          {shippingType === 'villarrica' ? (
+                            <div className="p-3 rounded-xl bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 text-[11px] text-zinc-700 dark:text-zinc-300 space-y-1">
+                              <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                                <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                <span>Coordinación de Entrega en Villarrica</span>
+                              </div>
+                              <p className="leading-relaxed text-zinc-600 dark:text-zinc-400">
+                                Al confirmar tu pedido por WhatsApp, te pediremos tu ubicación o referencias exactas para coordinar la entrega a domicilio.
+                              </p>
+                            </div>
+                          ) : (
+                            <>
+                              {/* 3. Departamento * (Buscador / Desplegable) */}
+                              <div>
+                                <SearchableSelect
+                                  id="customer-dept"
+                                  name="address-level1"
+                                  value={customerDept}
+                                  onChange={dept => {
+                                    setCustomerDept(dept);
+                                    if (formErrors.dept) setFormErrors(prev => ({ ...prev, dept: undefined }));
+                                    const citiesForDept = PARAGUAY_LOCATIONS[dept] || [];
+                                    if (customerCity && !citiesForDept.includes(customerCity)) {
+                                      setCustomerCity('');
+                                    }
+                                  }}
+                                  options={DEPARTAMENTOS_PARAGUAY}
+                                  placeholder="Departamento *"
+                                  ariaLabel="Departamento"
+                                  error={formErrors.dept}
+                                />
+                              </div>
 
-                          <textarea
-                            id="street-address"
-                            name="street-address"
-                            rows={2}
-                            autoComplete="street-address"
-                            value={customerAddress}
-                            onChange={e => setCustomerAddress(e.target.value)}
-                            placeholder="Dirección exacta o Sucursal de Transportadora (ej: AEX Central, NSA Sucursal) *"
-                            className="w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50 resize-none transition"
-                          />
-                        </>
-                      )}
-                    </form>
+                              {/* 4. Ciudad de Destino * (Buscador / Desplegable dependiente) */}
+                              <div>
+                                <SearchableSelect
+                                  id="address-level2"
+                                  name="address-level2"
+                                  value={customerCity}
+                                  onChange={city => {
+                                    setCustomerCity(city);
+                                    if (formErrors.city) setFormErrors(prev => ({ ...prev, city: undefined }));
+                                  }}
+                                  options={customerDept ? (PARAGUAY_LOCATIONS[customerDept] || []) : []}
+                                  placeholder="Ciudad de Destino *"
+                                  disabled={!customerDept}
+                                  disabledPlaceholder="Primero selecciona un departamento"
+                                  ariaLabel="Ciudad de Destino"
+                                  error={formErrors.city}
+                                />
+                              </div>
+
+                              {/* 5. Dirección o indicar si retira de sucursal (dentro del cuadro) */}
+                              <div>
+                                <textarea
+                                  id="street-address"
+                                  name="street-address"
+                                  rows={2}
+                                  autoComplete="street-address"
+                                  value={customerAddress}
+                                  onChange={e => {
+                                    setCustomerAddress(e.target.value);
+                                    if (formErrors.address) setFormErrors(prev => ({ ...prev, address: undefined }));
+                                  }}
+                                  placeholder="Dirección o indicar si retira de sucursal"
+                                  aria-label="Dirección o Sucursal de Transportadora"
+                                  className={`w-full p-2.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none resize-none transition ${
+                                    formErrors.address ? 'border-rose-500 ring-1 ring-rose-500/50 bg-rose-50/10' : 'border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400/50'
+                                  }`}
+                                />
+                                {formErrors.address && (
+                                  <span className="text-[10px] text-rose-500 font-medium block mt-0.5">{formErrors.address}</span>
+                                )}
+                              </div>
+                            </>
+                          )}
+                        </form>
+                      );
+                    })()}
                   </div>
 
                   {/* ─── PASO 3: Medio de Pago ──────────────────────────── */}
@@ -579,6 +645,12 @@ export default function CartDrawer({
                   </div>
                 </div>
 
+                {Object.values(formErrors).some(Boolean) && (
+                  <div className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-400 text-xs font-semibold flex items-center gap-2">
+                    <span>⚠️ Completa los campos marcados en rojo para finalizar.</span>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={onSendOrderWhatsApp}
@@ -590,6 +662,24 @@ export default function CartDrawer({
                 </button>
                 <div className="text-center text-[11px] text-zinc-500 dark:text-zinc-400">
                   Atención y coordinación directa por WhatsApp
+                </div>
+                <div className="text-center text-[10px] text-zinc-400 dark:text-zinc-500 pt-0.5">
+                  Al confirmar tu pedido, aceptas nuestros{' '}
+                  <button
+                    type="button"
+                    onClick={() => onOpenPolicy?.('terminos')}
+                    className="underline hover:text-zinc-700 dark:hover:text-zinc-300 font-medium cursor-pointer"
+                  >
+                    Términos
+                  </button>{' '}
+                  y{' '}
+                  <button
+                    type="button"
+                    onClick={() => onOpenPolicy?.('privacidad')}
+                    className="underline hover:text-zinc-700 dark:hover:text-zinc-300 font-medium cursor-pointer"
+                  >
+                    Políticas
+                  </button>.
                 </div>
               </div>
             )}

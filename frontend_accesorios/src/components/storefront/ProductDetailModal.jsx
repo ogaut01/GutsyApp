@@ -691,6 +691,8 @@ export default function ProductDetailModal({
 
                     {/* Botón Principal de Compra */}
                     <button
+                      data-testid="add-to-cart-modal-btn"
+                      aria-label={isAvailable ? `Agregar ${activeModalProduct.nombre} al carrito de compras` : 'Producto agotado'}
                       onClick={() => {
                         if (!isAvailable) return;
                         
@@ -717,7 +719,7 @@ export default function ProductDetailModal({
                         <>
                           <ShoppingBag className="w-4 h-4" />
                           <span>
-                            AGREGAR AL PEDIDO • Gs. {formatGsInput(currentUnitEffectivePrice * modalQuantity)}
+                            AGREGAR AL CARRITO • Gs. {formatGsInput(currentUnitEffectivePrice * modalQuantity)}
                           </span>
                         </>
                       ) : (

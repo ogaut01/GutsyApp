@@ -114,6 +114,7 @@ class ProductoViewSet(viewsets.ModelViewSet):
     ).prefetch_related(
         'variantes',
         'materiales',
+        'imagenes_galeria',
         'itemlote_set__lote',
         'itemlote_set__proveedor_historico'
     )
