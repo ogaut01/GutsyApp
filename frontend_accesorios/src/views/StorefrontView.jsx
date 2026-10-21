@@ -243,14 +243,14 @@ export default function StorefrontView({
 
     if (!fromHistory) {
       updateProductUrl(product.id, product.nombre);
+    } else {
+      document.title = `${product.nombre} | GUTSY Accesorios y Regalos`;
     }
-    document.title = `${product.nombre} | GUTSY Joyas`;
   };
 
   const handleCloseProductModal = () => {
     setActiveModalProduct(null);
     updateCategoryUrl(selectedCategory);
-    document.title = 'GUTSY | Joyas & Accesorios';
   };
 
   // Abrir producto directo si venía en la URL inicial (/producto/:id)
@@ -276,7 +276,7 @@ export default function StorefrontView({
         }
       } else {
         setActiveModalProduct(null);
-        document.title = 'GUTSY | Joyas & Accesorios';
+        updateCategoryUrl(category);
       }
     };
 

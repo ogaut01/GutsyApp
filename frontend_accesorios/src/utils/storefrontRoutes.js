@@ -54,13 +54,44 @@ export function parseStorefrontUrl() {
   return { category: 'ALL', productId: null, isProductRoute: false };
 }
 
+const SEO_CATEGORY_TITLES = {
+  ALL: 'GUTSY — Tienda de Accesorios y Regalos en Paraguay',
+  AN: 'Anillos para Hombre y Parejas | GUTSY Accesorios y Regalos',
+  PU: 'Pulseras y Brazaletes Masculinos | GUTSY Paraguay',
+  CO: 'Collares y Colgantes | GUTSY Accesorios y Regalos',
+  CA: 'Cadenas de Acero Quirúrgico | GUTSY Paraguay',
+  ST: 'Sets y Combos de Regalo | GUTSY Paraguay',
+  PA: 'Regalos para Parejas y Accesorios Dúo | GUTSY Paraguay',
+  AR: 'Aros y Argollas para Hombre | GUTSY Paraguay',
+  LE: 'Lentes de Sol | GUTSY Accesorios Paraguay',
+  TO: 'Tobilleras | GUTSY Accesorios Paraguay',
+  DI: 'Dijes y Colgantes de Acero | GUTSY Paraguay',
+  OT: 'Accesorios y Detalles Especiales | GUTSY Paraguay'
+};
+
+const DEFAULT_META_DESC = 'GUTSY — Tienda online de accesorios y regalos en Paraguay. Pulseras, collares, cadenas, anillos de acero quirúrgico y sets especiales para regalar. Envíos a todo el país.';
+
 /**
- * Actualiza la URL del navegador para reflejar la categoría seleccionada
+ * Actualiza la URL y el SEO (título y meta descripción) según la categoría seleccionada
  */
 export function updateCategoryUrl(categoryId, replace = false) {
   if (typeof window === 'undefined') return;
   const cat = ALL_STORE_CATEGORIES.find(c => c.id === categoryId);
   const targetPath = (!cat || cat.id === 'ALL') ? '/' : `/${cat.slug}`;
+
+  // Actualizar Título SEO dinámico
+  const seoTitle = SEO_CATEGORY_TITLES[categoryId] || (cat ? `${cat.label} | GUTSY Accesorios y Regalos` : SEO_CATEGORY_TITLES.ALL);
+  document.title = seoTitle;
+
+  // Restaurar meta descripción si no hay producto abierto
+  const metaDesc = document.querySelector('meta[name="description"]');
+  if (metaDesc) {
+    if (cat && cat.id !== 'ALL') {
+      metaDesc.setAttribute('content', `Descubre nuestra colección de ${cat.label.toLowerCase()} en GUTSY Paraguay. Accesorios y opciones de regalo con envíos rápidos a todo el país.`);
+    } else {
+      metaDesc.setAttribute('content', DEFAULT_META_DESC);
+    }
+  }
 
   if (window.location.pathname !== targetPath) {
     if (replace) {
@@ -72,12 +103,20 @@ export function updateCategoryUrl(categoryId, replace = false) {
 }
 
 /**
- * Actualiza la URL del navegador para reflejar el producto abierto en modal
+ * Actualiza la URL y el SEO (título y meta descripción) según el producto abierto en modal
  */
 export function updateProductUrl(productId, productName = '', replace = false) {
   if (typeof window === 'undefined') return;
   const nameSlug = slugify(productName);
   const targetPath = nameSlug ? `/producto/${productId}-${nameSlug}` : `/producto/${productId}`;
+
+  if (productName) {
+    document.title = `${productName} | GUTSY Accesorios y Regalos`;
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc) {
+      metaDesc.setAttribute('content', `Compra ${productName} en GUTSY Paraguay. Accesorios seleccionados y regalos especiales con envíos garantizados a todo el país.`);
+    }
+  }
 
   if (window.location.pathname !== targetPath) {
     if (replace) {
