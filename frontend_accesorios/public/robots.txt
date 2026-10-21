@@ -1,0 +1,21 @@
+# robots.txt para GUTSY — Tienda de Accesorios y Regalos en Paraguay
+User-agent: *
+Allow: /
+Allow: /collares
+Allow: /pulseras
+Allow: /anillos
+Allow: /cadenas
+Allow: /aros
+Allow: /sets
+Allow: /parejas
+Allow: /lentes
+Allow: /tobilleras
+Allow: /dijes
+Allow: /producto/
+
+# Desautorizar rutas privadas y de administración interna
+Disallow: /admin
+Disallow: /api/
+Disallow: /#gsy-cp-2024
+
+Sitemap: https://gutsyapp.vercel.app/sitemap.xml
