@@ -2,59 +2,59 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- Página de Inicio -->
   <url>
-    <loc>https://gutsyapp.vercel.app/</loc>
+    <loc>https://gutsy-app-omega.vercel.app/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
 
   <!-- Categorías de Accesorios y Regalos -->
   <url>
-    <loc>https://gutsyapp.vercel.app/pulseras</loc>
+    <loc>https://gutsy-app-omega.vercel.app/pulseras</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/collares</loc>
+    <loc>https://gutsy-app-omega.vercel.app/collares</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/cadenas</loc>
+    <loc>https://gutsy-app-omega.vercel.app/cadenas</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/anillos</loc>
+    <loc>https://gutsy-app-omega.vercel.app/anillos</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/sets</loc>
+    <loc>https://gutsy-app-omega.vercel.app/sets</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/parejas</loc>
+    <loc>https://gutsy-app-omega.vercel.app/parejas</loc>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/aros</loc>
+    <loc>https://gutsy-app-omega.vercel.app/aros</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/dijes</loc>
+    <loc>https://gutsy-app-omega.vercel.app/dijes</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/lentes</loc>
+    <loc>https://gutsy-app-omega.vercel.app/lentes</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://gutsyapp.vercel.app/tobilleras</loc>
+    <loc>https://gutsy-app-omega.vercel.app/tobilleras</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

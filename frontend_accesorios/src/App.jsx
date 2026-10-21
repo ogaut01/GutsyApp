@@ -46,7 +46,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
     if (typeof window !== 'undefined') {
       const p = window.location.pathname.toLowerCase().replace(/\/+$/, '');
-      if (p.startsWith('/producto') || p.startsWith('/p/') || p.startsWith('/categoria')) {
+      const s = new URLSearchParams(window.location.search);
+      if (p.startsWith('/producto') || p.startsWith('/p/') || p.startsWith('/categoria') || s.has('producto') || s.has('p')) {
         return 'storefront';
       }
     }

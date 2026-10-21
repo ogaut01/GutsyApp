@@ -26,10 +26,19 @@ export function parseStorefrontUrl() {
     return { category: 'ALL', productId: null, isProductRoute: false };
   }
 
+  // 1. Detectar parámetro de consulta ?producto=:id o ?p=:id
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    const queryProd = searchParams.get('producto') || searchParams.get('p');
+    if (queryProd && !isNaN(Number(queryProd))) {
+      return { category: 'ALL', productId: Number(queryProd), isProductRoute: true };
+    }
+  } catch (e) {}
+
   const rawPath = window.location.pathname.replace(/\/+$/, '') || '/';
   const pathname = rawPath.toLowerCase();
 
-  // 1. Detectar ruta de producto: /producto/:id o /p/:id
+  // 2. Detectar ruta de producto: /producto/:id o /p/:id
   const productMatch = pathname.match(/^\/(?:producto|p)\/(\d+)(?:-.*)?$/);
   if (productMatch) {
     const id = Number(productMatch[1]);
