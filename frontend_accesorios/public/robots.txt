@@ -18,4 +18,4 @@ Disallow: /admin
 Disallow: /api/
 Disallow: /#gsy-cp-2024
 
-Sitemap: https://gutsyapp.vercel.app/sitemap.xml
+Sitemap: https://gutsy-app-omega.vercel.app/sitemap.xml
