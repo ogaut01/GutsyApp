@@ -53,14 +53,15 @@ export function parseDecimalInput(value) {
 
 /**
  * Optimiza URLs de Cloudinary inyectando parámetros f_auto, q_auto y ancho responsivo.
- * Reduce drásticamente la carga de imágenes (WebP/AVIF comprimido).
+ * Reduce drásticamente la carga de imágenes (WebP/AVIF comprimido) y asegura HTTPS.
  */
-export function getOptimizedImageUrl(url, width = 600) {
+export function getOptimizedImageUrl(url, width = 400) {
   if (!url || typeof url !== 'string') return url;
-  if (url.includes('res.cloudinary.com') && url.includes('/upload/')) {
+  let cleanUrl = url.replace(/^http:\/\/res\.cloudinary\.com/, 'https://res.cloudinary.com');
+  if (cleanUrl.includes('res.cloudinary.com') && cleanUrl.includes('/upload/')) {
     // Si ya tiene transformaciones avanzadas, evitar duplicar
-    if (url.includes('/upload/f_auto')) return url;
-    return url.replace('/upload/', `/upload/f_auto,q_auto,w_${width},c_limit/`);
+    if (cleanUrl.includes('/upload/f_auto')) return cleanUrl;
+    return cleanUrl.replace('/upload/', `/upload/f_auto,q_auto,w_${width},c_limit/`);
   }
-  return url;
+  return cleanUrl;
 }

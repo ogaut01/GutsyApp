@@ -1,8 +1,14 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { fetchMateriales, createPedidoWeb } from '../services/api';
 import { formatGsInput } from '../currency';
-import SizeGuideModal from '../components/SizeGuideModal';
-import ProductLightbox from '../components/ProductLightbox';
+// Modales diferidos con React.lazy para no sobrecargar el hilo principal en la carga inicial
+const SizeGuideModal = React.lazy(() => import('../components/SizeGuideModal'));
+const ProductLightbox = React.lazy(() => import('../components/ProductLightbox'));
+const MobileFiltersModal = React.lazy(() => import('../components/storefront/MobileFiltersModal'));
+const ProductDetailModal = React.lazy(() => import('../components/storefront/ProductDetailModal'));
+const CartDrawer = React.lazy(() => import('../components/storefront/CartDrawer'));
+const OrderSuccessModal = React.lazy(() => import('../components/storefront/OrderSuccessModal'));
+const StorePoliciesModal = React.lazy(() => import('../components/storefront/StorePoliciesModal'));
 
 // Constantes y Configuración
 import {
@@ -32,14 +38,9 @@ import {
 import StorefrontNavbar from '../components/storefront/StorefrontNavbar';
 import StorefrontHero from '../components/storefront/StorefrontHero';
 import StorefrontFilters from '../components/storefront/StorefrontFilters';
-import MobileFiltersModal from '../components/storefront/MobileFiltersModal';
 import ProductGrid from '../components/storefront/ProductGrid';
-import ProductDetailModal from '../components/storefront/ProductDetailModal';
-import CartDrawer from '../components/storefront/CartDrawer';
-import OrderSuccessModal from '../components/storefront/OrderSuccessModal';
 import CustomerReviewsSection from '../components/storefront/CustomerReviewsSection';
 import StorefrontFooter from '../components/storefront/StorefrontFooter';
-import StorePoliciesModal from '../components/storefront/StorePoliciesModal';
 
 // Exportar cuentas bancarias por compatibilidad
 export { BANK_ACCOUNTS };
@@ -140,6 +141,38 @@ export default function StorefrontView({
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
   const [orderSentSuccess, setOrderSentSuccess] = useState(false);
   const [formErrors, setFormErrors] = useState({});
+
+  // Banderas de activación bajo demanda para modales diferidos
+  const [hasOpenedModal, setHasOpenedModal] = useState(false);
+  const [hasOpenedFilters, setHasOpenedFilters] = useState(false);
+  const [hasOpenedCart, setHasOpenedCart] = useState(false);
+  const [hasOpenedSizeGuide, setHasOpenedSizeGuide] = useState(false);
+  const [hasOpenedLightbox, setHasOpenedLightbox] = useState(false);
+  const [hasOpenedPolicies, setHasOpenedPolicies] = useState(false);
+
+  useEffect(() => {
+    if (activeModalProduct) setHasOpenedModal(true);
+  }, [activeModalProduct]);
+
+  useEffect(() => {
+    if (isMobileFiltersOpen) setHasOpenedFilters(true);
+  }, [isMobileFiltersOpen]);
+
+  useEffect(() => {
+    if (isCartOpen) setHasOpenedCart(true);
+  }, [isCartOpen]);
+
+  useEffect(() => {
+    if (isSizeGuideOpen) setHasOpenedSizeGuide(true);
+  }, [isSizeGuideOpen]);
+
+  useEffect(() => {
+    if (isLightboxOpen || previewImage) setHasOpenedLightbox(true);
+  }, [isLightboxOpen, previewImage]);
+
+  useEffect(() => {
+    if (policyModalTab) setHasOpenedPolicies(true);
+  }, [policyModalTab]);
 
   const selectedBank = useMemo(() => {
     return BANK_ACCOUNTS.find(b => b.id === selectedBankId) || BANK_ACCOUNTS[0];
@@ -806,143 +839,156 @@ export default function StorefrontView({
         <CustomerReviewsSection />
       </div>
 
-      {/* 6. Modal de Detalle de Producto */}
-      <ProductDetailModal
-        activeModalProduct={activeModalProduct}
-        onClose={handleCloseProductModal}
-        modalImages={modalImages}
-        activeImageIndex={activeImageIndex}
-        setActiveImageIndex={setActiveImageIndex}
-        selectedVariant={selectedVariant}
-        setSelectedVariant={setSelectedVariant}
-        earringOption={earringOption}
-        setEarringOption={setEarringOption}
-        modalQuantity={modalQuantity}
-        setModalQuantity={setModalQuantity}
-        customEngravingText={customEngravingText}
-        engravingFace1={engravingFace1}
-        setEngravingFace1={setEngravingFace1}
-        engravingFace2={engravingFace2}
-        setEngravingFace2={setEngravingFace2}
-        activeEngravingFace={activeEngravingFace}
-        setActiveEngravingFace={setActiveEngravingFace}
-        engravingFont={engravingFont}
-        setEngravingFont={setEngravingFont}
-        openAccordion={openAccordion}
-        setOpenAccordion={setOpenAccordion}
-        cart={cart}
-        removeCartItem={removeCartItem}
-        onAddToCart={handleAddToCart}
-        onOpenSizeGuide={handleOpenSizeGuide}
-        onOpenLightbox={() => setIsLightboxOpen(true)}
-        onSetPreviewImage={setPreviewImage}
-        matchedDbPackaging={matchedDbPackaging}
-        crossSellProducts={crossSellProducts}
-        onOpenAnotherProduct={(p) => handleOpenProductModal(p)}
-      />
+      {/* Modales cargados bajo demanda (React.lazy) para optimizar carga inicial y liberar main-thread */}
+      <React.Suspense fallback={null}>
+        {hasOpenedModal && (
+          <ProductDetailModal
+            activeModalProduct={activeModalProduct}
+            onClose={handleCloseProductModal}
+            modalImages={modalImages}
+            activeImageIndex={activeImageIndex}
+            setActiveImageIndex={setActiveImageIndex}
+            selectedVariant={selectedVariant}
+            setSelectedVariant={setSelectedVariant}
+            earringOption={earringOption}
+            setEarringOption={setEarringOption}
+            modalQuantity={modalQuantity}
+            setModalQuantity={setModalQuantity}
+            customEngravingText={customEngravingText}
+            engravingFace1={engravingFace1}
+            setEngravingFace1={setEngravingFace1}
+            engravingFace2={engravingFace2}
+            setEngravingFace2={setEngravingFace2}
+            activeEngravingFace={activeEngravingFace}
+            setActiveEngravingFace={setActiveEngravingFace}
+            engravingFont={engravingFont}
+            setEngravingFont={setEngravingFont}
+            openAccordion={openAccordion}
+            setOpenAccordion={setOpenAccordion}
+            cart={cart}
+            removeCartItem={removeCartItem}
+            onAddToCart={handleAddToCart}
+            onOpenSizeGuide={handleOpenSizeGuide}
+            onOpenLightbox={() => setIsLightboxOpen(true)}
+            onSetPreviewImage={setPreviewImage}
+            matchedDbPackaging={matchedDbPackaging}
+            crossSellProducts={crossSellProducts}
+            onOpenAnotherProduct={(p) => handleOpenProductModal(p)}
+          />
+        )}
 
-      {/* 7. Modal de Filtros en Mobile */}
-      <MobileFiltersModal
-        isOpen={isMobileFiltersOpen}
-        onClose={() => setIsMobileFiltersOpen(false)}
-        activeFilterCount={activeFilterCount}
-        selectedGender={selectedGender}
-        setSelectedGender={setSelectedGender}
-        selectedMaterial={selectedMaterial}
-        setSelectedMaterial={setSelectedMaterial}
-        materialFilterOptions={materialFilterOptions}
-        selectedColor={selectedColor}
-        setSelectedColor={setSelectedColor}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        onResetFilters={handleResetFilters}
-        totalResults={filteredProducts.length}
-      />
+        {hasOpenedFilters && (
+          <MobileFiltersModal
+            isOpen={isMobileFiltersOpen}
+            onClose={() => setIsMobileFiltersOpen(false)}
+            activeFilterCount={activeFilterCount}
+            selectedGender={selectedGender}
+            setSelectedGender={setSelectedGender}
+            selectedMaterial={selectedMaterial}
+            setSelectedMaterial={setSelectedMaterial}
+            materialFilterOptions={materialFilterOptions}
+            selectedColor={selectedColor}
+            setSelectedColor={setSelectedColor}
+            sortBy={sortBy}
+            setSortBy={setSortBy}
+            onResetFilters={handleResetFilters}
+            totalResults={filteredProducts.length}
+          />
+        )}
 
-      {/* 8. Carrito & Checkout Drawer */}
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cart={cart}
-        totalCartItems={totalCartItems}
-        cartSubtotal={cartSubtotal}
-        cartTotal={cartTotal}
-        deliveryCost={deliveryCost}
-        updateCartItemQuantity={updateCartItemQuantity}
-        removeCartItem={removeCartItem}
-        shippingType={shippingType}
-        setShippingType={setShippingType}
-        customerFullName={customerFullName}
-        setCustomerFullName={setCustomerFullName}
-        customerDoc={customerDoc}
-        setCustomerDoc={setCustomerDoc}
-        customerPhone={customerPhone}
-        setCustomerPhone={setCustomerPhone}
-        customerCity={customerCity}
-        setCustomerCity={setCustomerCity}
-        customerDept={customerDept}
-        setCustomerDept={setCustomerDept}
-        customerAddress={customerAddress}
-        setCustomerAddress={setCustomerAddress}
-        paymentMethod={paymentMethod}
-        setPaymentMethod={setPaymentMethod}
-        selectedBankId={selectedBankId}
-        setSelectedBankId={setSelectedBankId}
-        selectedBank={selectedBank}
-        copiedAlias={copiedAlias}
-        copiedBank={copiedBank}
-        copyAliasOnly={copyAliasOnly}
-        copyBankDetails={copyBankDetails}
-        isSubmittingOrder={isSubmittingOrder}
-        formErrors={formErrors}
-        setFormErrors={setFormErrors}
-        onSendOrderWhatsApp={handleSendOrderWhatsApp}
-        onOpenPolicy={setPolicyModalTab}
-      />
+        {hasOpenedCart && (
+          <CartDrawer
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            cart={cart}
+            totalCartItems={totalCartItems}
+            cartSubtotal={cartSubtotal}
+            cartTotal={cartTotal}
+            deliveryCost={deliveryCost}
+            updateCartItemQuantity={updateCartItemQuantity}
+            removeCartItem={removeCartItem}
+            shippingType={shippingType}
+            setShippingType={setShippingType}
+            customerFullName={customerFullName}
+            setCustomerFullName={setCustomerFullName}
+            customerDoc={customerDoc}
+            setCustomerDoc={setCustomerDoc}
+            customerPhone={customerPhone}
+            setCustomerPhone={setCustomerPhone}
+            customerCity={customerCity}
+            setCustomerCity={setCustomerCity}
+            customerDept={customerDept}
+            setCustomerDept={setCustomerDept}
+            customerAddress={customerAddress}
+            setCustomerAddress={setCustomerAddress}
+            paymentMethod={paymentMethod}
+            setPaymentMethod={setPaymentMethod}
+            selectedBankId={selectedBankId}
+            setSelectedBankId={setSelectedBankId}
+            selectedBank={selectedBank}
+            copiedAlias={copiedAlias}
+            copiedBank={copiedBank}
+            copyAliasOnly={copyAliasOnly}
+            copyBankDetails={copyBankDetails}
+            isSubmittingOrder={isSubmittingOrder}
+            formErrors={formErrors}
+            setFormErrors={setFormErrors}
+            onSendOrderWhatsApp={handleSendOrderWhatsApp}
+            onOpenPolicy={setPolicyModalTab}
+          />
+        )}
 
-      {/* 9. Modal de Éxito de Pedido */}
-      <OrderSuccessModal
-        isOpen={orderSentSuccess}
-        onClose={() => {
-          setOrderSentSuccess(false);
-          setIsCartOpen(false);
-          setCart([]);
-        }}
-      />
+        {orderSentSuccess && (
+          <OrderSuccessModal
+            isOpen={orderSentSuccess}
+            onClose={() => {
+              setOrderSentSuccess(false);
+              setIsCartOpen(false);
+              setCart([]);
+            }}
+          />
+        )}
 
-      {/* 10. Guía de Talles y Lightbox */}
-      <SizeGuideModal
-        isOpen={isSizeGuideOpen}
-        onClose={() => setIsSizeGuideOpen(false)}
-        initialTab={sizeGuideInitialTab}
-      />
+        {hasOpenedSizeGuide && (
+          <SizeGuideModal
+            isOpen={isSizeGuideOpen}
+            onClose={() => setIsSizeGuideOpen(false)}
+            initialTab={sizeGuideInitialTab}
+          />
+        )}
 
-      <ProductLightbox
-        isOpen={isLightboxOpen}
-        onClose={() => setIsLightboxOpen(false)}
-        images={modalImages}
-        activeIndex={activeImageIndex}
-        onSelectIndex={(idx) => setActiveImageIndex(idx)}
-        title={activeModalProduct?.nombre || ''}
-      />
+        {hasOpenedLightbox && (
+          <>
+            <ProductLightbox
+              isOpen={isLightboxOpen}
+              onClose={() => setIsLightboxOpen(false)}
+              images={modalImages}
+              activeIndex={activeImageIndex}
+              onSelectIndex={(idx) => setActiveImageIndex(idx)}
+              title={activeModalProduct?.nombre || ''}
+            />
 
-      {previewImage && (
-        <ProductLightbox
-          isOpen={!!previewImage}
-          onClose={() => setPreviewImage(null)}
-          images={[{ url: previewImage.url, label: previewImage.title }]}
-          activeIndex={0}
-          onSelectIndex={() => {}}
-          title={previewImage.title || 'Vista Previa'}
-        />
-      )}
+            {previewImage && (
+              <ProductLightbox
+                isOpen={!!previewImage}
+                onClose={() => setPreviewImage(null)}
+                images={[{ url: previewImage.url, label: previewImage.title }]}
+                activeIndex={0}
+                onSelectIndex={() => {}}
+                title={previewImage.title || 'Vista Previa'}
+              />
+            )}
+          </>
+        )}
 
-      {/* 11. Modal de Políticas de la Tienda */}
-      <StorePoliciesModal
-        isOpen={Boolean(policyModalTab)}
-        initialTab={policyModalTab || 'privacidad'}
-        onClose={() => setPolicyModalTab(null)}
-      />
+        {hasOpenedPolicies && (
+          <StorePoliciesModal
+            isOpen={Boolean(policyModalTab)}
+            initialTab={policyModalTab || 'privacidad'}
+            onClose={() => setPolicyModalTab(null)}
+          />
+        )}
+      </React.Suspense>
 
       {/* 12. Footer */}
       <StorefrontFooter onOpenPolicy={setPolicyModalTab} />

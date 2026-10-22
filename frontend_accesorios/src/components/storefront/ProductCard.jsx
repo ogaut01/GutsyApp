@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Gem, Eye, Plus } from 'lucide-react';
 import { formatGsInput } from '../../currency';
@@ -13,7 +13,28 @@ export default function ProductCard({
 }) {
   const activeVariantForCard = getMatchingColorVariant(product, selectedColor);
   const rawImageSrc = activeVariantForCard?.imagen_url || product.imagen_url_completa || product.imagen_url || null;
-  const imageSrc = getOptimizedImageUrl(rawImageSrc, 500);
+  // Ancho optimizado a 400px (ideal para pantallas Retina móviles sin desperdiciar ancho de banda)
+  const imageSrc = getOptimizedImageUrl(rawImageSrc, 400);
+
+  const [currentSrc, setCurrentSrc] = useState(imageSrc);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    setCurrentSrc(imageSrc);
+    setIsLoaded(false);
+    setHasError(false);
+  }, [imageSrc]);
+
+  const handleImageError = () => {
+    // Si la URL con transformaciones de Cloudinary falla, reintentar con la URL directa
+    if (currentSrc !== rawImageSrc && rawImageSrc) {
+      setCurrentSrc(rawImageSrc);
+    } else {
+      setHasError(true);
+    }
+  };
+
   const hasStock = product.activo !== false && (product.stock_total || 0) > 0;
   const isLastUnit = hasStock && (product.stock_total || 0) === 1;
   const variants = product.variantes || [];
@@ -39,6 +60,9 @@ export default function ProductCard({
       : variants.map((v, i) => v.sku || `Opción ${i + 1}`);
 
   const hasPreviewBadges = previewBadges.length > 0 && (variants.length > 1 || previewBadges.length > 1);
+
+  // Primeras 2 tarjetas en móviles son candidatas críticas de LCP
+  const isPriority = productIndex < 2;
   const isAboveFold = productIndex < 4;
 
   return (
@@ -61,19 +85,29 @@ export default function ProductCard({
         className="relative aspect-square bg-zinc-100 dark:bg-zinc-900 overflow-hidden cursor-pointer"
         onClick={() => onOpenModal(product)}
       >
-        {imageSrc ? (
-          <img
-            src={imageSrc}
-            alt={product.nombre}
-            className={`w-full h-full object-cover transition-all duration-500 ${
-              hasStock ? 'group-hover:scale-105' : 'opacity-75 grayscale-[20%] group-hover:opacity-100'
-            }`}
-            loading={isAboveFold ? 'eager' : 'lazy'}
-            fetchpriority={isAboveFold ? 'high' : undefined}
-            decoding="async"
-            width="300"
-            height="300"
-          />
+        {currentSrc && !hasError ? (
+          <>
+            {/* Skeleton suave visible mientras se descargan los bytes */}
+            {!isLoaded && (
+              <div className="absolute inset-0 bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse pointer-events-none" />
+            )}
+            <img
+              src={currentSrc}
+              alt={product.nombre}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${
+                isLoaded ? 'opacity-100' : 'opacity-0'
+              } ${
+                hasStock ? 'group-hover:scale-105' : 'opacity-75 grayscale-[20%] group-hover:opacity-100'
+              }`}
+              loading={isAboveFold ? 'eager' : 'lazy'}
+              fetchpriority={isPriority ? 'high' : undefined}
+              decoding={isPriority ? 'sync' : 'async'}
+              width="300"
+              height="300"
+              onLoad={() => setIsLoaded(true)}
+              onError={handleImageError}
+            />
+          </>
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 p-4 text-center">
             <Gem className="w-10 h-10 stroke-[1.5] mb-2" />

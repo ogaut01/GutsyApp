@@ -42,19 +42,21 @@ h1, h2, h3, .font-luxury-serif {
   scrollbar-width: none; /* Firefox */
 }
 
-/* Marquesina Infinita Superior */
+/* Marquesina Infinita Superior (Acelerada por GPU / Compositor sin bloquear el hilo principal) */
 @keyframes marquee-scroll {
   0% {
-    transform: translateX(0%);
+    transform: translate3d(0%, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .animate-marquee {
   display: flex;
   width: max-content;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
   animation: marquee-scroll 35s linear infinite;
 }
 
