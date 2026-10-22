@@ -7,8 +7,10 @@ import {
   getStoredToken, getStoredUser, fetchMe, logoutApi
 } from './services/api';
 
-// ─── Code Splitting / Lazy Loading de Vistas ──────────────────────────────
-const StorefrontView = lazy(() => import('./views/StorefrontView'));
+// Vista pública principal importada de inmediato para LCP óptimo
+import StorefrontView from './views/StorefrontView';
+
+// ─── Code Splitting / Lazy Loading de Vistas Administrativas ──────────────
 const LoginView = lazy(() => import('./views/LoginView'));
 const DashboardView = lazy(() => import('./views/DashboardView'));
 const InventoryView = lazy(() => import('./views/InventoryView'));
