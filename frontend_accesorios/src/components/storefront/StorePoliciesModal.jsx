@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  X, ShieldCheck, RotateCcw, FileText, Truck, Phone,
-  CheckCircle2, AlertCircle, HelpCircle, ArrowRight, MessageCircle, MapPin, Mail, Instagram
+  X, MessageCircle, MapPin, Mail, Instagram, ArrowRight
 } from 'lucide-react';
 import {
   STORE_WHATSAPP,
@@ -10,11 +9,11 @@ import {
 } from '../../constants/storefrontConstants';
 
 const POLICY_TABS = [
-  { id: 'privacidad', label: 'Política de privacidad', shortLabel: 'Privacidad', icon: ShieldCheck },
-  { id: 'reembolso', label: 'Política de reembolso', shortLabel: 'Reembolso & Cambios', icon: RotateCcw },
-  { id: 'terminos', label: 'Términos del servicio', shortLabel: 'Términos', icon: FileText },
-  { id: 'envio', label: 'Política de envío', shortLabel: 'Envíos', icon: Truck },
-  { id: 'contacto', label: 'Información de contacto', shortLabel: 'Contacto', icon: Phone },
+  { id: 'privacidad', label: 'Política de privacidad', shortLabel: 'Privacidad' },
+  { id: 'reembolso', label: 'Política de reembolso', shortLabel: 'Reembolso & Cambios' },
+  { id: 'terminos', label: 'Términos del servicio', shortLabel: 'Términos' },
+  { id: 'envio', label: 'Política de envío', shortLabel: 'Envíos' },
+  { id: 'contacto', label: 'Información de contacto', shortLabel: 'Contacto' },
 ];
 
 export default function StorePoliciesModal({
@@ -62,12 +61,12 @@ export default function StorePoliciesModal({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ duration: 0.2 }}
-          className="relative w-full max-w-3xl bg-white dark:bg-zinc-950 rounded-2xl sm:rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden z-10 flex flex-col max-h-[90vh]"
+          className="relative w-full max-w-3xl bg-white dark:bg-zinc-950 rounded-xl sm:rounded-2xl shadow-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden z-10 flex flex-col max-h-[90vh]"
         >
           {/* Header */}
-          <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-850 flex items-center justify-between shrink-0 bg-zinc-50/70 dark:bg-zinc-900/50">
+          <div className="p-4 sm:p-6 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between shrink-0">
             <div>
-              <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-600 dark:text-zinc-300">
+              <span className="text-[10px] uppercase font-bold tracking-widest text-zinc-500 dark:text-zinc-400">
                 Información para Clientes
               </span>
               <h2 className="text-lg sm:text-xl font-black tracking-tight text-zinc-900 dark:text-white uppercase font-serif">
@@ -77,7 +76,7 @@ export default function StorePoliciesModal({
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-xl text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white hover:bg-zinc-200/60 dark:hover:bg-zinc-800 transition"
+              className="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition"
               aria-label="Cerrar modal"
             >
               <X className="w-5 h-5" />
@@ -85,24 +84,22 @@ export default function StorePoliciesModal({
           </div>
 
           {/* Selector de Pestañas (Horizontal scroll en móviles) */}
-          <div className="border-b border-zinc-200 dark:border-zinc-850 bg-zinc-100/60 dark:bg-zinc-900/30 px-3 sm:px-6 shrink-0 overflow-x-auto no-scrollbar">
-            <div className="flex gap-1.5 sm:gap-2 py-2 min-w-max">
+          <div className="border-b border-zinc-200 dark:border-zinc-800 px-3 sm:px-6 shrink-0 overflow-x-auto no-scrollbar">
+            <div className="flex gap-0 min-w-max">
               {POLICY_TABS.map((tab) => {
-                const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
                 return (
                   <button
                     key={tab.id}
                     type="button"
                     onClick={() => setActiveTab(tab.id)}
-                    className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                    className={`px-3 sm:px-4 py-3 text-xs font-medium transition-all border-b-2 whitespace-nowrap ${
                       isActive
-                        ? 'bg-zinc-900 text-white dark:bg-white dark:text-black shadow-sm'
-                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 hover:bg-zinc-200/50 dark:hover:bg-zinc-800/50'
+                        ? 'border-zinc-900 dark:border-white text-zinc-900 dark:text-white'
+                        : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
                     }`}
                   >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{tab.shortLabel}</span>
+                    {tab.shortLabel}
                   </button>
                 );
               })}
@@ -110,25 +107,21 @@ export default function StorePoliciesModal({
           </div>
 
           {/* Contenido con scroll interno */}
-          <div className="p-5 sm:p-7 overflow-y-auto space-y-6 text-xs sm:text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed font-light">
+          <div className="p-5 sm:p-7 overflow-y-auto text-sm text-zinc-600 dark:text-zinc-300 leading-relaxed">
             
             {/* 1. POLÍTICA DE PRIVACIDAD */}
             {activeTab === 'privacidad' && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
-                    <span>Política de Privacidad</span>
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    En GUTSY nos comprometemos a cuidar tu privacidad y proteger la información que compartes con nosotros.
-                  </p>
-                </div>
+              <div className="animate-fadeIn">
+                <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white mb-1">
+                  Política de Privacidad
+                </h3>
+                <p className="text-xs text-zinc-500 mb-6">
+                  En GUTSY nos comprometemos a cuidar tu privacidad y proteger la información que compartes con nosotros.
+                </p>
 
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <div className="space-y-5">
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">
                       1. Datos que solicitamos
                     </h4>
                     <p>
@@ -141,9 +134,10 @@ export default function StorePoliciesModal({
                     </ul>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">
                       2. Uso exclusivo de tu información
                     </h4>
                     <p>
@@ -151,9 +145,10 @@ export default function StorePoliciesModal({
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-1.5">
-                      <Truck className="w-4 h-4 text-indigo-500" />
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">
                       3. Con quién se comparten tus datos
                     </h4>
                     <p>
@@ -161,9 +156,10 @@ export default function StorePoliciesModal({
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-1.5">
-                      <HelpCircle className="w-4 h-4 text-zinc-500" />
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">
                       4. Tus derechos
                     </h4>
                     <p>
@@ -176,24 +172,20 @@ export default function StorePoliciesModal({
 
             {/* 2. POLÍTICA DE REEMBOLSO Y CAMBIOS */}
             {activeTab === 'reembolso' && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <RotateCcw className="w-5 h-5 text-amber-500 shrink-0" />
-                    <span>Política de Reembolso, Garantía y Cambios</span>
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    Cuidamos cada pieza para que disfrutes de una compra segura y confiable.
-                  </p>
-                </div>
+              <div className="animate-fadeIn">
+                <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white mb-1">
+                  Política de Reembolso, Garantía y Cambios
+                </h3>
+                <p className="text-xs text-zinc-500 mb-6">
+                  Cuidamos cada pieza para que disfrutes de una compra segura y confiable.
+                </p>
 
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200/70 dark:border-amber-900/40">
-                    <h4 className="font-semibold text-amber-900 dark:text-amber-200 mb-2 flex items-center gap-1.5">
-                      <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <div className="space-y-5">
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">
                       Garantía por fallas de origen (7 días)
                     </h4>
-                    <p className="text-zinc-700 dark:text-zinc-300">
+                    <p>
                       Todos los accesorios son inspeccionados antes de ser empaquetados. Si recibes un producto con algún desperfecto de fabricación, rotura al llegar o fallo en el broche/cierre, dispones de <strong>hasta 7 días corridos</strong> desde la recepción para notificarnos por WhatsApp con una foto o video. Te lo cambiamos o reponemos sin costo adicional de flete.
                     </p>
                     <p className="text-[11px] text-zinc-500 mt-2">
@@ -201,9 +193,10 @@ export default function StorePoliciesModal({
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-1.5">
-                      <RotateCcw className="w-4 h-4 text-indigo-500" />
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">
                       Cambios de modelo o talle (7 días)
                     </h4>
                     <p>
@@ -215,9 +208,10 @@ export default function StorePoliciesModal({
                     </ul>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2 flex items-center gap-1.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">
                       Reembolsos
                     </h4>
                     <p>
@@ -230,27 +224,26 @@ export default function StorePoliciesModal({
 
             {/* 3. TÉRMINOS DEL SERVICIO */}
             {activeTab === 'terminos' && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <FileText className="w-5 h-5 text-blue-500 shrink-0" />
-                    <span>Términos del Servicio</span>
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    Condiciones aplicables al consultar y comprar accesorios en GUTSY.
-                  </p>
-                </div>
+              <div className="animate-fadeIn">
+                <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white mb-1">
+                  Términos del Servicio
+                </h3>
+                <p className="text-xs text-zinc-500 mb-6">
+                  Condiciones aplicables al consultar y comprar accesorios en GUTSY.
+                </p>
 
-                <div className="space-y-4">
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2">1. Precios y Moneda</h4>
+                <div className="space-y-5">
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">1. Precios y Moneda</h4>
                     <p>
                       Todos los precios del catálogo web se encuentran expresados en <strong>Guaraníes (Gs.)</strong>. El monto indicado es el precio final del producto a transferir al momento de la compra.
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2">2. Medios de Pago y Confirmación de Pedidos</h4>
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">2. Medios de Pago y Confirmación de Pedidos</h4>
                     <p>
                       Aceptamos pagos a través de los siguientes canales bancarios habilitados:
                     </p>
@@ -265,15 +258,19 @@ export default function StorePoliciesModal({
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2">3. Disponibilidad de Stock</h4>
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">3. Disponibilidad de Stock</h4>
                     <p>
                       Actualizamos continuamente la disponibilidad de nuestras piezas. Si por alta demanda simultánea algún accesorio no tuviese stock físico al momento de preparar el paquete, nos pondremos en contacto contigo de inmediato para coordinar el reemplazo por otra pieza o el reintegro total del importe.
                     </p>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-2">4. Fotografías y Detalles</h4>
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
+
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">4. Fotografías y Detalles</h4>
                     <p>
                       Mostramos imágenes reales de cada accesorio. Ten en cuenta que la tonalidad puede presentar leves variaciones según la iluminación o la configuración de pantalla de tu dispositivo.
                     </p>
@@ -284,96 +281,91 @@ export default function StorePoliciesModal({
 
             {/* 4. POLÍTICA DE ENVÍO */}
             {activeTab === 'envio' && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <Truck className="w-5 h-5 text-indigo-500 shrink-0" />
-                    <span>Política de Envío y Entregas</span>
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    Hacemos llegar tus accesorios a cualquier rincón de Paraguay con cobertura garantizada.
-                  </p>
-                </div>
+              <div className="animate-fadeIn">
+                <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white mb-1">
+                  Política de Envío y Entregas
+                </h3>
+                <p className="text-xs text-zinc-500 mb-6">
+                  Hacemos llegar tus accesorios a cualquier rincón de Paraguay con cobertura garantizada.
+                </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <span className="inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 mb-2">
-                      Villarrica (Local)
-                    </span>
-                    <h4 className="font-bold text-zinc-900 dark:text-white text-sm mb-1">
-                      Delivery en el día.
-                    </h4>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                      Entregas directas en puerta en la ciudad de Villarrica. Puedes optar por transferencia previa o pago contra entrega en efectivo.
-                    </p>
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Villarrica (Local)
+                      </span>
+                      <h4 className="font-bold text-zinc-900 dark:text-white text-sm mt-1 mb-1">
+                        Delivery en el día.
+                      </h4>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                        Entregas directas en puerta en la ciudad de Villarrica. Puedes optar por transferencia previa o pago contra entrega en efectivo.
+                      </p>
+                    </div>
+
+                    <div className="p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-500 dark:text-zinc-400">
+                        Interior del País
+                      </span>
+                      <h4 className="font-bold text-zinc-900 dark:text-white text-sm mt-1 mb-1">
+                        24 a 72 hs hábiles
+                      </h4>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-400">
+                        Envíos a todas las ciudades del país a través de empresas de encomienda reconocidas como MC GROUP, TSI, Empresas Guaireña, entre otras.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                    <span className="inline-block text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 mb-2">
-                      Interior del País
-                    </span>
-                    <h4 className="font-bold text-zinc-900 dark:text-white text-sm mb-1">
-                      24 a 72 hs hábiles
-                    </h4>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-400">
-                      Envíos a todas las ciudades del país a través de empresas de encomienda reconocidas como MC GROUP, TSI, Empresas Guaireña, entre otras.
-                    </p>
-                  </div>
-                </div>
+                  <hr className="border-zinc-200 dark:border-zinc-800" />
 
-                <div className="space-y-3 p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80">
-                  <h4 className="font-semibold text-zinc-900 dark:text-white">Costos de flete y despacho</h4>
-                  <ul className="list-disc pl-5 space-y-1.5 text-zinc-700 dark:text-zinc-300 text-xs">
-                    <li><strong>Villarrica:</strong> costo fijo de delivery local sumado al total del pedido.</li>
-                    <li><strong>Interior del país:</strong> el flete se abona habitualmente en destino al retirar o recibir el paquete por encomienda, o bien se incluye previamente si la empresa lo requiere.</li>
-                    <li><strong>Coordinación:</strong> Una vez despachado el paquete, te enviamos el número de guía o comprobante por WhatsApp para que puedas realizar el seguimiento.</li>
-                  </ul>
+                  <div>
+                    <h4 className="font-semibold text-zinc-900 dark:text-white mb-1.5">Costos de flete y despacho</h4>
+                    <ul className="list-disc pl-5 space-y-1.5 text-zinc-700 dark:text-zinc-300 text-xs">
+                      <li><strong>Villarrica:</strong> costo fijo de delivery local sumado al total del pedido.</li>
+                      <li><strong>Interior del país:</strong> el flete se abona habitualmente en destino al retirar o recibir el paquete por encomienda, o bien se incluye previamente si la empresa lo requiere.</li>
+                      <li><strong>Coordinación:</strong> Una vez despachado el paquete, te enviamos el número de guía o comprobante por WhatsApp para que puedas realizar el seguimiento.</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* 5. INFORMACIÓN DE CONTACTO */}
             {activeTab === 'contacto' && (
-              <div className="space-y-5 animate-fadeIn">
-                <div className="border-b border-zinc-200 dark:border-zinc-800 pb-3">
-                  <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-                    <Phone className="w-5 h-5 text-emerald-500 shrink-0" />
-                    <span>Información de Contacto</span>
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    Canales directos para resolver dudas, coordinar entregas o solicitar asesoramiento.
-                  </p>
-                </div>
+              <div className="animate-fadeIn">
+                <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white mb-1">
+                  Información de Contacto
+                </h3>
+                <p className="text-xs text-zinc-500 mb-6">
+                  Canales directos para resolver dudas, coordinar entregas o solicitar asesoramiento.
+                </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-4">
                   <a
                     href={`https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent('Hola, tengo una consulta sobre mi pedido.')}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/40 hover:border-emerald-300 transition flex items-start gap-3 group"
+                    className="flex items-center gap-3 p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition group"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <MessageCircle className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                    <MessageCircle className="w-5 h-5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 shrink-0 transition" />
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                         Atención WhatsApp
                       </span>
-                      <h4 className="font-bold text-zinc-900 dark:text-white text-sm group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
+                      <h4 className="font-bold text-zinc-900 dark:text-white text-sm">
                         {STORE_WHATSAPP_DISPLAY}
                       </h4>
                       <p className="text-[11px] text-zinc-500 mt-0.5">
                         Lunes a Domingo: 08:00 a 19:00 hs
                       </p>
                     </div>
+                    <ArrowRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600 ml-auto shrink-0" />
                   </a>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80 flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-zinc-800 text-white flex items-center justify-center shrink-0">
-                      <MapPin className="w-5 h-5" />
-                    </div>
+                  <div className="flex items-center gap-3 p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                    <MapPin className="w-5 h-5 text-zinc-400 shrink-0" />
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                         Ubicación de la Tienda
                       </span>
                       <h4 className="font-bold text-zinc-900 dark:text-white text-sm">
@@ -389,13 +381,11 @@ export default function StorePoliciesModal({
                     href="https://instagram.com"
                     target="_blank"
                     rel="noreferrer"
-                    className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80 hover:border-zinc-400 transition flex items-start gap-3"
+                    className="flex items-center gap-3 p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition group"
                   >
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-pink-600 text-white flex items-center justify-center shrink-0">
-                      <Instagram className="w-5 h-5" />
-                    </div>
+                    <Instagram className="w-5 h-5 text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-300 shrink-0 transition" />
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                         Redes Sociales
                       </span>
                       <h4 className="font-bold text-zinc-900 dark:text-white text-sm">
@@ -405,14 +395,13 @@ export default function StorePoliciesModal({
                         Lanzamientos y novedades en Instagram
                       </p>
                     </div>
+                    <ArrowRight className="w-4 h-4 text-zinc-300 dark:text-zinc-600 ml-auto shrink-0" />
                   </a>
 
-                  <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200/70 dark:border-zinc-800/80 flex items-start gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-zinc-800 text-white flex items-center justify-center shrink-0">
-                      <Mail className="w-5 h-5" />
-                    </div>
+                  <div className="flex items-center gap-3 p-4 border border-zinc-200 dark:border-zinc-800 rounded-lg">
+                    <Mail className="w-5 h-5 text-zinc-400 shrink-0" />
                     <div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
                         Correo de Contacto
                       </span>
                       <h4 className="font-bold text-zinc-900 dark:text-white text-sm truncate">
@@ -430,7 +419,7 @@ export default function StorePoliciesModal({
           </div>
 
           {/* Footer del Modal */}
-          <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-850 bg-zinc-50/70 dark:bg-zinc-900/50 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="p-4 sm:p-5 border-t border-zinc-200 dark:border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
             <div className="flex items-center gap-2 text-xs text-zinc-500">
               <span className="font-medium">¿Tienes alguna duda sobre tu compra?</span>
             </div>
@@ -439,7 +428,7 @@ export default function StorePoliciesModal({
                 href={`https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent('Hola GUTSY, tengo una consulta sobre las políticas de la tienda.')}`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition shadow-sm"
+                className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-zinc-900 dark:bg-white hover:bg-zinc-700 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-semibold flex items-center justify-center gap-1.5 transition"
               >
                 <MessageCircle className="w-3.5 h-3.5" />
                 <span>Escribir al WhatsApp</span>
@@ -447,7 +436,7 @@ export default function StorePoliciesModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-200/50 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition"
+                className="px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-xs font-semibold text-zinc-700 dark:text-zinc-200 transition"
               >
                 Cerrar
               </button>
