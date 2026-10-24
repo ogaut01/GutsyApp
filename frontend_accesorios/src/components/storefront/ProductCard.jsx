@@ -17,12 +17,10 @@ export default function ProductCard({
   const imageSrc = getOptimizedImageUrl(rawImageSrc, 400);
 
   const [currentSrc, setCurrentSrc] = useState(imageSrc);
-  const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     setCurrentSrc(imageSrc);
-    setIsLoaded(false);
     setHasError(false);
   }, [imageSrc]);
 
@@ -86,28 +84,19 @@ export default function ProductCard({
         onClick={() => onOpenModal(product)}
       >
         {currentSrc && !hasError ? (
-          <>
-            {/* Skeleton suave visible mientras se descargan los bytes */}
-            {!isLoaded && (
-              <div className="absolute inset-0 bg-zinc-200/60 dark:bg-zinc-800/60 animate-pulse pointer-events-none" />
-            )}
-            <img
-              src={currentSrc}
-              alt={product.nombre}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${
-                isLoaded ? 'opacity-100' : 'opacity-0'
-              } ${
-                hasStock ? 'group-hover:scale-105' : 'opacity-75 grayscale-[20%] group-hover:opacity-100'
-              }`}
-              loading={isAboveFold ? 'eager' : 'lazy'}
-              fetchpriority={isPriority ? 'high' : undefined}
-              decoding={isPriority ? 'sync' : 'async'}
-              width="300"
-              height="300"
-              onLoad={() => setIsLoaded(true)}
-              onError={handleImageError}
-            />
-          </>
+          <img
+            src={currentSrc}
+            alt={product.nombre}
+            className={`w-full h-full object-cover transition-all duration-300 ${
+              hasStock ? 'group-hover:scale-105' : 'opacity-75 grayscale-[20%] group-hover:opacity-100'
+            }`}
+            loading={isAboveFold ? 'eager' : 'lazy'}
+            fetchPriority={isPriority ? 'high' : undefined}
+            decoding="async"
+            width="300"
+            height="300"
+            onError={handleImageError}
+          />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-600 p-4 text-center">
             <Gem className="w-10 h-10 stroke-[1.5] mb-2" />
